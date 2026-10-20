@@ -2,9 +2,10 @@
 <!--
   FotoFold: fold it, photograph it, hear it.
   Copyright (c) 2026 G.Coppola. All rights reserved.
-  The page collects nothing: no names, no photos kept, nothing sent.
+  No names, and the photo is never kept. Nothing is sent anywhere, except in a live class:
+  then the student's number and answers go to the teacher's screen through the relay.
 -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Fold a paper strip, photograph it, color the parts, hear the fraction."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoFold (iteration 17)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Fold a paper strip, photograph it, color the parts, hear the fraction."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoFold (iteration 18)</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
@@ -116,6 +117,11 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)} .chip.skip{background:var(--line);color:var(--muted)}
 .summary{font-family:var(--f-mono);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-wrap:anywhere}
 .toast{min-height:1.3em;font-size:14px;color:var(--muted)}
+.who{font-family:var(--f-display);font-size:22px}
+.livebadge{justify-self:start;font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--good-soft);color:var(--good);overflow-wrap:anywhere}
+.livebadge.wait{background:var(--warn-soft);color:var(--warn)}
+.liveline{font-size:15px;border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--muted)}
+.liveline.on{background:var(--good-soft);color:var(--good)} .liveline.off{background:var(--warn-soft);color:var(--warn)}
 details summary{cursor:pointer;font-weight:700;color:var(--muted)}
 footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px solid var(--line);padding-top:12px}
 input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
@@ -124,22 +130,30 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
 
 <main>
   <div class="top">
-    <button class="brand" id="home" type="button" aria-label="FotoFold, back to the sets">FotoFold <small id="brandSet">iteration 17</small></button>
+    <button class="brand" id="home" type="button" aria-label="FotoFold, back to the sets">FotoFold <small id="brandSet">iteration 18</small></button>
+    <span class="livebadge" id="liveBadge" hidden></span>
     <div class="wholes" id="wholes" aria-label="Wholes"></div>
   </div>
 
   <section id="homeView" style="display:grid;gap:16px">
     <h1 class="prompt">Fold it, photograph it, hear it.</h1>
     <p class="sub">You need four strips of paper, a pen, and the edge of a card. Each set starts by folding a whole into equal parts.</p>
-    <div class="card">
-      <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
-      <div class="ids">
-        <label for="classCode">Class code<input id="classCode" maxlength="12" autocomplete="off" spellcheck="false"></label>
-        <label for="studentNo">Your number<input id="studentNo" maxlength="6" inputmode="numeric" autocomplete="off"></label>
-      </div>
+    <div class="card" id="whoCard" hidden>
+      <b class="who">Who is using this phone?</b>
+      <div class="row"><button class="btn" id="iamStudent" type="button">I'm a student</button><button class="btn ghost" id="iamTeacher" type="button">I'm the teacher</button></div>
     </div>
+    <div class="card" id="idsCard">
+      <div class="sub" id="idsSub">If your teacher gave you a class code and a number, type them here. No names.</div>
+      <div class="ids">
+        <label for="classCode">Class code<input id="classCode" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
+        <label for="studentNo">Your number<input id="studentNo" maxlength="3" inputmode="numeric" pattern="[0-9]*" autocomplete="off"></label>
+      </div>
+      <div class="liveline" id="liveLine" role="status" hidden></div>
+    </div>
+    <div class="card" id="newCard" hidden><b id="newWhat"></b><div class="row"><button class="btn" id="newYes" type="button">Yes, start fresh</button><button class="btn ghost" id="newNo" type="button">No, same student</button></div></div>
     <div class="card" id="resumeCard" hidden><b id="resumeWhat"></b><div class="row"><button class="btn" id="resumeBtn" type="button">Keep going</button><button class="btn ghost" id="freshBtn" type="button">Start fresh</button></div></div>
     <div class="sets" id="sets"></div>
+    <button class="btn link" id="teacherLink" type="button">I'm the teacher: start a live class</button>
   </section>
 
   <section id="stepView" hidden style="display:grid;gap:16px">
@@ -184,14 +198,16 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
         <button class="btn ghost" id="sendClaude" type="button" hidden>Send to Claude</button>
       </div>
       <div class="toast" id="recToast" role="status"></div>
+      <div class="liveline" id="doneLive" role="status" hidden></div>
     </div>
+    <div class="row"><button class="btn ghost" id="toSets" type="button">Back to the sets</button></div>
   </section>
 
   <details>
     <summary>Settings</summary>
     <div class="card" style="margin-top:8px">
       <div class="row"><label for="lenIn"><b>Length of the whole</b></label><input type="number" id="lenIn" min="1" max="100" step="0.05" value="11"><span class="sub">inches, measured with a ruler</span></div>
-      <p class="sub">FotoFold only uses the camera. It never opens your photos, and it never keeps the photo it takes. Your answers stay on this phone, so a sleeping screen doesn't lose them, until you tap Start fresh on the first screen.</p>
+      <p class="sub">FotoFold only uses the camera. It never opens your photos, and it never keeps the photo it takes. Your answers stay on this phone, so a sleeping screen doesn't lose them, until you tap Start fresh on the first screen. In a live class, your number and your answers also go to your teacher's screen. Never your name, never a photo.</p>
     </div>
   </details>
   <footer><div id="mapStatus"></div></footer>
@@ -201,7 +217,7 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
 <script>
 "use strict";
 (function(){
-const VERSION="0.17.0", ITERATION=17, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.18.0", ITERATION=18, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function toast(m){ const el=$("recToast"); if(el) el.textContent=m }
@@ -689,8 +705,10 @@ function common(){ S.submitted=false; S.stepOk=false; S.editing=false; S.drag=nu
   $("nextRow").hidden=true; $("editBtn").textContent="Fix a fold line"; setFeedback("","");
   requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:reduceMotion.matches?"auto":"smooth"}) }catch(e){} }); }
 
-function startSet(SET){ S.set=SET; const used=S.results.filter(r=>r.set===SET.key).map(r=>r.round).concat(Object.values(S.folds).filter(f=>f.set===SET.key).map(f=>f.round));
-  S.round=used.length?Math.max(...used)+1:1; S.loggedDone=false; view("stepView"); log("set_start",{set:SET.key}); keepAwake(); startWhole(0); }
+function startSet(SET){
+  if(S.student&&lastNum&&S.student!==lastNum&&S.results.length){ view("homeView"); $("newCard").hidden=false; $("newWhat").textContent="Number "+S.student+" now. Is this a new student on this phone?"; try{ $("newCard").scrollIntoView({block:"center"}) }catch(e){} return }
+  S.set=SET; const used=S.results.filter(r=>r.set===SET.key).map(r=>r.round).concat(Object.values(S.folds).filter(f=>f.set===SET.key).map(f=>f.round));
+  S.round=used.length?Math.max(...used)+1:1; S.loggedDone=false; view("stepView"); log("set_start",{set:SET.key}); keepAwake(); sendJoin(); note("step",{type:"start",set:SET.key,no:SET.no,round:S.round,of:flatSteps().length}); startWhole(0); }
 function resume(p){ // the photo is never kept, so the student photographs this whole again, then carries on from the step they were on
   S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.folds=p.folds||{}; S.mem=p.mem||{}; S.events=p.events||[]; S.started=p.started||S.started; S.length=p.length||S.length; S.loggedDone=false;
   const next = p.s<0 ? 0 : (p.stepOk ? p.s+1 : p.s);
@@ -853,6 +871,7 @@ $("submit").onclick=()=>{
     wrote,color_ok:colorOk,symbol_ok:symOk,correct:ok,try:S.tries,secs,source:S.source,fold_equal:foldEqual(),
     swipe_parts:(st.m==="repeat"||st.m==="fit")?(S.deltas||[]).slice():undefined, live_swipes:(st.m==="repeat"||st.m==="fit")?liveSwipes().map(p=>p.length):undefined, per_swipe_ok:(st.m==="repeat"||st.m==="fit")?perOk:undefined};
   S.results.push(res); log("answer",{step:st.id,correct:ok,try:S.tries});
+  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,i:flatSteps().indexOf(st)+1,of:flatSteps().length,correct:ok,try:S.tries,wrote,secs});
   setFeedback(ok?"good":"warn",msg);
   if(!ok && st.m==="name") showRefs();
   if(ok && (st.stack||st.m==="name")){ if(st.colors) remember(st);
@@ -874,7 +893,7 @@ $("next").onclick=()=>{
     if(st.colors){ S.parts=new Set(fromLeft(st.target)); remember(st); S.movedOn = st.m==="fit" ? "FIT:The answer was "+st.count+". "+st.say.split(", because ")[0]+"." : st.target+"/"+n(); }
     const r=stepRuns(st.id); if(r.length){ const last=r[r.length-1]; last.moved_on=true; if(st.colors) last.set_by_phone=true; }
     else S.results.push({set:S.set.key,round:S.round,whole:W().key,n:n(),step:st.id,label:st.label,mode:st.m,target:st.expect,skipped:true,moved_on:true,correct:false,try:0,source:S.source});
-    log("moved_on",{step:st.id});
+    log("moved_on",{step:st.id}); note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,i:flatSteps().indexOf(st)+1,of:flatSteps().length});
   }
   if(!st){
     if(S.resumeTo!=null){ const to=S.resumeTo, w=S.resumeW, parts=S.resumeParts; S.resumeTo=null; S.resumeW=null; S.resumeParts=null;
@@ -931,7 +950,7 @@ function missText(st,bad){
   return st.label+": "+(bad.mode==="sub"?"left ":"colored ")+bad.colored+", wrote "+String(bad.wrote).split("/")[0]; }
 function summaryLine(setKey,round){ if(setKey){ const keep=[S.set,S.round]; S.set=SETS.find(x=>x.key===setKey); S.round=round; try{ return summaryLine() } finally { S.set=keep[0]; S.round=keep[1] } }
   const mine=Object.values(S.folds).filter(f=>f.set===S.set.key&&f.round===S.round), srcs=new Set(mine.map(f=>f.source));
-  const who=[S.classCode&&("class "+S.classCode), S.student&&("#"+S.student)].filter(Boolean).join(" ");
+  const who=[cls()&&("class "+cls()), S.student&&("#"+S.student)].filter(Boolean).join(" ");
   const out=[(who?who+" · ":"")+"Set "+S.set.no+" · round "+S.round, (srcs.has("sample")?(srcs.has("photo")?"some sample strips":"sample strips"):"own strips")];
   for(const P of PLAN()){
     const f=S.folds[S.set.key+":"+S.round+":"+P.key]; let s=wholeTag(P)+": ";
@@ -964,9 +983,11 @@ function showDone(){
     const lastColor=[...P.steps].reverse().map(st=>S.mem[S.round+":"+st.id]).find(Boolean);
     box.appendChild(el); mini(el.querySelector("canvas"), f?f.fold_lines:[], P.n, lastColor?lastColor.parts:[]);
   });
-  $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); } persist();
+  $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); sendDone(); } persist(); doneLiveLine();
   const nx=SETS[SETS.indexOf(S.set)+1]; $("nextSet").hidden=!(nx&&!nx.soon); if(nx) $("nextSet").textContent="Set "+nx.no+": "+nx.name;
+  $("toSets").textContent = nx&&!nx.soon ? "Back to the sets" : "That was the last set. Back to the sets";
 }
+$("toSets").onclick=()=>{ renderHome(); try{ window.scrollTo(0,0) }catch(e){} };
 function mini(cv,lines,N,parts){ const dpr=Math.min(3,window.devicePixelRatio||1), w=cv.clientWidth||300, h=40;
   cv.width=Math.round(w*dpr); cv.height=h*dpr; cv.style.height=h+"px"; const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
   g.fillStyle=css("--mat"); g.fillRect(0,0,w,h); const x0=10,x1=w-10,y0=9,y1=31,L=x1-x0;
@@ -978,7 +999,7 @@ function mini(cv,lines,N,parts){ const dpr=Math.min(3,window.devicePixelRatio||1
 
 /* ======================= THE RECORD (fotofold.record/1) ======================= */
 function recordObj(){ const done=new Set(S.results.map(r=>r.set));
-  return {schema:RECORD_SCHEMA,app:"FotoFold",version:VERSION,iteration:ITERATION,class_code:S.classCode||null,student:S.student||null,
+  return {schema:RECORD_SCHEMA,app:"FotoFold",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
   sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:x.name,standards:x.std,steps:x.plan.flatMap(P=>P.steps.map(st=>({step:st.id,label:st.label,mode:st.m,target:st.expect,standard:st.std||x.std})))})),
   map:{schema:MAP.schema,content_sha256:MAP.provenance&&MAP.provenance.content_sha256,checked:CHECK.ok},
   started:S.started,saved:new Date().toISOString(),length_in:S.length,
@@ -988,7 +1009,7 @@ function recordText(){ const r=recordObj(), head=Object.assign({},r), j=x=>JSON.
   const list=(k,a)=>' "'+k+'": [\n'+a.map(x=>"  "+j(x)).join(",\n")+"\n ]";
   return "{\n"+Object.keys(head).map(k=>" "+j(k)+": "+j(head[k])).join(",\n")+",\n"+list("folds",r.folds)+",\n"+list("results",r.results)+",\n"+list("events",r.events)+"\n}\n" }
 let downloads=null; try{ if(window.claude&&window.claude.use) window.claude.use("downloads").then(d=>{downloads=d}).catch(()=>{}) }catch(e){}
-function fileName(){ const who=[S.classCode,S.student].filter(Boolean).join("-").replace(/[^A-Za-z0-9-]/g,""); return "fotofold-"+(who?who+"-":"")+S.started.slice(0,16).replace(/[:T]/g,"-")+".json" }
+function fileName(){ const who=[cls(),S.student].filter(Boolean).join("-").replace(/[^A-Za-z0-9-]/g,""); return "fotofold-"+(who?who+"-":"")+S.started.slice(0,16).replace(/[:T]/g,"-")+".json" }
 $("saveRec").onclick=async()=>{ const name=fileName(), data=recordText();
   if(downloads){ try{ await downloads.save({filename:name,data}); toast("Saved "+name+"."); }catch(e){ toast(e&&e.code==="declined"?"Not saved.":"Saving isn't available here. Use Copy instead.") } return }
   try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Saving "+name+".")}catch(e){toast("Saving isn't available here. Use Copy instead.")} };
@@ -1003,7 +1024,7 @@ $("lenIn").oninput=e=>{const v=parseFloat(e.target.value); if(v>=1&&v<=100){S.le
 
 /* ======================= HOME ======================= */
 function renderHome(){
-  view("homeView"); $("wholes").innerHTML=""; $("brandSet").textContent="iteration "+ITERATION;
+  view("homeView"); if(!$("whoCard").hidden) return; $("wholes").innerHTML=""; $("brandSet").textContent="iteration "+ITERATION;
   $("sets").innerHTML=SETS.map(x=>'<button class="setcard" type="button" data-set="'+x.key+'"'+(x.soon?' disabled':'')+'><span class="no">'+x.no+'</span><b>'+x.name+'</b><span class="what">'+(x.soon?"Coming next. ":"")+x.what+'</span></button>').join("");
   $("sets").querySelectorAll("[data-set]").forEach(b=>b.onclick=()=>{ const x=SETS.find(z=>z.key===b.dataset.set); if(x&&!x.soon) startSet(x); });
   const p=loadProgress(); $("resumeCard").hidden=!p;
@@ -1013,9 +1034,103 @@ function renderHome(){
     $("resumeBtn").onclick=()=>{ if(p.done){ S.set=X; S.round=p.round; S.results=p.results; S.folds=p.folds; S.mem=p.mem; S.events=p.events; S.started=p.started; S.loggedDone=true; showDone(); } else resume(p); };
     $("freshBtn").onclick=()=>{ forgetProgress(); S.set=null; S.results=[]; S.folds={}; S.mem={}; S.events=[]; S.started=new Date().toISOString(); $("resumeCard").hidden=true; }; }
 }
-$("classCode").value=S.classCode=store.get("ff.class"); $("studentNo").value=S.student=store.get("ff.student");
-$("classCode").oninput=e=>{ S.classCode=e.target.value.trim().slice(0,12); store.set("ff.class",S.classCode); };
-$("studentNo").oninput=e=>{ S.student=e.target.value.replace(/[^0-9A-Za-z]/g,"").slice(0,6); store.set("ff.student",S.student); };
+$("classCode").value=S.classCode=store.get("ff.class"); $("studentNo").value=S.student=store.get("ff.student").replace(/[^0-9]/g,"");
+$("classCode").oninput=e=>{ S.classCode=e.target.value.trim().slice(0,12); store.set("ff.class",S.classCode); codeChanged(); };
+$("studentNo").oninput=e=>{ const v=e.target.value.replace(/[^0-9]/g,"").slice(0,3); if(v!==e.target.value) e.target.value=v; S.student=v; store.set("ff.student",v); liveUI(); };
+$("studentNo").onchange=()=>numberSettled();
+
+/* ======================= LIVE CLASS =======================
+   The teacher's screen shows a code. A student who types it (or scans the teacher's QR) joins: the phone sends short notes
+   (joined, each answer, the finished set) to the relay, which the teacher's screen reads. Notes wait in an outbox on the
+   phone and are sent again until they get through, so a dropped connection only delays them. Nothing here is needed:
+   without a live class the app works exactly as before. */
+const RELAY=(()=>{ let r="https://fotofold-relay.fotofold.workers.dev"; if(r.indexOf("/*")===0) r="";
+  try{ const q=new URLSearchParams(location.search).get("relay"); if(q&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(q)) sessionStorage.setItem("ff.relay",q);
+    const t=sessionStorage.getItem("ff.relay"); if(t) r=t; }catch(e){}
+  return r.replace(/\/+$/,""); })();
+const LIVE_RE=/^[A-HJ-NP-Z2-9]{5}$/;
+let LIVE=null; try{ const l=JSON.parse(store.get("ff.live")||"null"); if(l&&Date.now()-l.at<12*3600e3) LIVE=l; }catch(e){}
+function cls(){ return (LIVE&&LIVE.ok&&LIVE.label)||S.classCode }
+const flatSteps=()=>S.set?S.set.plan.flatMap(P=>P.steps):[];
+function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new AbortController():null; const t=c?setTimeout(()=>c.abort(),ms||10000):null;
+  return fetch(url,Object.assign({},opt||{},c?{signal:c.signal}:{})).finally(()=>{ if(t) clearTimeout(t) }); }
+const OUT={q:[],busy:false,timer:null,fails:0,delivered:{}};
+try{ OUT.q=JSON.parse(store.get("ff.outbox.v1")||"[]")||[]; OUT.delivered=JSON.parse(store.get("ff.delivered")||"{}")||{}; }catch(e){ OUT.q=[] }
+const saveOut=()=>{ store.set("ff.outbox.v1",JSON.stringify(OUT.q.slice(-400))); store.set("ff.delivered",JSON.stringify(OUT.delivered)); };
+function devId(){ let d=store.get("ff.dev"); if(!d){ d="d"+Math.random().toString(36).slice(2,10)+Date.now().toString(36); store.set("ff.dev",d) } return d }
+let noteSeq=parseInt(store.get("ff.seq")||"0",10)||0;
+function note(kind,body){ if(!RELAY||!LIVE||!LIVE.ok||!S.student) return;
+  const mid=devId()+"-"+(++noteSeq)+"-"+Date.now().toString(36); store.set("ff.seq",String(noteSeq));
+  OUT.q.push({code:LIVE.code,mid,n:S.student,kind,body:Object.assign({dev:devId()},body||{})}); saveOut(); flush(); }
+const dkey=(code,n,set,round)=>code+"|"+n+"|"+set+"|"+round;
+async function flush(){ if(OUT.busy||!OUT.q.length||!RELAY){ liveUI(); return } OUT.busy=true; clearTimeout(OUT.timer);
+  try{ while(OUT.q.length){ const m=OUT.q[0]; let r=null;
+      try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ r=null }
+      if(r&&r.ok){ OUT.q.shift(); OUT.fails=0; if(m.kind==="done") OUT.delivered[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; saveOut(); continue }
+      if(r&&r.status===413&&m.kind==="done"&&m.body&&m.body.record){ m.body.record=null; m.body.too_big=true; saveOut(); continue } // too big: send the summary only
+      if(r&&r.status===404){ OUT.q=OUT.q.filter(x=>x.code!==m.code); saveOut(); if(LIVE&&LIVE.code===m.code) liveEnded(); continue }
+      if(r&&(r.status===400||r.status===413||r.status===429)){ OUT.q.shift(); saveOut(); continue } // can't ever go through
+      OUT.fails++; break } }   // no answer, or a passing problem (500): keep it and try again
+  finally{ OUT.busy=false; liveUI(); if(OUT.q.length){ OUT.timer=setTimeout(flush,Math.min(30000,1500*Math.pow(2,Math.min(OUT.fails,5)))) } } }
+addEventListener("online",()=>{ flush(); if(LIVE_RE.test((S.classCode||"").toUpperCase())&&!(LIVE&&LIVE.ok)) codeChanged(); });
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) flush() });
+let lastNum=S.student;
+function numberSettled(){ const v=S.student; if(!v||v===lastNum) { sendJoin(); return }
+  if(lastNum && S.results.length){ $("newCard").hidden=false; $("newWhat").textContent="Number "+v+" now. Is this a new student on this phone?"; return }
+  lastNum=v; sendJoin(); }
+$("newYes").onclick=()=>{ forgetProgress(); S.set=null; S.results=[]; S.folds={}; S.mem={}; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false;
+  $("resumeCard").hidden=true; $("newCard").hidden=true; lastNum=S.student; if(LIVE) LIVE.joined=null; sendJoin(); };
+$("newNo").onclick=()=>{ $("newCard").hidden=true; lastNum=S.student; sendJoin(); };
+function sendJoin(){ if(!$("newCard").hidden) return; if(LIVE&&LIVE.ok&&S.student&&LIVE.joined!==S.student){ LIVE.joined=S.student; store.set("ff.live",JSON.stringify(LIVE)); note("join",{version:VERSION}); } liveUI(); }
+function recordFor(k,rd){ const r=recordObj(), keep=x=>x&&x.set===k&&x.round===rd;
+  r.results=r.results.filter(keep); r.folds=r.folds.filter(keep); r.events=r.events.filter(keep);
+  r.sets=r.sets.filter(x=>x.set===k); r.summaries=r.summaries.filter(keep); return r; }
+function sendDone(){ if(!LIVE||!LIVE.ok) return; const rec=recordFor(S.set.key,S.round);
+  note("done",{set:S.set.key,no:S.set.no,round:S.round,summary:summaryLine(),record:rec}); }
+function liveEnded(){ LIVE.ok=false; store.set("ff.live",JSON.stringify(LIVE)); liveUI("ended"); }
+let codeT=null, codeAsked="", codeTries=0;
+function codeChanged(){ clearTimeout(codeT); const c=(S.classCode||"").toUpperCase();
+  if(LIVE&&LIVE.code!==c&&LIVE.label!==c){ LIVE=null; store.set("ff.live",""); }
+  if(LIVE&&LIVE.ok){ liveUI(); return }
+  if(!RELAY||!LIVE_RE.test(c)){ codeAsked=""; liveUI(); return }
+  codeTries=0; codeT=setTimeout(()=>checkCode(c),350); }
+async function checkCode(c){ codeAsked=c; liveUI("checking");
+  let r=null; try{ r=await tfetch(RELAY+"/session/"+c,{},10000) }catch(e){}
+  if(codeAsked!==c) return;
+  if(r&&r.ok){ let j={}; try{ j=await r.json() }catch(e){}
+    LIVE={code:c,label:j.label||null,ok:true,at:Date.now()}; store.set("ff.live",JSON.stringify(LIVE)); sendJoin(); flush(); liveUI(); return }
+  if(r&&r.status===404){ liveUI("notlive"); return }
+  codeTries++; liveUI("noreach"); codeT=setTimeout(()=>{ if(codeAsked===c) checkCode(c) },Math.min(30000,3000*codeTries)); } // keep looking
+function liveUI(state){ const line=$("liveLine"), badge=$("liveBadge"), on=LIVE&&LIVE.ok, waiting=OUT.q.length>0;
+  const name=on?"class "+(LIVE.label||LIVE.code):"";
+  badge.hidden=!on; if(on){ badge.textContent=(waiting&&OUT.fails?"○ Live · waiting for wifi":"● Live · "+name+(S.student?" · #"+S.student:"")); badge.className="livebadge"+(waiting&&OUT.fails?" wait":""); }
+  let t="", k="";
+  if(state==="checking"){ t="Looking for the live class…" }
+  else if(state==="notlive"){ t="No live class with this code right now. That's fine for homework: your work stays on this phone." }
+  else if(state==="noreach"){ t="Looking for the live class… (no connection yet). You can start: your answers wait on this phone."; k="off" }
+  else if(LIVE&&!LIVE.ok){ t="The live class has ended. Your work is still on this phone. Save or Copy it at the end."; k="off" }
+  else if(on&&!S.student){ t="Joined "+name+". Now type your number."; k="on" }
+  else if(on){ t="You're in "+name+" as #"+S.student+". Your teacher sees your answers as you go."; k="on" }
+  line.hidden=!t; line.textContent=t; line.className="liveline"+(k?" "+k:"");
+  doneLiveLine(); }
+function doneLiveLine(){ const el=$("doneLive"); if(!el) return; if(!LIVE||!S.set||$("doneView").hidden){ el.hidden=true; return }
+  const got=OUT.delivered[dkey(LIVE.code,S.student,S.set.key,S.round)];
+  el.hidden=false;
+  if(got==="full"){ el.textContent="Your teacher has your answers."; el.className="liveline on" }
+  else if(got){ el.textContent="Your teacher has your one-line summary. Tap Save my work or Copy to give your teacher the rest."; el.className="liveline off" }
+  else if(!LIVE.ok){ el.textContent="The live class ended before your answers were sent. Save or Copy them for your teacher."; el.className="liveline off" }
+  else if(OUT.fails){ el.textContent="Can't reach your teacher yet. The phone keeps trying. You can also Save or Copy."; el.className="liveline off" }
+  else { el.textContent="Sending your answers to your teacher…"; el.className="liveline" } }
+function goTeacher(){ store.set("ff.role","teacher"); let u="live.html"; try{ const r=sessionStorage.getItem("ff.relay"); if(r) u+="?relay="+encodeURIComponent(r) }catch(e){} location.href=u; }
+function showChoice(on){ $("whoCard").hidden=!on; for(const id of ["idsCard","sets"]) $(id).hidden=on; if(on) $("resumeCard").hidden=true; }
+$("iamTeacher").onclick=goTeacher; $("teacherLink").onclick=goTeacher;
+$("iamStudent").onclick=()=>{ store.set("ff.role","student"); showChoice(false); renderHome(); try{ $("classCode").focus() }catch(e){} };
+$("teacherLink").hidden=!RELAY;
+(function(){ let j=""; try{ j=(new URLSearchParams(location.search).get("join")||"").toUpperCase().replace(/[^A-Z0-9]/g,"") }catch(e){}
+  if(j){ store.set("ff.role","student"); $("classCode").value=S.classCode=j; store.set("ff.class",j); codeChanged(); try{ history.replaceState(null,"",location.pathname+location.hash) }catch(e){} }
+  else if(RELAY&&!store.get("ff.role")){ showChoice(true); }
+  else if(LIVE&&LIVE.ok) { liveUI(); flush(); }
+  else codeChanged(); })();
 $("home").onclick=()=>{ if(!$("stepView").hidden) armed($("brandSet"),"tap again to leave this set",()=>{ log("left_set",{}); renderHome(); }); else renderHome(); };
 
 /* ======================= START ======================= */

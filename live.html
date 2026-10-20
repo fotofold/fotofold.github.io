@@ -1,0 +1,391 @@
+<!doctype html>
+<!--
+  FotoFold: live class.
+  Copyright (c) 2026 G.Coppola. All rights reserved.
+  Students' phones send a number and their answers, never a name or photo. The relay deletes a class 12 hours after it starts.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Run a live FotoFold class: a code for the board, a tile per student number."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoFold Live Class</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* The teacher's screen for a live class: a code and QR for the students, a tile per student number that fills in as
+   they answer, a detail panel for one student, and Save class for the Class Report. */
+:root{
+  --bg:#edf1ee; --surface:#f8faf8; --fg:#17201c; --muted:#56635c; --line:#c9d3cd;
+  --mat:#2c473f; --mat-ink:#d6e4dc;
+  --ink:#1f4f8a; --ink-soft:#dbe6f3; --good:#1d7a45; --good-soft:#dcf0e3; --warn:#9a5b00; --warn-soft:#f8ead2;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-ink:#b8cdc2;
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-ink:#b8cdc2;
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:17px;line-height:1.45;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
+main{max-width:1180px;margin:0 auto;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+main>*,section>*{min-width:0}
+h1,h2{font-family:var(--f-display);margin:0;line-height:1.08;text-wrap:balance}
+h1{font-size:clamp(28px,6vw,40px);font-weight:800;font-variation-settings:"wdth" 78;letter-spacing:-.01em}
+h2{font-size:21px;font-weight:800;font-variation-settings:"wdth" 85}
+.brand{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 72;font-size:20px;color:var(--fg);text-decoration:none}
+.brand small{font-weight:600;color:var(--muted);font-size:14px}
+.sub{color:var(--muted);font-size:16px;margin:0;max-width:62ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:12px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:inherit;font-weight:700;font-size:17px;border-radius:999px;padding:12px 20px;border:1.5px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;line-height:1.2}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.small{font-size:15px;padding:8px 14px}
+.btn.danger{border-color:var(--warn);color:var(--warn);background:transparent}
+.btn.armed{background:var(--warn);color:var(--bg)}
+.btn:focus-visible,.tile:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.ids{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end}
+.ids label{display:grid;gap:4px;font-size:14px;font-weight:700;color:var(--muted)}
+.ids input{font:inherit;font-family:var(--f-mono);width:9em;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.ids input.n{width:5em}
+.toast{min-height:1.3em;font-size:14px;color:var(--muted)}
+/* running */
+.join{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:760px){.join{grid-template-columns:auto minmax(0,1fr);align-items:center}}
+.qr{background:#fff;border-radius:10px;padding:6px;justify-self:start;line-height:0}
+.qr canvas{width:180px;height:180px;image-rendering:pixelated}
+.code{font-family:var(--f-mono);font-weight:600;font-size:clamp(40px,11vw,64px);letter-spacing:.12em;line-height:1;color:var(--fg)}
+.where{font-family:var(--f-mono);font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.stat{display:flex;flex-wrap:wrap;gap:8px}
+.stat span{font-family:var(--f-mono);font-size:14px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+.stat span.ok{background:var(--good-soft);border-color:var(--good-soft);color:var(--good)}
+.stat span.bad{background:var(--warn-soft);border-color:var(--warn-soft);color:var(--warn)}
+.net{font-size:14px;color:var(--warn)}
+.panes{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:980px){.panes{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start}}
+.tiles{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.tile{font:inherit;text-align:left;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;display:grid;gap:4px;min-width:0}
+.tile .no{font-family:var(--f-display);font-weight:800;font-size:22px;line-height:1}
+.tile .st{font-size:13px;color:var(--muted);overflow-wrap:anywhere;line-height:1.25}
+.tile.out{opacity:.5;border-style:dashed}
+.tile.in{border-color:var(--ink)}
+.tile.done{border-color:var(--good);background:var(--good-soft)}
+.tile.look{border-color:var(--warn);box-shadow:0 0 0 3px var(--warn-soft)}
+.tile[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:1px}
+.marks{display:flex;flex-wrap:wrap;gap:2px}
+.marks i{width:7px;height:7px;border-radius:2px;background:var(--line)}
+.marks i.a{background:var(--good)} .marks i.b{background:#7fbf95} .marks i.x{background:var(--warn)} .marks i.m{background:var(--muted)}
+.key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.key i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.detail{display:grid;gap:12px}
+.steps{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;gap:8px;font-size:15px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--line)}
+.steps .i{font-family:var(--f-mono);color:var(--muted);font-size:13px}
+.steps .m{font-family:var(--f-mono);font-size:14px;font-weight:600;white-space:nowrap}
+.steps .m.ok{color:var(--good)} .steps .m.no{color:var(--warn)}
+.steps .lab{overflow-wrap:anywhere}
+.steps .lab small{color:var(--muted)}
+.summary{font-family:var(--f-mono);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-wrap:anywhere}
+.missed{margin:0;padding-left:1.2em;display:grid;gap:4px;font-size:15px}
+/* projector view */
+.big{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:5;padding:24px;cursor:pointer}
+.big .in{display:grid;gap:22px;justify-items:center;text-align:center}
+.big canvas{width:min(70vh,80vw);height:min(70vh,80vw);image-rendering:pixelated;background:#fff;border-radius:12px;padding:10px}
+.big .code{font-size:clamp(56px,12vw,120px)}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<main>
+  <div class="row" style="justify-content:space-between">
+    <a class="brand" href="./" id="home">FotoFold <small>live class</small></a>
+  </div>
+
+  <!-- start -->
+  <section id="startView" style="display:grid;gap:16px">
+    <h1>Start a live class.</h1>
+    <p class="sub">You get a code and a QR code for the board. Students scan it, type their number, and work through a set on their own phones. Their answers show up here as they go: numbers only, no names.</p>
+    <div class="card">
+      <div class="ids">
+        <label for="label">Class name for your report (optional)<input id="label" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="KURZ5"></label>
+        <label for="size">How many students?<input id="size" class="n" type="number" min="1" max="60" value="30" inputmode="numeric"></label>
+      </div>
+      <div class="row"><button class="btn" id="startBtn" type="button">Start the class</button></div>
+      <div class="toast" id="startToast" role="status"></div>
+    </div>
+    <p class="sub">The relay deletes the class 12 hours after it starts. You can save it and erase it sooner.</p>
+  </section>
+
+  <!-- running -->
+  <section id="runView" hidden style="display:grid;gap:18px">
+    <div class="card join">
+      <div class="qr"><canvas id="qr" aria-label="QR code to join this class"></canvas></div>
+      <div style="display:grid;gap:8px;min-width:0">
+        <div class="sub">Students: scan this with the camera, or open the FotoFold site and type the code.</div>
+        <div class="code" id="code" aria-live="polite"></div>
+        <div class="where" id="joinUrl"></div>
+        <div class="row">
+          <button class="btn small" id="bigBtn" type="button">Show it big</button>
+          <button class="btn small ghost" id="saveBtn" type="button">Save class</button>
+          <button class="btn small ghost" id="reportBtn" type="button">Open in the Class Report</button>
+          <button class="btn small danger" id="endBtn" type="button">End and erase</button>
+        </div>
+        <div class="toast" id="runToast" role="status"></div>
+      </div>
+    </div>
+
+    <div class="stat" id="stat" aria-live="polite"></div>
+    <div class="net" id="net" role="status" hidden></div>
+
+    <div class="panes">
+      <div style="display:grid;gap:10px;min-width:0">
+        <div class="key" aria-hidden="true"><span><i style="background:var(--good)"></i>right first try</span><span><i style="background:#7fbf95"></i>right after a miss</span><span><i style="background:var(--warn)"></i>missed</span><span><i style="background:var(--muted)"></i>moved on</span><span><i style="background:var(--line)"></i>not yet</span></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="card detail" id="detail">
+        <h2 id="dTitle">Tap a number</h2>
+        <div id="dBody" class="sub">See each step that student answered: right or missed, which try, and how long it took.</div>
+      </div>
+    </div>
+
+    <div class="card" id="missedCard" hidden>
+      <h2>Missed most so far</h2>
+      <ol class="missed" id="missed"></ol>
+    </div>
+  </section>
+
+  <div class="big" id="big" hidden role="dialog" aria-label="Join code, big"><div class="in"><canvas id="qrBig" aria-label="QR code to join"></canvas><div class="code" id="codeBig"></div><div class="sub">Tap anywhere to go back.</div></div></div>
+
+  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class 12 hours after it starts, or when you tap End and erase.</footer>
+</main>
+
+<script>
+/* Small QR code maker: byte mode, error correction level M, versions 1-10 (up to 213 bytes).
+   qrMatrix(text) -> array of rows of booleans (true = dark), without the quiet zone. */
+function qrMatrix(text, forceMask) {
+  const data = Array.from(new TextEncoder().encode(text));
+  // [total codewords, EC codewords per block, [[blocks, data codewords per block], ...]] for level M
+  const T = [null, [26, 10, [[1, 16]]], [44, 16, [[1, 28]]], [70, 26, [[1, 44]]], [100, 18, [[2, 32]]], [134, 24, [[2, 43]]],
+    [172, 16, [[4, 27]]], [196, 18, [[4, 31]]], [242, 22, [[2, 38], [2, 39]]], [292, 22, [[3, 36], [2, 37]]], [346, 26, [[4, 43], [1, 44]]]];
+  const ALIGN = [null, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50]];
+  let ver = 0;
+  for (let v = 1; v <= 10; v++) { const cap = T[v][2].reduce((a, [b, d]) => a + b * d, 0); const need = 4 + (v < 10 ? 8 : 16) + 8 * data.length; if (need <= cap * 8) { ver = v; break; } }
+  if (!ver) throw new Error("Too long for a QR code here");
+  const [, ecLen, groups] = T[ver], dataCap = groups.reduce((a, [b, d]) => a + b * d, 0);
+  // bit stream
+  const bits = []; const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+  put(4, 4); put(data.length, ver < 10 ? 8 : 16); for (const b of data) put(b, 8);
+  put(0, Math.min(4, dataCap * 8 - bits.length)); while (bits.length % 8) bits.push(0);
+  const cw = []; for (let i = 0; i < bits.length; i += 8) cw.push(parseInt(bits.slice(i, i + 8).join(""), 2));
+  for (let p = 0; cw.length < dataCap; p++) cw.push(p % 2 ? 0x11 : 0xEC);
+  // Reed-Solomon
+  const EXP = new Array(512), LOG = new Array(256); let x = 1;
+  for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 256) x ^= 0x11D; }
+  for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  const mul = (a, b) => (a && b ? EXP[LOG[a] + LOG[b]] : 0);
+  let gen = [1]; for (let i = 0; i < ecLen; i++) { const g = new Array(gen.length + 1).fill(0); for (let j = 0; j < gen.length; j++) { g[j] ^= gen[j]; g[j + 1] ^= mul(gen[j], EXP[i]); } gen = g; }
+  const rs = (msg) => { const r = msg.concat(new Array(ecLen).fill(0)); for (let i = 0; i < msg.length; i++) { const c = r[i]; if (c) for (let j = 0; j < gen.length; j++) r[i + j] ^= mul(gen[j], c); } return r.slice(msg.length); };
+  const blocks = []; let off = 0; for (const [b, d] of groups) for (let k = 0; k < b; k++) { const m = cw.slice(off, off + d); off += d; blocks.push({ d: m, e: rs(m) }); }
+  const final = []; const maxD = Math.max(...blocks.map((b) => b.d.length));
+  for (let i = 0; i < maxD; i++) for (const b of blocks) if (i < b.d.length) final.push(b.d[i]);
+  for (let i = 0; i < ecLen; i++) for (const b of blocks) final.push(b.e[i]);
+  // modules
+  const N = 17 + 4 * ver, M = [], F = []; for (let i = 0; i < N; i++) { M.push(new Array(N).fill(false)); F.push(new Array(N).fill(false)); }
+  const set = (r, c, v) => { M[r][c] = v; F[r][c] = true; };
+  const finder = (r0, c0) => { for (let r = -1; r <= 7; r++) for (let c = -1; c <= 7; c++) { const R = r0 + r, C = c0 + c; if (R < 0 || C < 0 || R >= N || C >= N) continue;
+    const on = r >= 0 && r <= 6 && c >= 0 && c <= 6 && (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)); set(R, C, on); } };
+  finder(0, 0); finder(0, N - 7); finder(N - 7, 0);
+  for (let i = 8; i < N - 8; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  const A = ALIGN[ver], L = A.length - 1; A.forEach((r, i) => A.forEach((c, j) => { if ((i === 0 && j === 0) || (i === 0 && j === L) || (i === L && j === 0)) return; for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) set(r + dr, c + dc, Math.max(Math.abs(dr), Math.abs(dc)) !== 1); }));
+  set(N - 8, 8, true); // dark module
+  for (let i = 0; i < 9; i++) { if (!F[8][i]) set(8, i, false); if (!F[i][8]) set(i, 8, false); } // reserve format areas
+  for (let i = 0; i < 8; i++) { set(8, N - 1 - i, false); set(N - 1 - i, 8, false); }
+  if (ver >= 7) { let v = ver << 12; for (let i = 17; i >= 12; i--) if ((v >>> i) & 1) v ^= 0x1F25 << (i - 12); const vb = (ver << 12) | v;
+    for (let i = 0; i < 18; i++) { const bit = ((vb >>> i) & 1) === 1, a = Math.floor(i / 3), b = N - 11 + (i % 3); set(a, b, bit); set(b, a, bit); } }
+  // data placement
+  const dbits = []; for (const b of final) for (let i = 7; i >= 0; i--) dbits.push((b >>> i) & 1);
+  let k = 0, up = true;
+  for (let c = N - 1; c > 0; c -= 2) { if (c === 6) c--; for (let t = 0; t < N; t++) { const r = up ? N - 1 - t : t; for (const cc of [c, c - 1]) if (!F[r][cc]) { M[r][cc] = k < dbits.length ? dbits[k] === 1 : false; k++; } } up = !up; }
+  const MASKS = [(r, c) => (r + c) % 2 === 0, (r) => r % 2 === 0, (r, c) => c % 3 === 0, (r, c) => (r + c) % 3 === 0, (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+    (r, c) => ((r * c) % 2) + ((r * c) % 3) === 0, (r, c) => (((r * c) % 2) + ((r * c) % 3)) % 2 === 0, (r, c) => (((r + c) % 2) + ((r * c) % 3)) % 2 === 0];
+  const withMask = (m) => { const G = M.map((row) => row.slice());
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!F[r][c] && MASKS[m](r, c)) G[r][c] = !G[r][c];
+    let f = (0 << 3) | m, v = f << 10; for (let i = 14; i >= 10; i--) if ((v >>> i) & 1) v ^= 0x537 << (i - 10); const fb = ((f << 10) | v) ^ 0x5412; // level M = 00
+    const bit = (i) => ((fb >>> i) & 1) === 1;
+    for (let i = 0; i <= 5; i++) G[i][8] = bit(i);
+    G[7][8] = bit(6); G[8][8] = bit(7); G[8][7] = bit(8);
+    for (let i = 9; i < 15; i++) G[8][14 - i] = bit(i);
+    for (let i = 0; i < 8; i++) G[8][N - 1 - i] = bit(i);
+    for (let i = 8; i < 15; i++) G[N - 15 + i][8] = bit(i);
+    G[N - 8][8] = true;
+    return G; };
+  const penalty = (G) => { let p = 0;
+    for (let pass = 0; pass < 2; pass++) for (let i = 0; i < N; i++) { let run = 1; for (let j = 1; j < N; j++) { const a = pass ? G[j][i] : G[i][j], b = pass ? G[j - 1][i] : G[i][j - 1]; if (a === b) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1; } }
+    for (let r = 0; r < N - 1; r++) for (let c = 0; c < N - 1; c++) { const v = G[r][c]; if (v === G[r + 1][c] && v === G[r][c + 1] && v === G[r + 1][c + 1]) p += 3; }
+    const pat = [true, false, true, true, true, false, true];
+    for (let i = 0; i < N; i++) for (let j = 0; j + 7 <= N; j++) for (const pass of [0, 1]) { let hit = true; for (let q = 0; q < 7; q++) if ((pass ? G[j + q][i] : G[i][j + q]) !== pat[q]) { hit = false; break; }
+      if (!hit) continue; const off = (q) => { const jj = j + q; if (jj < 0 || jj >= N) return true; return !(pass ? G[jj][i] : G[i][jj]); };
+      if ((off(-1) && off(-2) && off(-3) && off(-4)) || (off(7) && off(8) && off(9) && off(10))) p += 40; }
+    let dark = 0; for (const row of G) for (const v of row) if (v) dark++; p += Math.floor(Math.abs(dark * 20 / (N * N) - 10)) * 10; return p; };
+  if (forceMask != null) return withMask(forceMask);
+  let best = null, bestP = Infinity; for (let m = 0; m < 8; m++) { const G = withMask(m), p = penalty(G); if (p < bestP) { bestP = p; best = G; } }
+  return best;
+}
+/* Draw onto a canvas: px = module size, with a 4-module quiet zone. */
+function qrDraw(canvas, text, px, dark, light) {
+  const G = qrMatrix(text), N = G.length, q = 4, S = (N + 2 * q) * px; canvas.width = S; canvas.height = S;
+  const g = canvas.getContext("2d"); g.fillStyle = light || "#fff"; g.fillRect(0, 0, S, S); g.fillStyle = dark || "#000";
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (G[r][c]) g.fillRect((c + q) * px, (r + q) * px, px, px);
+  return N;
+}
+
+</script>
+<script>
+"use strict";
+(function(){
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||"" }catch(e){ return "" } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }, del(k){ try{ localStorage.removeItem(k) }catch(e){} } };
+const RELAY=(()=>{ let r="https://fotofold-relay.fotofold.workers.dev"; if(r.indexOf("/*")===0) r="";
+  try{ const q=new URLSearchParams(location.search).get("relay"); if(q&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(q)) sessionStorage.setItem("ff.relay",q);
+    const t=sessionStorage.getItem("ff.relay"); if(t) r=t; }catch(e){}
+  return r.replace(/\/+$/,""); })();
+const testRelay=(()=>{ try{ return sessionStorage.getItem("ff.relay")||"" }catch(e){ return "" } })();
+let T=null;            // {code,key,label,size,ends}
+let lastId=0, notes=[], pollT=null, fails=0, sel=null;
+
+function view(v){ $("startView").hidden=v!=="start"; $("runView").hidden=v!=="run"; }
+function joinUrl(){ const base=location.origin+location.pathname.replace(/[^/]*$/,""); return base+"?join="+T.code+(testRelay?"&relay="+encodeURIComponent(testRelay):""); }
+
+/* ---- start ---- */
+if(!RELAY){ $("startBtn").disabled=true; $("startToast").textContent="Live classes aren't set up on this site yet. Students can still use FotoFold and Save or Copy their work."; }
+$("startBtn").onclick=async()=>{ const label=$("label").value.trim().toUpperCase().replace(/[^A-Z0-9-]/g,"").slice(0,12), size=Math.max(1,Math.min(60,parseInt($("size").value,10)||30));
+  $("startBtn").disabled=true; $("startToast").textContent="Starting…";
+  let r=null; try{ r=await tfetch(RELAY+"/session",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({label})}) }catch(e){}
+  $("startBtn").disabled=false;
+  if(!r||!r.ok){ $("startToast").textContent="Couldn't reach the relay. Check the wifi and try again."; return }
+  const j=await r.json(); T={code:j.code,key:j.key,label:j.label,size,ends:Date.now()+(j.hours||12)*3600e3}; store.set("ff.teach",JSON.stringify(T));
+  lastId=0; notes=[]; run(); };
+
+/* ---- running ---- */
+function run(){ view("run"); $("code").textContent=T.code; $("codeBig").textContent=T.code;
+  const u=joinUrl(); $("joinUrl").textContent=u.replace(/^https?:\/\//,"").replace(/&relay=.*$/,"");
+  try{ qrDraw($("qr"),u,6); qrDraw($("qrBig"),u,12); }catch(e){ $("qr").replaceWith(document.createTextNode("")); }
+  document.title="FotoFold Live Class · "+T.code; render(); poll(); }
+function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new AbortController():null; const t=c?setTimeout(()=>c.abort(),ms||10000):null;
+  return fetch(url,Object.assign({},opt||{},c?{signal:c.signal}:{})).finally(()=>{ if(t) clearTimeout(t) }); }
+let polling=false, over=false;
+async function poll(){ clearTimeout(pollT); if(!T||polling||over) return; polling=true; let more=false;
+  try{ let r=null; try{ r=await tfetch(RELAY+"/session/"+T.code+"?key="+encodeURIComponent(T.key)+"&after="+lastId,{cache:"no-store"},10000) }catch(e){}
+    if(r&&r.ok){ const j=await r.json(); fails=0; if(j.ends) T.ends=j.ends; let added=0;
+      for(const n of (j.notes||[])){ if(n.id<=lastId) continue; notes.push(n); lastId=n.id; added++ }
+      if(added) render(); more=(j.notes||[]).length>=400; }
+    else if(r&&r.status===404){ relayGone(); return }
+    else fails++; }
+  catch(e){ fails++ }
+  finally{ polling=false; netLine(); if(T&&!over) pollT=setTimeout(poll,more?50:document.hidden?10000:(fails?Math.min(20000,3000*fails):3000)); } }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&T) poll() });
+function netLine(){ if(over) return; const el=$("net"); el.hidden=!fails; if(fails) el.textContent="Can't reach the relay right now. Trying again… Students' phones keep their answers and resend them."; }
+
+/* ---- the model, from the notes ---- */
+function whole(v,lo,hi){ v=Math.round(+v); return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):0 }
+function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
+  const st=n=>{ if(!S.has(n)) S.set(n,{n,joined:0,last:0,sets:new Map(),cur:null}); return S.get(n) };
+  for(const x of notes){ const s=st(x.n); s.last=Math.max(s.last,x.at); const b=x.body||{};
+    if(b.dev){ devNum.set(b.dev,x.n); if(!devs.has(x.n)) devs.set(x.n,new Set()); devs.get(x.n).add(b.dev); }
+    if(x.kind==="join"){ s.joined=s.joined||x.at; continue }
+    if(!b.set) continue; s.joined=s.joined||x.at;
+    const round=whole(b.round,1,99)||1, of=whole(b.of,0,60), key=b.set+"|"+round;
+    if(!s.sets.has(key)) s.sets.set(key,{key,set:String(b.set),no:whole(b.no,0,9),round,of,steps:new Map(),done:null,at:x.at});
+    const R=s.sets.get(key); R.at=x.at; if(of) R.of=of; s.cur=key;
+    if(x.kind==="done"){ R.done=b; continue }
+    if(b.type==="answer"||b.type==="moved_on"){ if(!R.steps.has(b.step)) R.steps.set(b.step,{i:whole(b.i,0,60),label:String(b.label||b.step||""),runs:[],moved:false}); const P=R.steps.get(b.step);
+      if(b.type==="answer") P.runs.push({correct:b.correct===true,try:whole(b.try,0,99),wrote:b.wrote==null?"":String(b.wrote),secs:whole(b.secs,0,36000)}); else P.moved=true; } }
+  // a number that only joined, from a phone that then switched to another number, was a typo: drop it
+  for(const [n,s] of [...S]){ const ds=devs.get(n); if(!s.sets.size&&ds&&[...ds].every(d=>devNum.get(d)!==n)) S.delete(n); }
+  for(const [n,s] of S){ const ds=devs.get(n); s.phones=ds?[...ds].filter(d=>devNum.get(d)===n).length:1; }
+  return S; }
+function stepState(P){ if(!P) return ""; const rs=P.runs; if(rs.length&&rs[0].correct) return "a"; if(rs.some(r=>r.correct)) return "b"; if(P.moved) return "m"; if(rs.length) return "x"; return ""; }
+function looksStuck(R){ const arr=[...R.steps.values()].sort((a,b)=>a.i-b.i); const P=arr[arr.length-1]; return !R.done && P && !P.moved && P.runs.length>=2 && !P.runs.some(r=>r.correct); }
+const plural=(k,w)=>k+" "+w+(k===1?"":"s");
+
+function render(){ try{ draw() }catch(e){ $("runToast").textContent="Something in the notes couldn't be shown. The rest is fine."; } }
+function draw(){ if(!T) return; const S=model();
+  const nums=[]; for(let i=1;i<=T.size;i++) nums.push(String(i).padStart(2,"0")); for(const n of S.keys()) if(!nums.includes(n)) nums.push(n);
+  let joined=0, done=0, look=0;
+  $("tiles").innerHTML=nums.map(n=>{ const s=S.get(n); let cls="tile out", st="not here yet", marks="";
+    if(s){ joined++; cls="tile in"; st="joined";
+      const R=s.cur&&s.sets.get(s.cur);
+      if(R){ const arr=new Array(R.of||0).fill(""); for(const P of R.steps.values()) if(P.i>=1&&P.i<=arr.length) arr[P.i-1]=stepState(P);
+        const answered=[...R.steps.values()].length;
+        st="Set "+(R.no||"?")+(R.round>1?" (again)":"")+" · "+answered+" of "+(R.of||"?");
+        marks='<span class="marks">'+arr.map(c=>'<i class="'+c+'"></i>').join("")+'</span>';
+        if(R.done){ cls="tile done"; st="Set "+(R.no||"?")+" done ✓"; done++; } 
+        else if(looksStuck(R)){ cls="tile look"; st+=" · stuck?"; look++; } } }
+    if(s&&s.phones>1){ st+=" · "+s.phones+" phones use this number"; cls+=" look"; }
+    return '<button class="'+cls+'" type="button" data-n="'+esc(n)+'" aria-pressed="'+(sel===n)+'" aria-label="Number '+esc(n)+', '+esc(st)+'"><span class="no">'+esc(n)+'</span><span class="st">'+esc(st)+'</span>'+marks+'</button>'; }).join("");
+  $("tiles").querySelectorAll(".tile").forEach(b=>b.onclick=()=>{ sel=b.dataset.n; render(); if(matchMedia("(max-width:979px)").matches) try{ $("detail").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} });
+  $("stat").innerHTML='<span>'+joined+' joined</span><span class="ok">'+done+' done</span>'+(look?'<span class="bad">'+look+' maybe stuck</span>':'')+'<span>'+left()+'</span>';
+  detail(S); missed(S); }
+function left(){ const ms=Math.max(0,(T.ends||0)-Date.now()), h=Math.floor(ms/3600e3), m=Math.floor(ms%3600e3/60e3); return "erased in "+(h?h+" h ":"")+m+" min"; }
+setInterval(()=>{ if(T&&!$("runView").hidden){ const el=$("stat").lastElementChild; if(el) el.textContent=left(); } },30000);
+
+function detail(S){ if(!sel){ return } const s=S.get(sel);
+  $("dTitle").textContent="Number "+sel;
+  if(!s){ $("dBody").innerHTML='<p class="sub">Hasn\'t joined yet.</p>'; return }
+  const sets=[...s.sets.values()].sort((a,b)=>b.at-a.at);
+  if(!sets.length){ $("dBody").innerHTML='<p class="sub">Joined. Hasn\'t started a set yet.</p>'; return }
+  $("dBody").innerHTML=sets.map(R=>{ const arr=[...R.steps.values()].sort((a,b)=>a.i-b.i);
+    const first=arr.filter(P=>stepState(P)==="a").length;
+    const head='<h2 style="font-size:18px">Set '+esc(R.no||"?")+(R.round>1?", round "+R.round:"")+(R.done?" · done":"")+'</h2><div class="sub">'+first+' of '+(R.of||arr.length)+' right on the first try'+(R.done?"":" so far")+'.</div>';
+    const li=arr.map(P=>{ const marks=P.runs.map(r=>r.correct?"✓":"✗").join("→")+(P.moved?" → moved on":""); const ok=P.runs.some(r=>r.correct);
+      const lastBad=[...P.runs].reverse().find(r=>!r.correct); const secs=P.runs.reduce((a,r)=>a+(+r.secs||0),0);
+      return '<li><span class="i">'+esc(P.i)+'</span><span class="lab">'+esc(P.label)+(lastBad&&lastBad.wrote?' <small>wrote '+esc(lastBad.wrote)+'</small>':'')+'</span><span class="m '+(ok?"ok":"no")+'">'+esc(marks)+' · '+Math.round(secs)+' s</span></li>'; }).join("");
+    const sum=R.done&&R.done.summary?'<div class="summary">'+esc(R.done.summary)+'</div>':'';
+    const save=R.done&&R.done.record?'<div class="row"><button class="btn small ghost" type="button" data-save="'+esc(R.key)+'">Save this record</button></div>':'';
+    return '<div style="display:grid;gap:8px">'+head+'<ol class="steps">'+li+'</ol>'+sum+save+'</div>'; }).join("");
+  $("dBody").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{ const R=s.sets.get(b.dataset.save); download("fotofold-"+fileTag()+"-"+sel+"-set"+(R.no||"")+".json",JSON.stringify(R.done.record,null,1)); }); }
+
+function missed(S){ const by=new Map();
+  for(const s of S.values()) for(const R of s.sets.values()) for(const [id,P] of R.steps){ const k=R.set+"|"+id; if(!by.has(k)) by.set(k,{label:P.label,no:R.no,i:P.i,n:0,miss:0}); const e=by.get(k); if(P.runs.length){ e.n++; if(!P.runs[0].correct) e.miss++; } }
+  const top=[...by.values()].filter(e=>e.miss>=2).sort((a,b)=>b.miss/b.n-a.miss/a.n||b.miss-a.miss).slice(0,5);
+  $("missedCard").hidden=!top.length;
+  $("missed").innerHTML=top.map(e=>'<li><b>'+esc(e.label)+'</b> (Set '+esc(e.no)+', step '+esc(e.i)+'): '+e.miss+' of '+e.n+' missed it on the first try</li>').join(""); }
+
+/* ---- saving ---- */
+function fileTag(){ return (T.label||T.code).replace(/[^A-Za-z0-9-]/g,"") }
+function records(){ const S=model(), out=[]; for(const s of S.values()) for(const R of s.sets.values()) if(R.done&&R.done.record) out.push(R.done.record);
+  // one record per student: a student's later record holds all their sets
+  const best=new Map(); for(const r of out){ const sr=(r.results||[])[0]||{}; const k=r.student+"|"+r.started+"|"+sr.set+"|"+sr.round; const prev=best.get(k); if(!prev||(r.saved||"")>(prev.saved||"")) best.set(k,r); }
+  return [...best.values()]; }
+function download(name,text){ try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type:"application/json"})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove() },1000); return true }catch(e){ return false } }
+$("saveBtn").onclick=()=>{ const R=records(), S=model(); const unfinished=[...S.values()].filter(s=>![...s.sets.values()].some(x=>x.done)).map(s=>s.n);
+  const short=[...S.values()].filter(s=>[...s.sets.values()].some(x=>x.done&&!x.done.record)).map(s=>s.n);
+  if(!R.length){ $("runToast").textContent="Nobody has finished a set yet, so there's nothing to save."; return }
+  const d=new Date().toISOString().slice(0,10); download("fotofold-class-"+fileTag()+"-"+d+".json",JSON.stringify(R,null,1));
+  $("runToast").textContent="Saved "+plural(R.length,"record")+"."+(unfinished.length?" Not finished yet: "+unfinished.join(", ")+".":"")+(short.length?" Finished, but only the summary came through (ask them to Save or Copy): "+short.join(", ")+".":""); };
+$("reportBtn").onclick=()=>{ const R=records(); if(!R.length){ $("runToast").textContent="Nobody has finished a set yet."; return }
+  store.set("ff.handoff",JSON.stringify({at:Date.now(),label:T.label||T.code,records:R})); window.open("report.html","_blank")||(location.href="report.html"); };
+let armT=null;
+$("endBtn").onclick=async()=>{ const b=$("endBtn");
+  if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tap again to erase. Saved?"; clearTimeout(armT); armT=setTimeout(()=>{ b.classList.remove("armed"); b.textContent="End and erase" },5000); return }
+  clearTimeout(armT); b.classList.remove("armed"); b.textContent="End and erase";
+  let r=null; try{ r=await tfetch(RELAY+"/session/"+T.code+"?key="+encodeURIComponent(T.key),{method:"DELETE"},10000) }catch(e){}
+  if(r&&(r.ok||r.status===404)){ over=false; ended("The class is erased from the relay."); } else $("runToast").textContent="Couldn't reach the relay to erase it. It will erase itself when its 12 hours are up."; };
+function relayGone(){ over=true; clearTimeout(pollT); store.del("ff.teach"); $("endBtn").hidden=true; $("net").hidden=false;
+  $("net").textContent="This class has ended on the relay (erased, or its 12 hours ran out). What you see is still here: Save class now, then start a new class.";
+  const b=document.createElement("button"); b.className="btn small ghost"; b.type="button"; b.textContent="Start a new class"; b.onclick=()=>{ over=false; $("endBtn").hidden=false; b.remove(); ended(""); }; $("net").after(b); }
+function ended(msg){ clearTimeout(pollT); store.del("ff.teach"); T=null; notes=[]; lastId=0; sel=null; view("start"); $("startToast").textContent=msg; document.title="FotoFold Live Class"; }
+
+/* ---- projector view ---- */
+$("bigBtn").onclick=()=>{ $("big").hidden=false; };
+$("big").onclick=()=>{ $("big").hidden=true; };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("big").hidden=true; });
+
+/* ---- back where we were ---- */
+try{ const t=JSON.parse(store.get("ff.teach")||"null"); if(t&&t.code&&t.key&&Date.now()<(t.ends||0)){ T=t; run(); } else view("start"); }catch(e){ view("start") }
+window.__live={model,records,get T(){return T},get notes(){return notes}};
+})();
+</script>
+</body></html>
