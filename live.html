@@ -93,6 +93,8 @@ h2{font-size:21px;font-weight:800;font-variation-settings:"wdth" 85}
 .big .in{display:grid;gap:22px;justify-items:center;text-align:center}
 .big canvas{width:min(70vh,80vw);height:min(70vh,80vw);image-rendering:pixelated;background:#fff;border-radius:12px;padding:10px}
 .big .code{font-size:clamp(56px,12vw,120px)}
+details.back summary{cursor:pointer;font-weight:700;color:var(--muted);font-size:15px}
+details.back{display:grid;gap:8px}
 footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -132,6 +134,10 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
           <button class="btn small danger" id="endBtn" type="button">End and erase</button>
         </div>
         <div class="toast" id="runToast" role="status"></div>
+        <details class="back"><summary>Getting back to this class</summary>
+          <p class="sub">On this computer, open <b>fotofold.github.io/live.html</b> again: the class comes back by itself. From another computer, use this return link. Anyone with it can see the class, so keep it to yourself.</p>
+          <div class="row"><button class="btn small ghost" id="copyBack" type="button">Copy the return link</button></div>
+        </details>
       </div>
     </div>
 
@@ -278,7 +284,7 @@ function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new Ab
 let polling=false, over=false;
 async function poll(){ clearTimeout(pollT); if(!T||polling||over) return; polling=true; let more=false;
   try{ let r=null; try{ r=await tfetch(RELAY+"/session/"+T.code+"?key="+encodeURIComponent(T.key)+"&after="+lastId,{cache:"no-store"},10000) }catch(e){}
-    if(r&&r.ok){ const j=await r.json(); fails=0; if(j.ends) T.ends=j.ends; let added=0;
+    if(r&&r.ok){ const j=await r.json(); fails=0; if(j.ends&&(j.ends!==T.ends||j.label!==T.label)){ T.ends=j.ends; T.label=j.label; store.set("ff.teach",JSON.stringify(T)); } let added=0;
       for(const n of (j.notes||[])){ if(n.id<=lastId) continue; notes.push(n); lastId=n.id; added++ }
       if(added) render(); more=(j.notes||[]).length>=400; }
     else if(r&&r.status===404){ relayGone(); return }
@@ -312,7 +318,7 @@ const plural=(k,w)=>k+" "+w+(k===1?"":"s");
 
 function render(){ try{ draw() }catch(e){ $("runToast").textContent="Something in the notes couldn't be shown. The rest is fine."; } }
 function draw(){ if(!T) return; const S=model();
-  const nums=[]; for(let i=1;i<=T.size;i++) nums.push(String(i).padStart(2,"0")); for(const n of S.keys()) if(!nums.includes(n)) nums.push(n);
+  const nums=[]; for(let i=1;i<=(T.size||30);i++) nums.push(String(i).padStart(2,"0")); for(const n of S.keys()) if(!nums.includes(n)) nums.push(n);
   let joined=0, done=0, look=0;
   $("tiles").innerHTML=nums.map(n=>{ const s=S.get(n); let cls="tile out", st="not here yet", marks="";
     if(s){ joined++; cls="tile in"; st="joined";
@@ -384,7 +390,13 @@ $("big").onclick=()=>{ $("big").hidden=true; };
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("big").hidden=true; });
 
 /* ---- back where we were ---- */
-try{ const t=JSON.parse(store.get("ff.teach")||"null"); if(t&&t.code&&t.key&&Date.now()<(t.ends||0)){ T=t; run(); } else view("start"); }catch(e){ view("start") }
+function backLink(){ return location.origin+location.pathname+"#back="+T.code+"."+T.key; }
+$("copyBack").onclick=()=>{ const u=backLink(); try{ navigator.clipboard.writeText(u).then(()=>{ $("runToast").textContent="Return link copied. Paste it somewhere only you can see, like an email to yourself." },()=>{ $("runToast").textContent=u }) }catch(e){ $("runToast").textContent=u } };
+(function(){ let h=""; try{ h=decodeURIComponent(location.hash||"") }catch(e){}
+  const m=/^#back=([A-HJ-NP-Z2-9]{5})\.([A-Z2-9]{24})$/.exec(h);
+  if(m){ try{ history.replaceState(null,"",location.pathname+location.search) }catch(e){}
+    T={code:m[1],key:m[2],label:null,size:30,ends:Date.now()+12*3600e3}; store.set("ff.teach",JSON.stringify(T)); run(); return }
+  try{ const t=JSON.parse(store.get("ff.teach")||"null"); if(t&&t.code&&t.key&&Date.now()<(t.ends||0)){ T=t; run(); } else view("start"); }catch(e){ view("start") } })();
 window.__live={model,records,get T(){return T},get notes(){return notes}};
 })();
 </script>

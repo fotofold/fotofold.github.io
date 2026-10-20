@@ -136,6 +136,7 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
   </div>
 
   <section id="homeView" style="display:grid;gap:16px">
+    <div class="card" id="teachCard" hidden><b id="teachWhat"></b><div class="row"><button class="btn" id="teachBack" type="button">Back to the class</button></div></div>
     <h1 class="prompt">Fold it, photograph it, hear it.</h1>
     <p class="sub">You need four strips of paper, a pen, and the edge of a card. Each set starts by folding a whole into equal parts.</p>
     <div class="card" id="whoCard" hidden>
@@ -1126,6 +1127,8 @@ function showChoice(on){ $("whoCard").hidden=!on; for(const id of ["idsCard","se
 $("iamTeacher").onclick=goTeacher; $("teacherLink").onclick=goTeacher;
 $("iamStudent").onclick=()=>{ store.set("ff.role","student"); showChoice(false); renderHome(); try{ $("classCode").focus() }catch(e){} };
 $("teacherLink").hidden=!RELAY;
+// a teacher who left the live class screen in this browser: a way straight back
+(function(){ try{ const t=JSON.parse(store.get("ff.teach")||"null"); if(RELAY&&t&&t.code&&Date.now()<(t.ends||0)){ $("teachCard").hidden=false; $("teachWhat").textContent="Your live class "+t.code+(t.label?" ("+t.label+")":"")+" is still running."; $("teachBack").onclick=goTeacher; } }catch(e){} })();
 (function(){ let j=""; try{ j=(new URLSearchParams(location.search).get("join")||"").toUpperCase().replace(/[^A-Z0-9]/g,"") }catch(e){}
   if(j){ store.set("ff.role","student"); $("classCode").value=S.classCode=j; store.set("ff.class",j); codeChanged(); try{ history.replaceState(null,"",location.pathname+location.hash) }catch(e){} }
   else if(RELAY&&!store.get("ff.role")){ showChoice(true); }
