@@ -117,6 +117,10 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)} .chip.skip{background:var(--line);color:var(--muted)}
 .summary{font-family:var(--f-mono);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-wrap:anywhere}
 .toast{min-height:1.3em;font-size:14px;color:var(--muted)}
+.camview{display:grid;gap:10px;position:relative}
+.camview video{width:100%;max-height:62vh;object-fit:contain;background:#000;border-radius:var(--r);display:block}
+.camguide{position:absolute;left:6%;right:6%;top:0;height:0}
+#snap::after{content:""}
 .who{font-family:var(--f-display);font-size:22px}
 .livebadge{justify-self:start;font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--good-soft);color:var(--good);overflow-wrap:anywhere}
 .livebadge.wait{background:var(--warn-soft);color:var(--warn)}
@@ -161,7 +165,13 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
     <div class="where"><span class="lab" id="where"></span></div>
     <div class="head" id="head"><span class="stepno" id="stepno" aria-hidden="true">1</span><h1 class="prompt" id="prompt"></h1></div>
     <p class="sub" id="sub"></p>
-    <div class="stage"><canvas id="stage" aria-label="Your whole"></canvas></div>
+    <div class="stage" id="stageBox"><canvas id="stage" aria-label="Your whole"></canvas></div>
+    <div class="camview" id="camBox" hidden>
+      <video id="camVideo" playsinline muted autoplay aria-label="What the camera sees"></video>
+      <div class="camguide" aria-hidden="true"></div>
+      <p class="sub" id="camTip">Hold the phone over your whole. Get all of it in the frame, end to end.</p>
+      <div class="row"><button class="btn go" id="snap" type="button" disabled>Take the photo</button><button class="btn ghost" id="camCancel" type="button">Cancel</button></div>
+    </div>
     <div class="sub" id="stageHint" style="margin-top:-8px;font-size:14px"></div>
     <div id="refs" hidden></div>
     <div class="stage" id="stringBox" hidden><canvas id="string" aria-label="The string"></canvas></div>
@@ -683,7 +693,36 @@ function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…"
   if(window.createImageBitmap){ createImageBitmap(file).then(b=>done(b,b.width,b.height)).catch(viaImg) } else viaImg();
   function viaImg(){const u=URL.createObjectURL(file),im=new Image();im.onload=()=>done(im,im.naturalWidth,im.naturalHeight);im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open. Try a JPEG or PNG.");im.src=u}
 }
-$("cam").onchange=e=>{loadFile(e.target.files[0]);e.target.value=""}; $("pick").onchange=e=>{loadFile(e.target.files[0]);e.target.value=""};
+$("cam").onchange=e=>{loadFile(e.target.files[0]);e.target.value=""};
+/* ---- the camera inside the page ----
+   "Take a photo" opens the camera right here (the browser asks once for permission), with its own shutter button.
+   This skips the phone's separate camera screen, which on some iPhones opens black, and the page stays open while
+   the student takes the picture. If the camera can't open here, the next tap uses the phone's own camera instead.
+   Nothing is recorded: one frame is taken when the student taps, read for fold lines, and never kept. */
+const CAM={stream:null,failed:false};
+const liveCamOK=()=>!CAM.failed&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)&&window.isSecureContext!==false;
+$("cam").addEventListener("click",e=>{ if(liveCamOK()){ e.preventDefault(); openCam(); } });
+async function openCam(){
+  $("camBox").hidden=false; $("stageBox").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true; $("snap").disabled=true;
+  $("camTip").textContent="Starting the camera…"; setFeedback("","");
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1920}}});
+    CAM.stream=st; const v=$("camVideo"); v.srcObject=st; try{ await v.play() }catch(e){}
+    let tries=0; const ready=()=>{ if(v.videoWidth>0){ $("snap").disabled=false; $("camTip").textContent="Hold the phone over your whole. Get all of it in the frame, end to end. Then tap Take the photo."; return } if(++tries<50) setTimeout(ready,100); else camFail("nopicture") }; ready();
+    log("camera",{live:true});
+  }catch(e){ camFail(e&&e.name) } }
+function stopCam(){ if(CAM.stream){ for(const t of CAM.stream.getTracks()) try{ t.stop() }catch(e){} } CAM.stream=null; try{ $("camVideo").srcObject=null }catch(e){} }
+function closeCam(){ stopCam(); $("camBox").hidden=true; $("stageBox").hidden=false; if(S.s<0){ $("photoRow").hidden=false; $("sampleBtn").hidden=false; } }
+function camFail(why){ CAM.failed=true; closeCam(); log("camera",{live:false,why:String(why||"")});
+  setFeedback("warn", why==="NotAllowedError" ? "<b>The camera wasn't allowed.</b>Tap Take a photo again to use the phone's own camera. Or allow the camera for this site in the browser's settings."
+                                           : "<b>The camera didn't open here.</b>Tap Take a photo again to use the phone's own camera."); }
+$("camCancel").onclick=()=>closeCam();
+$("snap").onclick=()=>{ const v=$("camVideo"), w=v.videoWidth, h=v.videoHeight; if(!w||!h) return;
+  const c=document.createElement("canvas"); c.width=w; c.height=h; const g=c.getContext("2d"); g.drawImage(v,0,0,w,h);
+  let dark=true; try{ const d=g.getImageData(Math.floor(w/4),Math.floor(h/4),Math.max(1,Math.floor(w/2)),Math.max(1,Math.floor(h/2))).data; let sum=0,k=0; for(let i=0;i<d.length;i+=64){ sum+=d[i]+d[i+1]+d[i+2]; k++ } dark=k>0&&sum/(3*k)<6; }catch(e){ dark=false }
+  if(dark){ $("camTip").textContent="The picture is black. Is something covering the camera? Try again, or tap Cancel and use No paper handy."; return }
+  closeCam(); analyse(c,w,h,"photo"); };
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&CAM.stream) closeCam(); }); $("pick").onchange=e=>{loadFile(e.target.files[0]);e.target.value=""};
 $("sampleBtn").onclick=()=>{const c=sampleCanvas(n());analyse(c,c.width,c.height,"sample")};
 $("retake").onclick=()=>armed($("retake"),"Tap again: start this whole over with a new photo",()=>{ log("retake",{whole:W().key}); startWhole(S.w) });
 
@@ -700,7 +739,7 @@ function renderTop(){
 
 }
 function enterHead(no){ $("stepno").textContent=no; const h=$("head"); h.classList.remove("enter"); void h.offsetWidth; h.classList.add("enter"); }
-function common(){ S.submitted=false; S.stepOk=false; S.editing=false; S.drag=null; S.num=0; S.den=0; S.sym=null; S.stepAt=performance.now();
+function common(){ if(typeof stopCam==="function"&&CAM.stream) closeCam(); S.submitted=false; S.stepOk=false; S.editing=false; S.drag=null; S.num=0; S.den=0; S.sym=null; S.stepAt=performance.now();
   $("stringBox").hidden=true; $("refs").hidden=true; $("refs").innerHTML=""; if(anim){cancelAnimationFrame(anim);anim=null}
   $("submit").disabled=false; $("hear").hidden=true; $("next").className="btn";
   $("nextRow").hidden=true; $("editBtn").textContent="Fix a fold line"; setFeedback("","");
