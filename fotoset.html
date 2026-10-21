@@ -5,7 +5,7 @@
   No names, and the photo is never kept: the phone counts the coins and forgets the picture.
   Nothing is sent anywhere, except in a live class: then the student's number and answers go to the teacher's screen.
 -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 4)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 6)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
@@ -106,7 +106,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
 <main>
   <div class="top">
-    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 4</small></button>
+    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 6</small></button>
     <span class="livebadge" id="liveBadge" hidden></span>
     <div class="wholes" id="wholes" aria-label="Wholes"></div>
   </div>
@@ -114,7 +114,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <section id="homeView" style="display:grid;gap:16px">
     <a class="btn link back" href="index.html" id="allLink">← All activities</a>
     <h1 class="prompt">Count it, photograph it, see the parts.</h1>
-    <p class="sub">You need 15 coins of the same size and a sheet of white paper with a pen line across the middle: a top half and a bottom half. A part is coins that touch. Leave a space about one coin wide between parts.</p>
+    <p class="sub">You need 15 coins of the same size and a sheet of white paper folded in half: a top half and a bottom half. A part is coins that touch. Leave a space about one coin wide between parts.</p>
     <div class="card">
       <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
       <div class="ids">
@@ -174,10 +174,9 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <details>
     <summary>Settings</summary>
     <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoSet asks for the camera, and it never keeps the photo it takes: it counts the coins and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
-      <label class="sub" style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" id="camApp" style="width:22px;height:22px;flex:none;margin-top:2px"><span>Take photos with the phone's own camera app. The photo is sharper, and there's no "using your camera" notice; the camera app opens for each photo.</span></label>
-      <p class="sub" id="camSize" style="font-size:14px"></p></div>
+      <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
   </details>
-  <footer>FotoSet, iteration 4. A whole of coins, grouped into parts, and what is left over. The photo is never kept.</footer>
+  <footer>FotoSet, iteration 6. A whole of coins, grouped into parts, and what is left over. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -707,6 +706,10 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     var rMinAbs = Math.max(4, long * 0.006);
     var cand = blobs.filter(function (b) { return b.dmax >= rMinAbs; });
     var singles = cand.filter(function (b) { return b.round > 0.75 && b.round < 1.7; });
+    if (singles.length >= 2) {   // a packed block can look round too: drop "singles" far bigger than the smallest third
+      var sd = singles.map(function (b) { return b.dmax; }).sort(function (a, b) { return a - b; }), ref = median(sd);
+      var trim = singles.filter(function (b) { return b.dmax <= 1.45 * ref; }); if (trim.length) singles = trim;
+    }
     var pool = singles.length ? singles : cand;
     var coinR = 0;
     if (pool.length) {
@@ -747,7 +750,78 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       }
       return (cov - 2 * spill) / Math.max(1, tot);
     }
+    function stepOf(bw, bh) { return Math.max(2, Math.round(Math.sqrt(bw * bh / 15000))); }
+    function fitScore(cs, m, bw, bh, r) {   // (covered - 2 spill - overlap) / blob area, circles of radius r
+      var cov = 0, spill = 0, over = 0, tot = 0, xx3, yy3, j, rr = (r + 1) * (r + 1), st = stepOf(bw, bh);
+      for (yy3 = 0; yy3 < bh; yy3 += st) for (xx3 = 0; xx3 < bw; xx3 += st) {
+        var t = yy3 * bw + xx3, n = 0;
+        for (j = 0; j < cs.length; j++) { var dx = xx3 - cs[j][1], dy = yy3 - cs[j][2]; if (dx * dx + dy * dy <= rr) n++; }
+        if (m[t]) { tot++; if (n) cov++; } else if (n) spill++;
+        if (n > 1) over += n - 1;
+      }
+      return (cov - 2 * spill - over) / Math.max(1, tot);
+    }
+    function lloyd(pts, init, iters) {   // k-means on the blob's pixels, from the given centres
+      var c = init.map(function (q) { return [q[0], q[1]]; }), k = c.length, it, i, j;
+      for (it = 0; it < iters; it++) {
+        var sx = new Float64Array(k), sy = new Float64Array(k), sn = new Float64Array(k);
+        for (i = 0; i < pts.length; i += 2) {
+          var px = pts[i], py = pts[i + 1], best = 0, bd = 1e18;
+          for (j = 0; j < k; j++) { var dx = px - c[j][0], dy = py - c[j][1], d = dx * dx + dy * dy; if (d < bd) { bd = d; best = j; } }
+          sx[best] += px; sy[best] += py; sn[best]++;
+        }
+        for (j = 0; j < k; j++) if (sn[j]) { c[j][0] = sx[j] / sn[j]; c[j][1] = sy[j] / sn[j]; }
+      }
+      return c;
+    }
+    function refitBlock(b, acc2, r0, mult) {
+      var bw = b.bw, bh = b.bh, m = b.m, pts = [], xx3, yy3, st = stepOf(bw, bh) + (refitBlock.inMulti ? 2 : 1);
+      for (yy3 = 0; yy3 < bh; yy3 += st) for (xx3 = 0; xx3 < bw; xx3 += st) if (m[yy3 * bw + xx3]) pts.push(xx3, yy3);
+      if (pts.length < 8) return acc2;
+      if (mult) {   // several coin sizes: keep the best fit over all of them (the peaks as found, scored at their own size, to beat)
+        var bestA = acc2, bestSA = fitScore(acc2.map(function (p) { return [p[0], p[1], p[2]]; }), m, bw, bh, acc2.length === 1 ? acc2[0][0] : r0) + 0.005;
+        refitBlock.inMulti = true;
+        mult.forEach(function (f) { var res = refitBlock(b, acc2.length > 1 ? acc2 : [], r0 * f), sc = res.length > 1 ? fitScore(res.map(function (q) { return [r0 * f, q[1], q[2]]; }), m, bw, bh, r0 * f) : -1; if (sc > bestSA) { bestSA = sc; bestA = res; } });
+        refitBlock.inMulti = false;
+        return bestA;
+      }
+      var r = r0, mult0 = !!refitBlock.inMulti;
+      // seeds: on the coins themselves (gaps between touching coins left unfilled) every coin's centre is its own
+      // peak, about r from the edge; spaced at least 1.5 r apart
+      var dtu = b.mu ? edt(b.mu, bw, bh) : b.dt, seeds = [], cand = [], q;
+      for (yy3 = 1; yy3 < bh - 1; yy3++) for (xx3 = 1; xx3 < bw - 1; xx3++) { q = yy3 * bw + xx3; var v = dtu[q];
+        if (v >= 0.6 * r && v >= dtu[q - 1] && v >= dtu[q + 1] && v >= dtu[q - bw] && v >= dtu[q + bw]) cand.push([v, xx3, yy3]); }
+      cand.sort(function (a, c) { return c[0] - a[0]; });
+      cand.forEach(function (p) { for (var j = 0; j < seeds.length; j++) { var dx = p[1] - seeds[j][1], dy = p[2] - seeds[j][2]; if (dx * dx + dy * dy < 2.25 * r * r) return; } seeds.push(p); });
+      // how many coins could fill this blob: packed square (4 r² a coin, gaps included) up to no gaps at all (π r²),
+      // and the coin pixels alone; every count in that range is tried
+      var est = b.fillArea / (PI * r * r), ks = {}, k0 = acc2.length, kLo = Math.max(1, Math.floor(b.fillArea / (4 * r * r))), kHi = Math.min(Math.ceil(est) + 1, kLo + 5), kRaw = Math.round(b.area / (PI * r * r));
+      if (seeds.length >= 2 && seeds.length <= 18) { [seeds.length - 1, seeds.length, seeds.length + 1, Math.round(est)].forEach(function (k) { if (k >= 1 && k <= 18 && k >= kLo - 1 && k <= kHi + 1) ks[k] = 1; }); ks[seeds.length] = 1; }
+      else { for (var kk = kLo; kk <= kHi && kk <= 18; kk++) ks[kk] = 1; if (kRaw >= kLo && kRaw <= kHi + 1 && kRaw <= 18) ks[kRaw] = 1; }
+      var best = acc2, bestS = fitScore(acc2.map(function (p) { return [r, p[1], p[2]]; }), m, bw, bh, r) + 0.005;   // a small edge for the peaks as found
+      Object.keys(ks).map(Number).forEach(function (k) {
+        if (k === k0 && seeds.length < 2) return;
+        // start from the strongest peaks; add the blob pixels farthest from every centre until there are k
+        var src = seeds.length >= 2 ? seeds : acc2, init = src.slice(0, k).map(function (p) { return [p[1], p[2]]; });
+        while (init.length < k) {
+          var far = -1, fx = 0, fy = 0;
+          for (var i = 0; i < pts.length; i += 2) { var dmin = 1e18; for (var j = 0; j < init.length; j++) { var dx = pts[i] - init[j][0], dy = pts[i + 1] - init[j][1]; dmin = Math.min(dmin, dx * dx + dy * dy); } if (dmin > far) { far = dmin; fx = pts[i]; fy = pts[i + 1]; } }
+          init.push([fx, fy]);
+        }
+        var c = lloyd(pts, init, mult0 ? 6 : 10), cs = c.map(function (q) { return [r, q[0], q[1]]; }), sc = fitScore(cs, m, bw, bh, r) + (k === seeds.length ? 0.015 : 0);   // near-ties go to the count of coin centres found
+        if (sc > bestS) { bestS = sc; best = cs.map(function (q) { return [r - 0.5, q[1], q[2]]; }); }
+      });
+      return best;
+    }
     var coins = [], multiInfo = [];
+    var rPaper = 0.037 * Math.max(px1 - px0, py1 - py0), lone = false;
+    if (coinR > 0 && singles.length < 2) {   // no loose coins to measure: the coin-sized peaks inside the clumps
+      var allpk = [], mref = rPaper > 0 ? Math.min(coinR, 1.6 * rPaper) : coinR;   // a clump's own size can't hide the loose coins
+      blobs.forEach(function (b) { if (b.dmax >= 0.5 * mref) peaksOf(b.dt, b.bw, b.bh, 0.55 * mref).forEach(function (q) { allpk.push(q[0]); }); });
+      if (allpk.length >= 3) coinR = median(allpk);
+      // still bigger than any coin on this paper: every coin is in one clump, with nothing to measure against
+      if (rPaper > 0 && coinR > 1.6 * rPaper) lone = true;
+    }
     if (coinR > 0) {
       var thr = 0.55 * coinR;
       blobs.forEach(function (b) {
@@ -758,6 +832,18 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
           var alt = peaksOf(edt(b.mu, b.bw, b.bh), b.bw, b.bh, thr);
           if (alt.length > acc2.length && coverage(alt, b.m, b.bw, b.bh) > coverage(acc2, b.m, b.bw, b.bh) + 0.1) acc2 = alt;
         }
+        // Touching coins packed in a block (2 x 3, 3 x 4): filling the gaps makes one big "coin" at the block's
+        // centre that crowds out its neighbours. Try other counts too: k coin-sized circles fitted to the blob,
+        // scored on covering it without spilling past its edge or piling onto each other; the best fit wins.
+        {
+          // only when the tell-tale big circle is there: a peak much bigger than both the blob's typical coin and
+          // the photo's; or a one-peak blob far bigger than a coin. The coin size used stays near the photo's.
+          var pv = acc2.map(function (q) { return q[0]; }).sort(function (x, y) { return x - y; });
+          var rb = clamp(pv.length >= 3 ? median(pv) : coinR, 0.85 * coinR, 1.15 * coinR), top = pv[pv.length - 1];
+          var big = acc2.length >= 2 ? (top > 1.2 * rb && top > 1.2 * coinR) : (b.round >= 1.7 || b.dmax > 1.5 * coinR);
+          if (lone && b.dmax > 1.6 * rPaper) acc2 = refitBlock(b, acc2, rPaper, [0.8, 0.95, 1.1, 1.3, 1.55, 1.85, 2.2]);   // sizes judged from the paper
+          else if (big && b.fillArea < 19 * PI * coinR * coinR) acc2 = refitBlock(b, acc2, rb);   // FotoSet uses 15 coins: a bigger blob keeps its peaks
+        }
         if (acc2.length === 1 && b.round < 1.7) {
           coins.push({ x: b.cx, y: b.cy, r: Math.sqrt(b.fillArea / PI), blob: b.id });
         } else {
@@ -766,6 +852,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         }
       });
     }
+    if (lone && coins.length) coinR = median(coins.map(function (c) { return c.r; }));
     blobs.forEach(function (b) { b.dt = b.m = b.mu = null; });
 
     TM.push(nowMs());
@@ -823,9 +910,62 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         if (avail >= 0.3 * span && span >= 0.25 * pw && covF > bestCov) { bestCov = covF; fold = { y0: cd.y0, ang: cd.ang }; }
       }
     }
-    var foldRes;
+    // a crease with no line: the paper is a shade darker on one side of it than on the other (the two halves
+    // face the light a little differently). Look for the sharpest change in the paper's brightness from just
+    // above a line to just below it, over small tilts, with the coins left out.
+    function stepFold() {
+      // tests a crease must pass: the same shade change in at least 3 of 4 strips across the paper; a change that
+      // lasts (well past the line on both sides the shade stays as it is just beside it: not a strip or a shadow's
+      // edge); sharp (within a few rows); and not near a coin (a coin's own shadow makes steps too)
+      var K = Math.max(3, Math.round(0.012 * long)), FAR = 7 * K, sx = 4, NS = 4, segW = Math.max(1, (px1 - px0) / NS);
+      var bA = Math.round(py0 + 0.05 * ph), bB = Math.round(py0 + 0.95 * ph), best = null, rejected = 0;
+      function scan(a) {
+        var tn = Math.tan(a * PI / 180), Ssum = [], Scnt = [], sg, y4, x4;
+        for (sg = 0; sg < NS; sg++) { Ssum.push(new Float64Array(3 * H)); Scnt.push(new Float64Array(3 * H)); }
+        for (y4 = Math.max(0, py0); y4 <= Math.min(H - 1, py1); y4++) {
+          var xa = Math.max(px0, inL[y4]), xb = Math.min(px1, inR[y4]);
+          for (x4 = xa - (xa % sx); x4 <= xb; x4 += sx) { var t4 = y4 * W + x4; if (excl[t4]) continue;
+            var yi = Math.round(y4 - (x4 - pcx) * tn) + H; if (yi < 0 || yi >= 3 * H) continue;
+            sg = Math.min(NS - 1, Math.floor((x4 - px0) / segW)); Ssum[sg][yi] += L[t4]; Scnt[sg][yi]++; }
+        }
+        var need = 0.3 * segW / sx;
+        function mean(sg, yA, yB) { var s2 = 0, n2 = 0; for (var q = yA; q <= yB; q++) if (q >= 0 && q < 3 * H && Scnt[sg][q] >= need) { s2 += Ssum[sg][q] / Scnt[sg][q]; n2++; } return n2 >= 0.6 * (yB - yA + 1) ? s2 / n2 : NaN; }
+        for (y4 = bA + H; y4 <= bB + H; y4++) {
+          var steps = [], okSeg = 0, sharpOk = 0;
+          for (sg = 0; sg < NS; sg++) {
+            var nA = mean(sg, y4 - K - 1, y4 - 2), nB = mean(sg, y4 + 2, y4 + K + 1);
+            if (isNaN(nA) || isNaN(nB)) continue;
+            var st2 = nB - nA, fA = mean(sg, y4 - FAR, y4 - 3 * K), fB = mean(sg, y4 + 3 * K, y4 + FAR);
+            // lasting: far out on each side, the shade is still what it is beside the line (when there's paper to look at)
+            if (!isNaN(fA) && Math.abs(fA - nA) > 0.5 * Math.abs(st2)) continue;
+            if (!isNaN(fB) && Math.abs(fB - nB) > 0.5 * Math.abs(st2)) continue;
+            var cA = mean(sg, y4 - 4, y4 - 2), cB = mean(sg, y4 + 2, y4 + 4);
+            if (!isNaN(cA) && !isNaN(cB) && Math.abs(cB - cA) >= 0.6 * Math.abs(st2)) sharpOk++;
+            steps.push(st2); okSeg++;
+          }
+          if (okSeg < 3) continue;
+          var pos = steps.filter(function (v) { return v > 0; }).length, neg = steps.length - pos, sign = pos >= neg ? 1 : -1;
+          var agree = steps.filter(function (v) { return v * sign > 0; }).map(Math.abs), mstep = agree.length ? median(agree) : 0;
+          if (agree.length < 3 || mstep < 4 || sharpOk < 3) continue;
+          if (agree.filter(function (v) { return v >= 0.5 * mstep; }).length < 3) continue;
+          if (best && mstep <= best.step) continue;
+          var yc0 = y4 - H, hit = false;
+          for (var ci4 = 0; ci4 < coins.length && !hit; ci4++) { var cc = coins[ci4]; if (Math.abs(cc.y - (yc0 + (cc.x - pcx) * tn)) * Math.cos(a * PI / 180) < 1.05 * cc.r + 2) hit = true; }
+          if (hit) { rejected = Math.max(rejected, mstep); continue; }
+          best = { step: mstep, y0: yc0, ang: a * PI / 180 };
+        }
+      }
+      for (var a = -15; a <= 15; a += 2) scan(a);   // coarse, then fine around the best
+      if (best) { var a0 = Math.round(best.ang * 180 / PI); scan(a0 - 1); scan(a0 + 1); }
+      if (best) best.doubt = rejected > best.step;   // a stronger step ran through the coins
+      return best;
+    }
+    var foldRes, sf = null;
+    if (!(fold && bestCov >= 0.5)) sf = stepFold();
     if (fold && bestCov >= 0.5) {
       foldRes = { y: fold.y0, found: true, angle: fold.ang * 180 / PI, ang: fold.ang, coverage: bestCov };
+    } else if (sf) {
+      foldRes = { y: sf.y0, found: true, angle: sf.ang * 180 / PI, ang: sf.ang, coverage: bestCov, kind: 'shade', doubt: !!sf.doubt };
     } else {
       var fy2 = (py0 + py1) / 2, ys = coins.map(function (c) { return c.y; }).sort(function (a, b) { return a - b; });
       var bA = py0 + 0.25 * ph, bB = py0 + 0.75 * ph, bestGap = 0;
@@ -866,6 +1006,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     /* ---- 8. confidence ---- */
     var conf = 1;
     if (!foldRes.found) conf *= 0.75;
+    if (foldRes.doubt) conf *= 0.8;
     if (!top.clear) conf *= 0.75;
     if (!bottom.clear) conf *= 0.75;
     multiInfo.forEach(function (mi) { if (Math.abs(mi.n - mi.est) / mi.n > 0.35) conf *= 0.85; });
@@ -1155,7 +1296,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.4.0", ITERATION=4, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.6.0", ITERATION=6, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||"" }catch(e){ return "" } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} } };
@@ -1297,16 +1438,27 @@ function showStep(){ const st=ST(); closeCam();
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const PILE=["#1f6fd1","#e0581c","#1d9a52","#b0369e","#c99400","#0f8f95","#6b4fd8","#c23b3b"];
 function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRatio||1), W=cv.clientWidth||cv.parentElement.clientWidth||360;
-  const R=S.seen, img=S.img; let H=Math.round(W*0.62);
-  if(R&&R.size) H=Math.round(W*R.size.h/R.size.w);
+  const R=S.seen, img=S.img; let H=Math.round(W*0.62), C=null;
+  if(R&&R.size){ C={x0:0,y0:0,x1:R.size.w,y1:R.size.h};
+    if(R.paper){ const pad=0.03*Math.max(R.size.w,R.size.h); C={x0:R.paper.x0-pad,y0:R.paper.y0-pad,x1:R.paper.x1+pad,y1:R.paper.y1+pad};
+      for(const c of (R.coins||[])){ const r=(c.r||R.coinR||10)+pad; C.x0=Math.min(C.x0,c.x-r); C.y0=Math.min(C.y0,c.y-r); C.x1=Math.max(C.x1,c.x+r); C.y1=Math.max(C.y1,c.y+r); }
+      C.x0=Math.max(0,C.x0); C.y0=Math.max(0,C.y0); C.x1=Math.min(R.size.w,C.x1); C.y1=Math.min(R.size.h,C.y1); }
+    H=Math.round(W*(C.y1-C.y0)/(C.x1-C.x0)); }
+  const vh=window.innerHeight||800, maxH=Math.round(Math.max(vh<500?150:240,vh*0.55));   // a phone on its side: a shorter photo if(H>maxH) H=maxH;
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.height=H+"px";
   const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle=css("--mat"); g.fillRect(0,0,W,H);
   if(!R||!img){ // an empty sheet, folded
     const x0=W*.06,y0=H*.08,w=W*.88,hh=H*.84; g.fillStyle=css("--paper"); g.fillRect(x0,y0,w,hh); g.strokeStyle="rgba(0,0,0,.25)"; g.lineWidth=1.5; g.beginPath(); g.moveTo(x0,y0+hh/2); g.lineTo(x0+w,y0+hh/2); g.stroke();
     g.fillStyle="rgba(0,0,0,.35)"; g.font="600 14px "+(css("--f-body")||"sans-serif"); g.textAlign="center"; g.fillText("top half",W/2,y0+hh/4); g.fillText("bottom half",W/2,y0+hh*3/4); return }
-  const k=W/R.size.w; g.drawImage(img,0,0,W,H);
-  if(R.fold&&R.fold.y!=null){ g.save(); g.setLineDash([8,6]); g.strokeStyle="rgba(31,79,138,.85)"; g.lineWidth=2; g.beginPath(); g.moveTo(0,R.fold.y*k); g.lineTo(W,R.fold.y*k); g.stroke(); g.restore(); }
-  const draw=(half,list)=>{ if(!half) return; (R.coins||[]).forEach((c,i)=>{ const pi=half.pileOf?half.pileOf[i]:undefined; if(pi==null||pi<0) return; g.strokeStyle=PILE[pi%PILE.length]; g.lineWidth=3; g.beginPath(); g.arc(c.x*k,c.y*k,(c.r||R.coinR||10)*k+1.5,0,Math.PI*2); g.stroke(); }); };
+  // the crop C (working size) fills the stage, centred if the height was capped; the photo itself is full size
+  const cw=C.x1-C.x0, ch=C.y1-C.y0, k=Math.min(W/cw,H/ch), ox=(W-cw*k)/2, oy=(H-ch*k)/2, sc=R.scale||(R.size.w/(img.width||img.naturalWidth||R.size.w));
+  g.drawImage(img,C.x0/sc,C.y0/sc,cw/sc,ch/sc,ox,oy,cw*k,ch*k);
+  const X=x=>ox+(x-C.x0)*k, Y=y=>oy+(y-C.y0)*k;
+  if(R.fold&&R.fold.y!=null){ g.save(); g.setLineDash([8,6]); g.strokeStyle="rgba(31,79,138,.85)"; g.lineWidth=2; g.beginPath();
+    if(R.fold.x1!=null&&R.fold.x1>R.fold.x0){ const t=(R.fold.y1-R.fold.y0)/(R.fold.x1-R.fold.x0), yAt=x=>R.fold.y0+(x-R.fold.x0)*t;   // along the crease, tilt and all
+      g.moveTo(X(C.x0),Y(yAt(C.x0))); g.lineTo(X(C.x1),Y(yAt(C.x1))); } else { g.moveTo(ox,Y(R.fold.y)); g.lineTo(ox+cw*k,Y(R.fold.y)); }
+    g.stroke(); g.restore(); }
+  const draw=(half,list)=>{ if(!half) return; (R.coins||[]).forEach((c,i)=>{ const pi=half.pileOf?half.pileOf[i]:undefined; if(pi==null||pi<0) return; g.strokeStyle=PILE[pi%PILE.length]; g.lineWidth=3; g.beginPath(); g.arc(X(c.x),Y(c.y),(c.r||R.coinR||10)*k+1.5,0,Math.PI*2); g.stroke(); }); };
   draw(R.top); draw(R.bottom);
 }
 function seenText(R,countOnly){ const half=(h,name)=>{ if(!h||!h.count) return name+" half: no coins."; const p=countOnly?[]:(h.piles||[]); return name+" half: "+plural(h.count,"coin")+(p.length>1?", in "+p.length+" parts ("+p.join(", ")+").":p.length===1&&h.count>1?", in 1 part.":"."); };
@@ -1348,18 +1500,19 @@ function analyse(img,w,h,source){ const st=ST(); let R;
   S.seen=R; S.img=img; S.source=source; S.photoTries++;
   log("photo",{step:st.id,source,w,h,ok:!!R.ok,top:R.top?{count:R.top.count,piles:R.top.piles}:null,bottom:R.bottom?{count:R.bottom.count,piles:R.bottom.piles}:null,fold:R.fold?R.fold.found:null,confidence:R.confidence});
   drawStage();
-  if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put your paper on a table, get the whole sheet in the picture, and take it again.")); $("anyway").hidden=true; return }
+  if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put your paper on a table, get the whole sheet in the picture, and take it again.")); $("anyway").hidden=true; showResult(); return }
   $("seen").textContent=seenText(R,!(st.need.top.piles||st.need.bottom.piles||st.need.top.sizes||st.need.bottom.sizes));
   const probs=check(R,st.need), ok=!probs.length;
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,
     correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:{top:R.top?{count:R.top.count,piles:R.top.piles}:null,bottom:R.bottom?{count:R.bottom.count,piles:R.bottom.piles}:null}});
   if(!S.firstWhole&&st.need.top.count===12&&ok) S.firstWhole=12;
   const countOff=["top","bottom"].some(k=>((R[k]?R[k].count:0))!==st.need[k].count);
-  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Fix the coins and take the photo again."); $("anyway").hidden=!(source==="photo"&&(countOff||S.photoTries>=3)); persist(); return }
+  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Fix the coins and take the photo again."); $("anyway").hidden=!(source==="photo"&&(countOff||S.photoTries>=3)); persist(); showResult(); return }
   photoGood(); }
+function showResult(){ requestAnimationFrame(()=>{ const t=[$("answerRow"),$("nextRow"),$("feedback")].find(e=>!e.hidden); try{ const r=t&&t.getBoundingClientRect(); if(r&&(r.bottom>innerHeight||r.top<0)) t.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(e){} }); }   // only when it's out of view
 function photoGood(){ const st=ST(); S.photoOk=true; $("anyway").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
   if(st.ask){ setFeedback("",""); $("answerRow").hidden=false; renderEq(); }
-  else { S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); showNext(); } persist(); }
+  else { S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); showNext(); } persist(); showResult(); }
 $("anyway").onclick=()=>{ const st=ST(); log("phone_miscounted",{step:st.id,seen:S.seen?{top:S.seen.top&&S.seen.top.count,bottom:S.seen.bottom&&S.seen.bottom.count}:null});
   const r=S.photos.filter(x=>x.set===S.set.key&&x.round===S.round&&x.step===st.id).slice(-1)[0]; if(r) r.phone_miscounted=true; photoGood(); };
 
@@ -1397,13 +1550,13 @@ $("sampleBtn").onclick=()=>{ const n=ST().need; const pilesOf=h=>{ if(!h.count) 
   const c=window.drawCoinsSample({top:pilesOf(n.top),bottom:pilesOf(n.bottom),seed:S.s+7*S.round}); analyse(c,c.width,c.height,"sample"); };
 /* the camera inside the page, as in FotoFold */
 const CAM={stream:null,failed:false};
-const liveCamOK=()=>!CAM.failed&&store.get("fs.camapp")!=="1"&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)&&window.isSecureContext!==false;
+const liveCamOK=()=>false&&!CAM.failed&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)&&window.isSecureContext!==false;
 $("cam").addEventListener("click",e=>{ if(liveCamOK()){ e.preventDefault(); openCam(); } });
 async function openCam(){ $("camBox").hidden=false; $("stageBox").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true; $("snap").disabled=true; $("camTip").textContent="Starting the camera…"; setFeedback("","");
   try{ const st=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:3840},height:{ideal:2160}}});
     try{ const tr=st.getVideoTracks()[0], cp=tr.getCapabilities&&tr.getCapabilities(); if(cp&&cp.width&&cp.height&&cp.width.max) await tr.applyConstraints({width:{ideal:Math.min(4096,cp.width.max)},height:{ideal:Math.min(4096,cp.height.max)}}); }catch(e){}   // as many pixels as the camera gives: touching coins need them
     CAM.stream=st; const v=$("camVideo"); v.srcObject=st; try{ await v.play() }catch(e){}
-    let tries=0; const ready=()=>{ if(v.videoWidth>0){ $("snap").disabled=false; $("camTip").textContent="Hold the phone over the paper, the line going left to right. Get the whole sheet in."; CAM.size=v.videoWidth+"×"+v.videoHeight; $("camSize").textContent="The camera in this page gives a "+CAM.size+" picture."; return } if(++tries<50) setTimeout(ready,100); else camFail("nopicture") }; ready();
+    let tries=0; const ready=()=>{ if(v.videoWidth>0){ $("snap").disabled=false; $("camTip").textContent="Hold the phone over the paper, the line going left to right. Get the whole sheet in."; return } if(++tries<50) setTimeout(ready,100); else camFail("nopicture") }; ready();
   }catch(e){ camFail(e&&e.name) } }
 function stopCam(){ if(CAM.stream) for(const t of CAM.stream.getTracks()) try{ t.stop() }catch(e){} CAM.stream=null; try{ $("camVideo").srcObject=null }catch(e){} }
 function closeCam(){ stopCam(); $("camBox").hidden=true; $("stageBox").hidden=false; if(!S.photoOk){ $("photoRow").hidden=false; $("sampleBtn").hidden=false; } }
@@ -1411,7 +1564,6 @@ function camFail(why){ CAM.failed=true; closeCam();
   setFeedback("warn", why==="NotAllowedError" ? "<b>The camera is turned off for this browser.</b>On an iPhone: open Settings, then Apps, then Safari, then Camera, and choose Ask. Then reload this page and tap Allow. Until then, tap <i>Use sample coins</i>."
                                            : "<b>The camera didn't open here.</b>Tap Take a photo again to use the phone's own camera."); }
 $("camCancel").onclick=()=>closeCam();
-$("camApp").checked=store.get("fs.camapp")==="1"; $("camApp").onchange=e=>store.set("fs.camapp",e.target.checked?"1":"");
 $("snap").onclick=()=>{ const v=$("camVideo"), w=v.videoWidth, h=v.videoHeight; if(!w||!h) return; const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(v,0,0,w,h); closeCam(); analyse(c,w,h,"photo"); };
 document.addEventListener("visibilitychange",()=>{ if(document.hidden&&CAM.stream) closeCam(); });
 
