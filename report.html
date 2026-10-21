@@ -294,7 +294,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
         <span><i class="m skip">skip</i>moved on, no answer</span>
         <span><i class="m nr">—</i>not reached</span>
         <span><i class="m ok smp">✓</i>sample strip or coins</span>
-        <span><i class="m ok unev">✓</i>uneven fold on this whole</span>
+        <span id="legUnev"><i class="m ok unev">✓</i>uneven fold on this whole</span>
       </div>
       <div class="row" style="justify-content:space-between">
         <label class="flab" for="sortSel">Order <select id="sortSel"><option value="num">by class and number</option><option value="low">lowest first-try score first</option></select></label>
@@ -318,6 +318,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
         <div class="seg" id="orderSeg" role="group" aria-label="Order of steps"><button type="button" data-o="missed" aria-pressed="true">Most missed first</button><button type="button" data-o="plan" aria-pressed="false">In plan order</button></div>
       </div>
       <p class="muted" id="storyNote" style="font-size:14.5px"></p>
+      <p class="muted" id="kindsFS" hidden style="font-size:14.5px">In FotoSet the phone checks the coins before it asks the question, so every miss here is the number.</p>
       <div class="kinds" id="kinds">
         <span><i class="kb-hands"></i><span><b>Hands</b>: the color was wrong, the number right.</span></span>
         <span><i class="kb-steps"></i><span><b>Steps</b>: the right length, but not one unit per swipe (Set 4).</span></span>
@@ -558,7 +559,7 @@ function mostly(o){
   if(!o.miss) return "";
   const [t,k]=o.top[0]||[];
   if(t && k*2>=o.miss && k>1) return t;
-  const [kind,kc]=o.dom; if(kc*2>=o.miss) return KIND_WORD[kind]+" misses";
+  const [kind,kc]=o.dom; if(kc*2>=o.miss) return (isFS(CUR_T)&&kind==="symbol"?"number":KIND_WORD[kind])+" misses";
   return "";
 }
 
@@ -585,7 +586,7 @@ function render(){
   if(!M||!st.set) return;
   [...$("setSeg").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.set===st.set));
   const T=M.sets.get(st.set), rows=rowsFor(st.set), stats=stepStats(T,rows);
-  renderHeadline(T,rows,stats); renderPct(); renderGrid(T,rows,stats); renderStory(T,rows,stats); renderBA(T,rows);
+  CUR_T=T; renderHeadline(T,rows,stats); renderPct(); renderGrid(T,rows,stats); renderStory(T,rows,stats); renderBA(T,rows);
   makeCsv(T,rows);
 }
 
@@ -640,7 +641,7 @@ function cellHTML(c,extra){
   if(c.uneven) t+=". Uneven fold on this whole"; if(c.sample) t+=". "+(isFS(CUR_T)?"Sample coins":"Sample strip");
   return '<td class="c'+(c.step.g0?" g0":"")+'" title="'+esc(t)+'"'+(extra||"")+'><span class="'+cls+'" aria-label="'+esc(t)+'">'+MARK[c.s]+'</span></td>';
 }
-function renderGrid(T,rows,stats){ CUR_T=T;
+function renderGrid(T,rows,stats){ CUR_T=T; $("legUnev").hidden=isFS(T);
   const w=worstOf(stats);
   let rs=rows.slice();
   if(st.sort==="low") rs.sort((p,q)=>{ const a=p.as[0], b=q.as[0]; return a.first/(a.total||1)-b.first/(b.total||1) });
@@ -667,7 +668,8 @@ function renderGrid(T,rows,stats){ CUR_T=T;
   $("gridNote").textContent=rs.length+" student"+(rs.length===1?"":"s")+(nr>rs.length?", "+nr+" rounds":"")+". Tap a student for their steps. The bottom row counts each student's first round"+(st.sample?"":", without "+smpW(T)+" work")+".";
 }
 
-function renderStory(T,rows,stats){
+function renderStory(T,rows,stats){ $("kinds").hidden=isFS(T); $("kindsFS").hidden=!isFS(T);
+  const kn=k=>isFS(T)&&k==="symbol"?"the number":k;   // FotoSet: the only way to miss is the number
   [...$("orderSeg").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.o===st.order));
   const w=worstOf(stats);
   let list_=stats.slice(); if(st.order==="missed") list_.sort((a,b)=>a.share-b.share||b.miss-a.miss||a.step.i-b.step.i);
@@ -679,7 +681,7 @@ function renderStory(T,rows,stats){
     const wrong=o.top.length? '<ul>'+o.top.slice(0,4).map(([t,k])=>'<li><span class="chip no">'+esc(t)+' <b>×'+k+'</b></span></li>').join("")+'</ul>' : '<span class="muted">none</span>';
     const kinds=["hands","steps","symbol","both","paper","skip"].filter(k=>o.kinds[k]);
     const kb= o.miss? '<div class="kbar" role="img" aria-label="'+esc(kinds.map(k=>k+" "+o.kinds[k]).join(", "))+'">'+kinds.map(k=>'<span class="kb-'+k+'" style="width:'+(o.kinds[k]/o.miss*100)+'%"></span>').join("")+'</div><div class="kt">'+
-      (o.dom[1]*2>=o.miss? 'mostly <b>'+esc(o.dom[0])+'</b> ('+o.dom[1]+' of '+o.miss+')'+(kinds.length>1?' · ':'') : '')+kinds.filter(k=>!(o.dom[1]*2>=o.miss&&k===o.dom[0])).map(k=>esc(k)+' '+o.kinds[k]).join(" · ")+(s.mode==="compare"||s.mode==="estimate"||s.mode==="name"?'<br><span class="muted" style="font-size:12.5px">No coloring in this step, so the hands can\'t miss.</span>':'')+'</div>' : '<span class="muted">no misses</span>';
+      (o.dom[1]*2>=o.miss? 'mostly <b>'+esc(kn(o.dom[0]))+'</b> ('+o.dom[1]+' of '+o.miss+')'+(kinds.length>1?' · ':'') : '')+kinds.filter(k=>!(o.dom[1]*2>=o.miss&&k===o.dom[0])).map(k=>esc(kn(k))+' '+o.kinds[k]).join(" · ")+(s.mode==="compare"||s.mode==="estimate"||s.mode==="name"?'<br><span class="muted" style="font-size:12.5px">No coloring in this step, so the hands can\'t miss.</span>':'')+'</div>' : '<span class="muted">no misses</span>';
     return '<li class="item'+(isW?" worst":low?" low":"")+(o.miss?"":" none")+'" data-step="'+esc(s.id)+'">'+
       '<div class="i-step"><span class="lab">'+esc(stepName(s))+'</span><span class="sub">'+esc((W?W.tag:"")+" · "+s.mode+" · ")+'<code>'+esc(s.id)+'</code></span>'+(isW?'<br><span class="chip no" style="margin-top:4px">most missed</span>':'')+'</div>'+
       '<div class="i-first"><span class="k">Right on the first try</span><span class="big num" data-ok="'+o.ok+'" data-n="'+o.n+'">'+(o.n?o.ok+' of '+o.n:'not reached')+'</span>'+(o.n?' <span class="muted num">('+Math.round(o.share*100)+'%)</span><div class="bar"><span style="width:'+(o.share*100)+'%"></span></div>':'')+'</div>'+
