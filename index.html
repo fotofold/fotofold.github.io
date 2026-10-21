@@ -714,7 +714,7 @@ async function openCam(){
 function stopCam(){ if(CAM.stream){ for(const t of CAM.stream.getTracks()) try{ t.stop() }catch(e){} } CAM.stream=null; try{ $("camVideo").srcObject=null }catch(e){} }
 function closeCam(){ stopCam(); $("camBox").hidden=true; $("stageBox").hidden=false; if(S.s<0){ $("photoRow").hidden=false; $("sampleBtn").hidden=false; } }
 function camFail(why){ CAM.failed=true; closeCam(); log("camera",{live:false,why:String(why||"")});
-  setFeedback("warn", why==="NotAllowedError" ? "<b>The camera wasn't allowed.</b>Tap Take a photo again to use the phone's own camera. Or allow the camera for this site in the browser's settings."
+  setFeedback("warn", why==="NotAllowedError" ? "<b>The camera is turned off for this browser.</b>On an iPhone: open Settings, then Apps, then Safari, then Camera, and choose Ask. (In Chrome: Settings, then Apps, then Chrome, and turn Camera on.) Then reload this page and tap Allow. Until then, tap <i>No paper handy</i>."
                                            : "<b>The camera didn't open here.</b>Tap Take a photo again to use the phone's own camera."); }
 $("camCancel").onclick=()=>closeCam();
 $("snap").onclick=()=>{ const v=$("camVideo"), w=v.videoWidth, h=v.videoHeight; if(!w||!h) return;
@@ -911,7 +911,7 @@ $("submit").onclick=()=>{
     wrote,color_ok:colorOk,symbol_ok:symOk,correct:ok,try:S.tries,secs,source:S.source,fold_equal:foldEqual(),
     swipe_parts:(st.m==="repeat"||st.m==="fit")?(S.deltas||[]).slice():undefined, live_swipes:(st.m==="repeat"||st.m==="fit")?liveSwipes().map(p=>p.length):undefined, per_swipe_ok:(st.m==="repeat"||st.m==="fit")?perOk:undefined};
   S.results.push(res); log("answer",{step:st.id,correct:ok,try:S.tries});
-  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,i:flatSteps().indexOf(st)+1,of:flatSteps().length,correct:ok,try:S.tries,wrote,secs});
+  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.m,std:st.std||S.set.std,i:flatSteps().indexOf(st)+1,of:flatSteps().length,correct:ok,try:S.tries,wrote,secs});
   setFeedback(ok?"good":"warn",msg);
   if(!ok && st.m==="name") showRefs();
   if(ok && (st.stack||st.m==="name")){ if(st.colors) remember(st);
@@ -1089,7 +1089,7 @@ const RELAY=(()=>{ let r="https://fotofold-relay.fotofold.workers.dev"; if(r.ind
     const t=sessionStorage.getItem("ff.relay"); if(t) r=t; }catch(e){}
   return r.replace(/\/+$/,""); })();
 const LIVE_RE=/^[A-HJ-NP-Z2-9]{5}$/;
-let LIVE=null; try{ const l=JSON.parse(store.get("ff.live")||"null"); if(l&&Date.now()-l.at<12*3600e3) LIVE=l; }catch(e){}
+let LIVE=null; try{ const l=JSON.parse(store.get("ff.live")||"null"); if(l&&Date.now()-l.at<7*24*3600e3) LIVE=l; }catch(e){}
 function cls(){ return (LIVE&&LIVE.ok&&LIVE.label)||S.classCode }
 const flatSteps=()=>S.set?S.set.plan.flatMap(P=>P.steps):[];
 function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new AbortController():null; const t=c?setTimeout(()=>c.abort(),ms||10000):null;

@@ -184,6 +184,15 @@ table.plain{border-collapse:collapse;font-size:14.5px;width:100%}
 .empty{color:var(--muted);font-size:15px;padding:12px 0}
 /* ---- dialog ---- */
 dialog{border:1px solid var(--line);border-radius:16px;padding:0;background:var(--surface);color:var(--fg);width:min(720px,calc(100vw - 24px));max-height:calc(100vh - 32px)}
+.pcts{display:grid;gap:16px}
+.pcts h3{font-family:var(--f-display);font-size:16px;margin:0 0 4px;color:var(--muted);font-weight:800}
+.prow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(60px,1fr) 10.5em;gap:10px;align-items:center;font-size:15px;padding:3px 0}
+.prow .bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.prow .bar i{display:block;height:100%;background:var(--good,#1d7a45)}
+.prow .n{font-family:var(--f-mono);font-size:13px;white-space:nowrap;color:var(--muted);text-align:right}
+.prow .n b{color:var(--fg);font-size:14px}
+@media (max-width:560px){.prow{grid-template-columns:minmax(0,1fr) 10.5em;gap:2px 10px}.prow>span:first-child{grid-column:1/-1}}
+.prow.total{border-top:1px solid var(--line);padding-top:8px;font-weight:700}
 dialog::backdrop{background:rgba(10,16,14,.55)}
 .dlg{padding:16px;display:grid;gap:14px}
 .dlg .dtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;position:sticky;top:0;background:var(--surface);padding:16px;margin:-16px -16px 0;border-bottom:1px solid var(--line);z-index:1}
@@ -265,10 +274,15 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
       <div class="seg" id="setSeg" role="group" aria-label="Set"></div>
       <label class="flab" for="classSel">Class <select id="classSel"></select></label>
       <label class="flab" for="incSample"><input type="checkbox" id="incSample"> Count sample-strip work</label>
-      <nav class="jump" aria-label="Jump to"><a href="#gridSec">Class grid</a><a href="#storySec">Each step's story</a><a href="#baSec">Before and after</a></nav>
+      <nav class="jump" aria-label="Jump to"><a href="#pctSec">First-try percentages</a><a href="#gridSec">Class grid</a><a href="#storySec">Each step's story</a><a href="#baSec">Before and after</a></nav>
     </div>
 
     <div class="card headline" id="headline" aria-live="polite"></div>
+
+    <section id="pctSec" aria-labelledby="pctTitle">
+      <div class="shead"><h2 id="pctTitle">Right on the first try</h2><p class="muted" id="pctNote" style="font-size:14.5px">Every set, for the class shown. Each step counts once per student, by its first try.</p></div>
+      <div class="card pcts" id="pcts"></div>
+    </section>
 
     <section id="gridSec" aria-labelledby="gridTitle">
       <div class="shead"><h2 id="gridTitle">Class grid</h2><p id="gridNote"></p></div>
@@ -439,17 +453,17 @@ function build(){
       if(!sets.has(s.set)) sets.set(s.set,{key:s.set,no:s.no,name:s.name,standards:s.standards,steps:[],iter:-1});
       const T=sets.get(s.set); const it=+r.iteration||0;
       if(it>T.iter || !T.steps.length){ // newest plan wins; keep any older step ids too
-        const old=T.steps; T.steps=(s.steps||[]).map(x=>({id:x.step,label:x.label,mode:x.mode,target:x.target}));
+        const old=T.steps; T.steps=(s.steps||[]).map(x=>({id:x.step,label:x.label,mode:x.mode,target:x.target,standard:x.standard}));
         for(const o of old) if(!T.steps.find(x=>x.id===o.id)) T.steps.push(o);
         T.iter=it; T.no=s.no; T.name=s.name; T.standards=s.standards;
-      } else for(const x of (s.steps||[])) if(!T.steps.find(y=>y.id===x.step)) T.steps.push({id:x.step,label:x.label,mode:x.mode,target:x.target});
+      } else for(const x of (s.steps||[])) if(!T.steps.find(y=>y.id===x.step)) T.steps.push({id:x.step,label:x.label,mode:x.mode,target:x.target,standard:x.standard});
     }
     // group results into attempts: one per (session started, set, round)
     const groups=new Map();
     for(const x of r.results){ if(!x||!x.set) continue; const g=x.set+"|"+(x.round||1); if(!groups.has(g)) groups.set(g,[]); groups.get(g).push(x) }
     for(const [g,rs] of groups){ const [set,round]=g.split("|");
       if(!sets.has(set)) sets.set(set,{key:set,no:+String(set).replace(/\D/g,"")||0,name:"",steps:[],iter:-1});
-      const T=sets.get(set); for(const x of rs) if(!T.steps.find(y=>y.id===x.step)) T.steps.push({id:x.step,label:x.label,mode:x.mode,target:x.target});
+      const T=sets.get(set); for(const x of rs) if(!T.steps.find(y=>y.id===x.step)) T.steps.push({id:x.step,label:x.label,mode:x.mode,target:x.target,standard:x.standard});
       const akey=key+"|"+(r.started||f.name)+"|"+g;
       const folds=(r.folds||[]).filter(z=>z.set===set&&String(z.round||1)===round);
       const done=(r.events||[]).some(e=>e.type==="set_done"&&e.set===set&&String(e.round||1)===round);
@@ -566,7 +580,7 @@ function render(){
   if(!M||!st.set) return;
   [...$("setSeg").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.set===st.set));
   const T=M.sets.get(st.set), rows=rowsFor(st.set), stats=stepStats(T,rows);
-  renderHeadline(T,rows,stats); renderGrid(T,rows,stats); renderStory(T,rows,stats); renderBA(T,rows);
+  renderHeadline(T,rows,stats); renderPct(); renderGrid(T,rows,stats); renderStory(T,rows,stats); renderBA(T,rows);
   makeCsv(T,rows);
 }
 
@@ -599,6 +613,16 @@ function renderHeadline(T,rows,stats){
    '<div class="tile"><b>'+(scores.length?fmtNum(median(scores)):"—")+' <small style="font-size:15px;font-weight:600">of '+T.steps.length+'</small></b><span>median steps right on the first try</span></div>'+
    '<div class="tile"><b>'+again.length+'</b><span>did the set again</span></div></div>';
 }
+const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)"};
+function renderPct(){ const by={set:new Map(),kind:new Map(),std:new Map()}, tot=[0,0];
+  const add=(m,k,ok,n)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[0]+=ok; e[1]+=n; };
+  for(const T of [...M.sets.values()].sort((a,b)=>a.no-b.no)){ const stats=stepStats(T,rowsFor(T.key));
+    for(const o of stats){ if(!o.n) continue; add(by.set,T.no,o.ok,o.n); add(by.kind,KIND_NAME[o.step.mode]||"Other",o.ok,o.n); add(by.std,o.step.standard||T.standards||"",o.ok,o.n); tot[0]+=o.ok; tot[1]+=o.n; } }
+  if(!tot[1]){ $("pcts").innerHTML='<p class="muted">No answers to count yet.</p>'; return }
+  const row=(label,[a,n],cls)=>{ const pc=Math.round(100*a/n); return '<div class="prow'+(cls?" "+cls:"")+'"><span>'+esc(label)+'</span><span class="bar"><i style="width:'+pc+'%"></i></span><span class="n"><b>'+pc+'%</b> · '+a+' of '+n+'</span></div>'; };
+  const setName=no=>{ const T=[...M.sets.values()].find(x=>x.no===no); return "Set "+no+(T&&T.name?" · "+T.name:""); };
+  const block=(title,m,lab,sort)=>'<div><h3>'+title+'</h3>'+[...m].filter(([k])=>k!=="").sort(sort).map(([k,v])=>row(lab(k),v)).join("")+'</div>';
+  $("pcts").innerHTML=block("By set",by.set,setName,(x,y)=>x[0]-y[0])+block("By kind of step (lowest first)",by.kind,k=>k,(x,y)=>x[1][0]/x[1][1]-y[1][0]/y[1][1])+block("By standard",by.std,k=>k,(x,y)=>String(x[0]).localeCompare(String(y[0]),undefined,{numeric:true}))+row("All answers",tot,"total"); }
 const fmtNum=x=>x==null?"—":(Math.round(x*10)/10).toString();
 
 function cellHTML(c,extra){

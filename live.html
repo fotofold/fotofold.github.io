@@ -95,6 +95,15 @@ h2{font-size:21px;font-weight:800;font-variation-settings:"wdth" 85}
 .big .code{font-size:clamp(56px,12vw,120px)}
 details.back summary{cursor:pointer;font-weight:700;color:var(--muted);font-size:15px}
 details.back{display:grid;gap:8px}
+.stats{display:grid;gap:14px}
+.stats h3{font-family:var(--f-display);font-size:16px;margin:0 0 4px;color:var(--muted);font-weight:800}
+.srow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(60px,1fr) 10.5em;gap:10px;align-items:center;font-size:15px;padding:3px 0}
+.srow .bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.srow .bar i{display:block;height:100%;background:var(--good)}
+.srow .n{font-family:var(--f-mono);font-size:13px;white-space:nowrap;color:var(--muted);text-align:right}
+.srow .n b{color:var(--fg);font-size:14px}
+@media (max-width:560px){.srow{grid-template-columns:minmax(0,1fr) 10.5em;gap:2px 10px}.srow>span:first-child{grid-column:1/-1}}
+.srow.total{border-top:1px solid var(--line);padding-top:8px;font-weight:700}
 footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -111,12 +120,11 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="card">
       <div class="ids">
         <label for="label">Class name for your report (optional)<input id="label" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="KURZ5"></label>
-        <label for="size">How many students?<input id="size" class="n" type="number" min="1" max="60" value="30" inputmode="numeric"></label>
       </div>
       <div class="row"><button class="btn" id="startBtn" type="button">Start the class</button></div>
       <div class="toast" id="startToast" role="status"></div>
     </div>
-    <p class="sub">The relay deletes the class 12 hours after it starts. You can save it and erase it sooner.</p>
+    <p class="sub">Students show up here as they join, by number. The relay deletes the class a week after it starts. You can save it and erase it sooner.</p>
   </section>
 
   <!-- running -->
@@ -155,6 +163,12 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       </div>
     </div>
 
+    <div class="card" id="statsCard" hidden>
+      <h2>Right on the first try</h2>
+      <p class="sub">Out of every answer given so far. A step a student tried twice counts once, by its first try.</p>
+      <div class="stats" id="stats"></div>
+    </div>
+
     <div class="card" id="missedCard" hidden>
       <h2>Missed most so far</h2>
       <ol class="missed" id="missed"></ol>
@@ -163,7 +177,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
   <div class="big" id="big" hidden role="dialog" aria-label="Join code, big"><div class="in"><canvas id="qrBig" aria-label="QR code to join"></canvas><div class="code" id="codeBig"></div><div class="sub">Tap anywhere to go back.</div></div></div>
 
-  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class 12 hours after it starts, or when you tap End and erase.</footer>
+  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class a week after it starts, or when you tap End and erase.</footer>
 </main>
 
 <script>
@@ -266,12 +280,12 @@ function joinUrl(){ const base=location.origin+location.pathname.replace(/[^/]*$
 
 /* ---- start ---- */
 if(!RELAY){ $("startBtn").disabled=true; $("startToast").textContent="Live classes aren't set up on this site yet. Students can still use FotoFold and Save or Copy their work."; }
-$("startBtn").onclick=async()=>{ const label=$("label").value.trim().toUpperCase().replace(/[^A-Z0-9-]/g,"").slice(0,12), size=Math.max(1,Math.min(60,parseInt($("size").value,10)||30));
+$("startBtn").onclick=async()=>{ const label=$("label").value.trim().toUpperCase().replace(/[^A-Z0-9-]/g,"").slice(0,12), size=0;
   $("startBtn").disabled=true; $("startToast").textContent="Starting…";
   let r=null; try{ r=await tfetch(RELAY+"/session",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({label})}) }catch(e){}
   $("startBtn").disabled=false;
   if(!r||!r.ok){ $("startToast").textContent="Couldn't reach the relay. Check the wifi and try again."; return }
-  const j=await r.json(); T={code:j.code,key:j.key,label:j.label,size,ends:Date.now()+(j.hours||12)*3600e3}; store.set("ff.teach",JSON.stringify(T));
+  const j=await r.json(); T={code:j.code,key:j.key,label:j.label,size,ends:Date.now()+(j.hours||168)*3600e3}; store.set("ff.teach",JSON.stringify(T));
   lastId=0; notes=[]; run(); };
 
 /* ---- running ---- */
@@ -306,7 +320,7 @@ function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
     if(!s.sets.has(key)) s.sets.set(key,{key,set:String(b.set),no:whole(b.no,0,9),round,of,steps:new Map(),done:null,at:x.at});
     const R=s.sets.get(key); R.at=x.at; if(of) R.of=of; s.cur=key;
     if(x.kind==="done"){ R.done=b; continue }
-    if(b.type==="answer"||b.type==="moved_on"){ if(!R.steps.has(b.step)) R.steps.set(b.step,{i:whole(b.i,0,60),label:String(b.label||b.step||""),runs:[],moved:false}); const P=R.steps.get(b.step);
+    if(b.type==="answer"||b.type==="moved_on"){ if(!R.steps.has(b.step)) R.steps.set(b.step,{i:whole(b.i,0,60),label:String(b.label||b.step||""),mode:String(b.mode||""),std:String(b.std||""),runs:[],moved:false}); const P=R.steps.get(b.step);
       if(b.type==="answer") P.runs.push({correct:b.correct===true,try:whole(b.try,0,99),wrote:b.wrote==null?"":String(b.wrote),secs:whole(b.secs,0,36000)}); else P.moved=true; } }
   // a number that only joined, from a phone that then switched to another number, was a typo: drop it
   for(const [n,s] of [...S]){ const ds=devs.get(n); if(!s.sets.size&&ds&&[...ds].every(d=>devNum.get(d)!==n)) S.delete(n); }
@@ -318,7 +332,7 @@ const plural=(k,w)=>k+" "+w+(k===1?"":"s");
 
 function render(){ try{ draw() }catch(e){ $("runToast").textContent="Something in the notes couldn't be shown. The rest is fine."; } }
 function draw(){ if(!T) return; const S=model();
-  const nums=[]; for(let i=1;i<=(T.size||30);i++) nums.push(String(i).padStart(2,"0")); for(const n of S.keys()) if(!nums.includes(n)) nums.push(n);
+  const nums=[...S.keys()].sort((a,b)=>(+a)-(+b)||a.localeCompare(b));   // whoever has joined, in number order
   let joined=0, done=0, look=0;
   $("tiles").innerHTML=nums.map(n=>{ const s=S.get(n); let cls="tile out", st="not here yet", marks="";
     if(s){ joined++; cls="tile in"; st="joined";
@@ -333,8 +347,19 @@ function draw(){ if(!T) return; const S=model();
     return '<button class="'+cls+'" type="button" data-n="'+esc(n)+'" aria-pressed="'+(sel===n)+'" aria-label="Number '+esc(n)+', '+esc(st)+'"><span class="no">'+esc(n)+'</span><span class="st">'+esc(st)+'</span>'+marks+'</button>'; }).join("");
   $("tiles").querySelectorAll(".tile").forEach(b=>b.onclick=()=>{ sel=b.dataset.n; render(); if(matchMedia("(max-width:979px)").matches) try{ $("detail").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} });
   $("stat").innerHTML='<span>'+joined+' joined</span><span class="ok">'+done+' done</span>'+(look?'<span class="bad">'+look+' maybe stuck</span>':'')+'<span>'+left()+'</span>';
-  detail(S); missed(S); }
-function left(){ const ms=Math.max(0,(T.ends||0)-Date.now()), h=Math.floor(ms/3600e3), m=Math.floor(ms%3600e3/60e3); return "erased in "+(h?h+" h ":"")+m+" min"; }
+  if(!nums.length) $("tiles").innerHTML='<p class="sub">Waiting for students. Each one shows up here, by number, as they join.</p>';
+  detail(S); missed(S); stats(S); }
+const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)"};
+function stats(S){ const by={set:new Map(),kind:new Map(),std:new Map()}; let tot=[0,0];
+  const add=(m,k,ok)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[1]++; if(ok) e[0]++; };
+  for(const s of S.values()) for(const R of s.sets.values()) for(const P of R.steps.values()){ if(!P.runs.length) continue; const ok=P.runs[0].correct===true;
+    add(by.set,R.no||0,ok); add(by.kind,KIND[P.mode]||"Other",ok); if(P.std) add(by.std,P.std,ok); tot[1]++; if(ok) tot[0]++; }
+  $("statsCard").hidden=!tot[1]; if(!tot[1]) return;
+  const row=(label,[a,n],cls)=>{ const pc=Math.round(100*a/n); return '<div class="srow'+(cls?" "+cls:"")+'"><span>'+esc(label)+'</span><span class="bar"><i style="width:'+pc+'%"></i></span><span class="n"><b>'+pc+'%</b> · '+a+' of '+n+'</span></div>'; };
+  const block=(title,m,lab,sort)=>'<div><h3>'+title+'</h3>'+[...m].sort(sort||((x,y)=>String(x[0]).localeCompare(String(y[0]),undefined,{numeric:true}))).map(([k,v])=>row(lab(k),v)).join("")+'</div>';
+  $("stats").innerHTML=block("By set",by.set,k=>"Set "+(k||"?"))+block("By kind of step",by.kind,k=>k,(x,y)=>(x[1][0]/x[1][1])-(y[1][0]/y[1][1]))+(by.std.size?block("By standard",by.std,k=>k):"")+row("All answers",tot,"total"); }
+function left(){ const ms=Math.max(0,(T.ends||0)-Date.now()), d=Math.floor(ms/864e5), h=Math.floor(ms%864e5/3600e3), m=Math.floor(ms%3600e3/60e3);
+  return "deleted in "+(d?d+(d===1?" day ":" days ")+h+" h":(h?h+" h ":"")+m+" min"); }
 setInterval(()=>{ if(T&&!$("runView").hidden){ const el=$("stat").lastElementChild; if(el) el.textContent=left(); } },30000);
 
 function detail(S){ if(!sel){ return } const s=S.get(sel);
@@ -378,9 +403,9 @@ $("endBtn").onclick=async()=>{ const b=$("endBtn");
   if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tap again to erase. Saved?"; clearTimeout(armT); armT=setTimeout(()=>{ b.classList.remove("armed"); b.textContent="End and erase" },5000); return }
   clearTimeout(armT); b.classList.remove("armed"); b.textContent="End and erase";
   let r=null; try{ r=await tfetch(RELAY+"/session/"+T.code+"?key="+encodeURIComponent(T.key),{method:"DELETE"},10000) }catch(e){}
-  if(r&&(r.ok||r.status===404)){ over=false; ended("The class is erased from the relay."); } else $("runToast").textContent="Couldn't reach the relay to erase it. It will erase itself when its 12 hours are up."; };
+  if(r&&(r.ok||r.status===404)){ over=false; ended("The class is erased from the relay."); } else $("runToast").textContent="Couldn't reach the relay to erase it. It will erase itself when its week is up."; };
 function relayGone(){ over=true; clearTimeout(pollT); store.del("ff.teach"); $("endBtn").hidden=true; $("net").hidden=false;
-  $("net").textContent="This class has ended on the relay (erased, or its 12 hours ran out). What you see is still here: Save class now, then start a new class.";
+  $("net").textContent="This class has ended on the relay (erased, or its week ran out). What you see is still here: Save class now, then start a new class.";
   const b=document.createElement("button"); b.className="btn small ghost"; b.type="button"; b.textContent="Start a new class"; b.onclick=()=>{ over=false; $("endBtn").hidden=false; b.remove(); ended(""); }; $("net").after(b); }
 function ended(msg){ clearTimeout(pollT); store.del("ff.teach"); T=null; notes=[]; lastId=0; sel=null; view("start"); $("startToast").textContent=msg; document.title="FotoFold Live Class"; }
 
@@ -395,7 +420,7 @@ $("copyBack").onclick=()=>{ const u=backLink(); try{ navigator.clipboard.writeTe
 (function(){ let h=""; try{ h=decodeURIComponent(location.hash||"") }catch(e){}
   const m=/^#back=([A-HJ-NP-Z2-9]{5})\.([A-Z2-9]{24})$/.exec(h);
   if(m){ try{ history.replaceState(null,"",location.pathname+location.search) }catch(e){}
-    T={code:m[1],key:m[2],label:null,size:30,ends:Date.now()+12*3600e3}; store.set("ff.teach",JSON.stringify(T)); run(); return }
+    T={code:m[1],key:m[2],label:null,size:0,ends:Date.now()+7*24*3600e3}; store.set("ff.teach",JSON.stringify(T)); run(); return }
   try{ const t=JSON.parse(store.get("ff.teach")||"null"); if(t&&t.code&&t.key&&Date.now()<(t.ends||0)){ T=t; run(); } else view("start"); }catch(e){ view("start") } })();
 window.__live={model,records,get T(){return T},get notes(){return notes}};
 })();
