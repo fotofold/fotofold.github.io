@@ -1,0 +1,1369 @@
+<!doctype html>
+<!--
+  FotoSet: the set model with a camera. A sibling of FotoFold.
+  Copyright (c) 2026 G.Coppola. All rights reserved.
+  No names, and the photo is never kept: the phone counts the coins and forgets the picture.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* FotoSet: the set model with a camera. Same look and moves as FotoFold: one step per screen, the instruction,
+   the learner's own photo (coins circled by part), one thing to set, one button. */
+:root{
+  --bg:#edf1ee; --surface:#f8faf8; --fg:#17201c; --muted:#56635c; --line:#c9d3cd;
+  --mat:#2c473f; --mat-grid:#3d5c53; --mat-ink:#d6e4dc; --paper:#fbfbf7;
+  --ink:#1f4f8a; --ink-soft:#dbe6f3; --good:#1d7a45; --good-soft:#dcf0e3; --warn:#9a5b00; --warn-soft:#f8ead2;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-grid:#28423a; --mat-ink:#b8cdc2; --paper:#f4f4ee;
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-grid:#28423a; --mat-ink:#b8cdc2; --paper:#f4f4ee;
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+button,label.file,.setcard,a{touch-action:manipulation}
+body{font-family:var(--f-body);font-size:17px;line-height:1.45;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
+main{max-width:640px;margin:0 auto;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+main>*,section>*{min-width:0}
+h1,h2{font-family:var(--f-display);margin:0;line-height:1.08;text-wrap:balance}
+.top{display:grid;gap:8px}
+.brand{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 72;font-size:20px;background:none;border:0;padding:0;color:var(--fg);text-align:left;cursor:pointer}
+.brand small{font-weight:600;color:var(--muted);font-size:14px}
+.wholes{display:flex;gap:6px;flex-wrap:wrap}
+.wholes span{font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted)}
+.wholes span.now{border-color:var(--ink);color:var(--ink);background:var(--ink-soft)} .wholes span.done{background:var(--good-soft);border-color:var(--good-soft);color:var(--good)}
+.where{font-family:var(--f-mono);font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.where b{color:var(--fg)} .okmark{color:var(--good);font-weight:700}
+.prompt{font-size:clamp(28px,7.4vw,40px);font-weight:800;font-variation-settings:"wdth" 78;letter-spacing:-.01em;overflow-wrap:break-word}
+.sub{color:var(--muted);font-size:16px;margin:0;max-width:60ch}
+.head{display:flex;gap:14px;align-items:flex-start}
+.stepno{flex:none;width:46px;height:46px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:26px;margin-top:2px}
+@keyframes enter{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+.head.enter{animation:enter .28s ease-out}
+.stage{background:var(--mat);border-radius:var(--r);overflow:hidden}
+.stage canvas{display:block;width:100%}
+.seen{font-size:15px;color:var(--muted);margin-top:-8px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:inherit;font-weight:700;font-size:17px;border-radius:999px;padding:12px 20px;border:1.5px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;display:inline-flex;align-items:center;gap:8px;line-height:1.2}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.go{background:var(--good);border-color:var(--good);color:var(--bg);box-shadow:0 0 0 4px var(--good-soft);font-size:19px;padding:13px 24px}
+.btn.go.next::after{content:" →"}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 4px var(--good-soft)}50%{box-shadow:0 0 0 11px var(--good-soft)}}
+.btn.go.next{animation:breathe 1.6s ease-in-out infinite}
+.btn.link{border:0;background:none;color:var(--ink);padding:8px 4px;text-decoration:underline;font-weight:700;font-size:15px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:focus-visible,label.file:focus-within,.arrows button:focus-visible,.setcard:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.btn.go.next,.head.enter{animation:none}}
+label.file{position:relative;overflow:hidden}
+label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.eq{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-family:var(--f-display);font-weight:800;font-size:clamp(28px,10vw,40px);line-height:1}
+.eq .say{font-family:var(--f-body);font-weight:700;font-size:18px;flex-basis:100%;color:var(--fg)}
+.countbox{min-width:1.4em;padding:.12em .2em;border:3px solid var(--ink);border-radius:10px;color:var(--ink);text-align:center}
+.frac{display:inline-grid;justify-items:center;line-height:1}
+.frac .bar{width:1.25em;height:4px;background:currentColor;margin:6px 0;border-radius:2px}
+.frac.ask{color:var(--ink)} .frac.ask span{min-width:1.1em;text-align:center}
+.nowrap{display:inline-flex;align-items:center;gap:12px;white-space:nowrap}
+.arrows{display:grid;gap:6px;justify-items:center}
+.arrows button{font:inherit;font-size:20px;width:52px;height:46px;border-radius:10px;border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.feedback{border-radius:var(--r);padding:12px 14px;font-size:17px;display:grid;gap:6px}
+.feedback.good{background:var(--good-soft);color:var(--good)} .feedback.warn{background:var(--warn-soft);color:var(--warn)}
+.feedback b{font-family:var(--f-display);font-size:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;min-width:0}
+.ids{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end}
+.ids label{display:grid;gap:4px;font-size:14px;font-weight:700;color:var(--muted)}
+.ids input{font:inherit;font-family:var(--f-mono);width:8em;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.sets{display:grid;gap:10px}
+.setcard{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;text-align:left;font:inherit;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:14px;cursor:pointer}
+.setcard .no{grid-row:1/3;width:46px;height:46px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:24px}
+.setcard b{font-family:var(--f-display);font-size:21px;font-variation-settings:"wdth" 85}
+.setcard span.what{color:var(--muted);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 8px;border-radius:999px}
+.chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)} .chip.skip{background:var(--line);color:var(--muted)}
+.summary{font-family:var(--f-mono);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-wrap:anywhere}
+.toast{min-height:1.3em;font-size:14px;color:var(--muted)}
+.camview{display:grid;gap:10px}
+.camview video{width:100%;max-height:62vh;object-fit:contain;background:#000;border-radius:var(--r);display:block}
+details summary{cursor:pointer;font-weight:700;color:var(--muted)}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<main>
+  <div class="top">
+    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 2</small></button>
+    <div class="wholes" id="wholes" aria-label="Wholes"></div>
+  </div>
+
+  <section id="homeView" style="display:grid;gap:16px">
+    <h1 class="prompt">Count it, photograph it, see the parts.</h1>
+    <p class="sub">You need 15 coins (all the same kind, if you can) and a sheet of white paper folded in half the long way. The fold line splits the paper into a top half and a bottom half.</p>
+    <div class="card">
+      <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
+      <div class="ids">
+        <label for="classCode">Class code<input id="classCode" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
+        <label for="studentNo">Your number<input id="studentNo" maxlength="3" inputmode="numeric" pattern="[0-9]*" autocomplete="off"></label>
+      </div>
+    </div>
+    <div class="card" id="resumeCard" hidden><b id="resumeWhat"></b><div class="row"><button class="btn" id="resumeBtn" type="button">Keep going</button><button class="btn ghost" id="freshBtn" type="button">Start fresh</button></div></div>
+    <div class="sets" id="sets"></div>
+  </section>
+
+  <section id="stepView" hidden style="display:grid;gap:16px">
+    <div class="where" id="where"></div>
+    <div class="head" id="head"><span class="stepno" id="stepno" aria-hidden="true">1</span><h1 class="prompt" id="prompt"></h1></div>
+    <p class="sub" id="sub"></p>
+    <div class="stage" id="stageBox"><canvas id="stage" aria-label="Your coins, as the phone saw them"></canvas></div>
+    <div class="seen" id="seen" aria-live="polite"></div>
+    <div class="camview" id="camBox" hidden>
+      <video id="camVideo" playsinline muted autoplay aria-label="What the camera sees"></video>
+      <p class="sub" id="camTip">Hold the phone over your paper, with the fold line going left to right. Get the whole sheet in the picture.</p>
+      <div class="row"><button class="btn go" id="snap" type="button" disabled>Take the photo</button><button class="btn ghost" id="camCancel" type="button">Cancel</button></div>
+    </div>
+    <div class="row" id="photoRow">
+      <label class="btn file" for="cam">Take a photo<input id="cam" type="file" accept="image/*" capture="environment"></label>
+    </div>
+    <div id="answerRow" hidden style="display:grid;gap:14px">
+      <div class="eq" id="eq" aria-live="polite"></div>
+      <div class="row"><button class="btn" id="submit" type="button">Submit</button></div>
+    </div>
+    <div class="feedback" id="feedback" hidden aria-live="polite"></div>
+    <div class="row" id="nextRow" hidden><button class="btn" id="next" type="button">Next</button></div>
+    <div class="row">
+      <button class="btn link" id="sampleBtn" type="button">No coins handy? Use sample coins</button>
+      <button class="btn link" id="anyway" type="button" hidden>The phone counted wrong. Keep going</button>
+    </div>
+  </section>
+
+  <section id="doneView" hidden style="display:grid;gap:14px">
+    <h1 class="prompt">My answers</h1>
+    <div class="card"><div class="chips" id="answers"></div></div>
+    <div class="card">
+      <div class="sub">For your teacher, in one line:</div>
+      <div class="summary" id="summaryLine"></div>
+      <div class="row">
+        <button class="btn" id="saveRec" type="button">Save my work</button>
+        <button class="btn ghost" id="copyRec" type="button">Copy</button>
+        <button class="btn ghost" id="redo" type="button">Do it again</button>
+      </div>
+      <div class="toast" id="recToast" role="status"></div>
+    </div>
+    <div class="row"><button class="btn ghost" id="toStart" type="button">Back to the start</button></div>
+  </section>
+
+  <details>
+    <summary>Settings</summary>
+    <div class="card" style="margin-top:8px"><p class="sub">FotoSet asks for the camera, and it never keeps the photo it takes: it counts the coins and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p></div>
+  </details>
+  <footer>FotoSet, iteration 2. A whole of coins, grouped into equal parts. The photo is never kept.</footer>
+</main>
+
+<script>
+/*
+ * FotoSet coin reader.  Plain browser JavaScript, no libraries, no network.
+ *
+ * window.readCoins(source, w, h, expect?)
+ *   source: HTMLImageElement | ImageBitmap | canvas (anything drawImage accepts); w, h: its size.
+ *   Photos longer than 1200 px are downscaled to 1100 px on the long side; all coordinates are in that size.
+ *   expect (optional): { top: {count, piles}, bottom: {count, piles} }.  `piles` = number of piles the step
+ *   asks for: that half is split into exactly that many piles by cutting the piles-1 longest links of a
+ *   minimum spanning tree over the coin centres.  `count` is NOT used to change the count (a student who put
+ *   11 coins down must be told 11).  Without piles, natural breaks are used.
+ *   Returns {
+ *     ok, reason?, message?,          // reason: 'no_paper' | 'too_dark' | 'no_coins' | 'unreadable'
+ *     size: {w, h}, scale,            // working size, and working/original scale
+ *     coins: [{x, y, r, half: 'top'|'bottom', pile}],
+ *     coinR,                          // typical coin radius (median)
+ *     fold: {y, found, angle, x0, y0, x1, y1, coverage},   // y at the image centre column; angle in degrees
+ *     paper: {x0, y0, x1, y1},
+ *     top:    {count, piles: [sizes in reading order: rows top to bottom, each row left to right],
+ *              pileOf: [pile index per entry of coins, -1 if the coin is in the other half], clear, links},
+ *     bottom: {...same},
+ *     confidence,                     // 0..1
+ *     ms, stages                      // timing (total, per stage) for debugging
+ *   }
+ *   Link weights in `links` are centre distance / (r1 + r2): 1.0 = touching.
+ *
+ * window.drawCoinsSample(spec) -> canvas (default 1200x900) with a synthetic photo; canvas.truth holds the truth.
+ *   spec: { top: [pile sizes], bottom: [pile sizes], seed,
+ *           optional: rotate (deg), light (0..1), spacing (centre pitch in a pile, in diameters, 1.0 = touching),
+ *           gap (clear space between piles, in diameters), mixed (1/2/5 cent sizes), shadow, fold (line alpha, 0 = none),
+ *           coinScale, handShadow (0..0.5), tint ('cool'|'warm'), blur (px), noise, width, height }
+ *
+ * window.coinsOverlay(source, result) -> canvas with coins, pile hulls, fold line and a summary (debugging).
+ * window.coinsWarmup() -> ms.  Optional: call once at app start so the first real read is faster.
+ */
+(function (root) {
+  'use strict';
+
+  var PI = Math.PI;
+  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+  function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function median(a) { if (!a.length) return 0; var b = a.slice().sort(function (p, q) { return p - q; }); var m = b.length >> 1; return b.length % 2 ? b[m] : 0.5 * (b[m - 1] + b[m]); }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  /* ------------------------------------------------------------------ */
+  /* small image helpers                                                 */
+  /* ------------------------------------------------------------------ */
+
+  // hot per-pixel loops live in small functions so the JIT optimises them once and reuses them
+  function lumSat(data, N, L, C) {
+    for (var i = 0, j = 0; i < N; i++, j += 4) {
+      var r = data[j], g = data[j + 1], b = data[j + 2];
+      L[i] = (r + 2 * g + b) >> 2;
+      var mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+      C[i] = mx > 0 ? ((mx - mn) * 255 / mx) | 0 : 0;   // saturation 0..255 (exposure independent)
+    }
+  }
+  function blockMeans(L, C, W, H, bs, sw, bxi, bL, bC, bN) {
+    for (var y = 0; y < H; y += 2) {
+      var by = ((y / bs) | 0) * sw, o = y * W;
+      for (var x = 0; x < W; x += 2) { var bi = by + bxi[x]; bL[bi] += L[o + x]; bC[bi] += C[o + x]; bN[bi]++; }
+    }
+  }
+  // coin pixels: warm and dark relative to the local paper colour (pr,pg,pb), interpolated along the row
+  function maskRow(data, o3, xs, xe, rr, rg, rb, ix0, ix1, ixa, M, PL) {
+    for (var x = xs; x <= xe; x++) {
+      var k0 = ix0[x], k1 = ix1[x], aa = ixa[x];
+      var pr = rr[k0] + (rr[k1] - rr[k0]) * aa, pg = rg[k0] + (rg[k1] - rg[k0]) * aa, pb = rb[k0] + (rb[k1] - rb[k0]) * aa;
+      if (pr < 1) pr = 1; if (pg < 1) pg = 1; if (pb < 1) pb = 1;
+      var idx = o3 + x, j = 4 * idx;
+      PL[idx] = (pr + 2 * pg + pb) * 0.25;
+      var rn = data[j] * 255 / pr, gn = data[j + 1] * 255 / pg, bn = data[j + 2] * 255 / pb;
+      var warm = rn - bn, dark = 255 - (rn + 2 * gn + bn) * 0.25;
+      if ((warm >= 30 && dark >= 40) || (dark >= 130 && warm >= 12)) M[idx] = 1;
+    }
+  }
+  // 4-connected components of M within [i0, i1]; pushes {id, area, bbox} to blobs
+  function labelBlobs(M, W, H, CL, st, blobs, i0, i1) {
+    for (var i = i0; i <= i1; i++) if (M[i] && !CL[i]) {
+      var bid = blobs.length + 1, spp = 0, ar = 0, bx0 = W, by0 = H, bx1 = 0, by1 = 0;
+      st[spp++] = i; CL[i] = bid;
+      while (spp) {
+        var qq = st[--spp]; ar++;
+        var qx2 = qq % W, qy2 = (qq / W) | 0;
+        if (qx2 < bx0) bx0 = qx2; if (qx2 > bx1) bx1 = qx2; if (qy2 < by0) by0 = qy2; if (qy2 > by1) by1 = qy2;
+        if (qx2 > 0 && M[qq - 1] && !CL[qq - 1]) { CL[qq - 1] = bid; st[spp++] = qq - 1; }
+        if (qx2 < W - 1 && M[qq + 1] && !CL[qq + 1]) { CL[qq + 1] = bid; st[spp++] = qq + 1; }
+        if (qy2 > 0 && M[qq - W] && !CL[qq - W]) { CL[qq - W] = bid; st[spp++] = qq - W; }
+        if (qy2 < H - 1 && M[qq + W] && !CL[qq + W]) { CL[qq + W] = bid; st[spp++] = qq + W; }
+      }
+      blobs.push({ id: bid, area: ar, x0: bx0, y0: by0, x1: bx1, y1: by1 });
+    }
+  }
+  // thin dark horizontal-ish line detector: how much darker a pixel is than BOTH its neighbours o rows above and below
+  function ridgeRow(L, PL, excl, ridge, o4, W, xs, xe, o1, o2) {
+    var a1 = o1 * W, a2 = o2 * W;
+    for (var x = xs; x <= xe; x += 2) {
+      var id4 = o4 + x;
+      if (excl[id4]) continue;
+      var cL = L[id4];
+      var u1 = L[id4 - a1], d1 = L[id4 + a1], u2 = L[id4 - a2], d2 = L[id4 + a2];
+      var r1 = (u1 < d1 ? u1 : d1) - cL, r2 = (u2 < d2 ? u2 : d2) - cL;
+      var p = PL[id4]; if (p < 40) p = 40;
+      var rv = (r1 > r2 ? r1 : r2) * 255 / p;
+      if (rv > 0) ridge[id4] = rv > 255 ? 255 : rv;
+    }
+  }
+
+  // 3x3 dilation / erosion of a 0/1 mask (separable)
+  function morph3(src, W, H, isMax, tmp, dst, y0, y1) {
+    var x, y, i, a, b, c;
+    for (y = y0; y <= y1; y++) {
+      var o = y * W;
+      for (x = 0; x < W; x++) {
+        i = o + x;
+        a = x > 0 ? src[i - 1] : src[i]; b = src[i]; c = x < W - 1 ? src[i + 1] : src[i];
+        tmp[i] = isMax ? (a | b | c) : (a & b & c);
+      }
+    }
+    for (y = y0; y <= y1; y++) {
+      for (x = 0; x < W; x++) {
+        i = y * W + x;
+        a = y > y0 ? tmp[i - W] : tmp[i]; c = y < y1 ? tmp[i + W] : tmp[i]; b = tmp[i];
+        dst[i] = isMax ? (a | b | c) : (a & b & c);
+      }
+    }
+    return dst;
+  }
+
+  // 1D squared Euclidean distance transform (Felzenszwalb & Huttenlocher)
+  function edt1d(f, n, d, v, z) {
+    var k = 0, q, s, p;
+    v[0] = 0; z[0] = -1e30; z[1] = 1e30;
+    for (q = 1; q < n; q++) {
+      p = v[k];
+      s = ((f[q] + q * q) - (f[p] + p * p)) / (2 * q - 2 * p);
+      while (s <= z[k]) { k--; p = v[k]; s = ((f[q] + q * q) - (f[p] + p * p)) / (2 * q - 2 * p); }
+      k++; v[k] = q; z[k] = s; z[k + 1] = 1e30;
+    }
+    k = 0;
+    for (q = 0; q < n; q++) {
+      while (z[k + 1] < q) k++;
+      p = v[k];
+      d[q] = (q - p) * (q - p) + f[p];
+    }
+  }
+
+  // Euclidean distance transform of a binary mask (inside=1) of size bw*bh; returns Float32 distances
+  function edt(mask, bw, bh) {
+    var INF = 1e20, n = Math.max(bw, bh);
+    var f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+    var g = new Float64Array(bw * bh);
+    var x, y;
+    for (x = 0; x < bw; x++) {
+      for (y = 0; y < bh; y++) f[y] = mask[y * bw + x] ? INF : 0;
+      edt1d(f, bh, d, v, z);
+      for (y = 0; y < bh; y++) g[y * bw + x] = d[y];
+    }
+    var out = new Float32Array(bw * bh);
+    for (y = 0; y < bh; y++) {
+      var o = y * bw;
+      for (x = 0; x < bw; x++) f[x] = g[o + x];
+      edt1d(f, bw, d, v, z);
+      for (x = 0; x < bw; x++) out[o + x] = Math.sqrt(d[x]);
+    }
+    return out;
+  }
+
+  // Andrew monotone chain convex hull of [[x,y],...]
+  function convexHull(pts) {
+    if (pts.length < 3) return pts.slice();
+    pts = pts.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+    function cross(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+    var lower = [], upper = [], i;
+    for (i = 0; i < pts.length; i++) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) lower.pop(); lower.push(pts[i]); }
+    for (i = pts.length - 1; i >= 0; i--) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) upper.pop(); upper.push(pts[i]); }
+    upper.pop(); lower.pop();
+    return lower.concat(upper);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* piles: minimum spanning tree over coin centres                      */
+  /* ------------------------------------------------------------------ */
+
+  // edge weight = centre distance / (r_a + r_b): 1.0 = touching, 1.5 = gap of half a coin, ...
+  function mstEdges(cs) {
+    var n = cs.length, edges = [];
+    if (n < 2) return edges;
+    var inT = new Uint8Array(n), best = new Float64Array(n), par = new Int32Array(n), i, j;
+    for (i = 0; i < n; i++) { best[i] = Infinity; par[i] = -1; }
+    best[0] = 0;
+    for (var it = 0; it < n; it++) {
+      var u = -1, bu = Infinity;
+      for (i = 0; i < n; i++) if (!inT[i] && best[i] < bu) { bu = best[i]; u = i; }
+      inT[u] = 1;
+      if (par[u] >= 0) edges.push({ a: par[u], b: u, w: bu });
+      for (j = 0; j < n; j++) if (!inT[j]) {
+        var dx = cs[u].x - cs[j].x, dy = cs[u].y - cs[j].y;
+        var w = Math.sqrt(dx * dx + dy * dy) / (cs[u].r + cs[j].r);
+        if (w < best[j]) { best[j] = w; par[j] = u; }
+      }
+    }
+    return edges;
+  }
+
+  function groupsFromEdges(n, kept) {
+    var p = new Int32Array(n), i;
+    for (i = 0; i < n; i++) p[i] = i;
+    function find(a) { while (p[a] !== a) { p[a] = p[p[a]]; a = p[a]; } return a; }
+    kept.forEach(function (e) { var a = find(e.a), b = find(e.b); if (a !== b) p[a] = b; });
+    var map = {}, groups = [];
+    for (i = 0; i < n; i++) { var r = find(i); if (map[r] === undefined) { map[r] = groups.length; groups.push([]); } groups[map[r]].push(i); }
+    return groups;
+  }
+
+  // Natural breaks without an expectation.  ws = MST link weights (centre distance / (r1+r2)), ascending.
+  // Links are compared by their edge-to-edge gap plus a small offset: c = (w - 1 + DELTA).  A break is the
+  // biggest jump in c between consecutive links; it must be big (ratio) and the upper link must be a real gap.
+  var NAT = { delta: 0.15, minUpper: 1.15, ratio: 1.8, strongRatio: 2.0, absCut: 2.0 };
+  function gapC(w) { return Math.max(0, w - 1) + NAT.delta; }
+  function contrast(lo, hi) { return gapC(hi) / gapC(lo); }
+  function naturalThreshold(ws) {
+    var m = ws.length;
+    if (!m) return { thr: Infinity, clear: true, ratio: 1 };
+    var best = 1, bi = -1, i;
+    for (i = 0; i < m - 1; i++) {
+      if (ws[i + 1] < NAT.minUpper) continue;
+      var r = contrast(ws[i], ws[i + 1]);
+      if (r > best) { best = r; bi = i; }
+    }
+    if (bi >= 0 && best >= NAT.ratio) {
+      return { thr: 0.5 * (ws[bi] + ws[bi + 1]), clear: best >= NAT.strongRatio, ratio: best };
+    }
+    if (ws[m - 1] >= NAT.absCut) {
+      var amb = ws.some(function (w) { return w > 1.6 && w < 2.5; });
+      return { thr: NAT.absCut, clear: !amb, ratio: best };
+    }
+    return { thr: Infinity, clear: ws[m - 1] < 1.6 && best < 1.5, ratio: best };
+  }
+
+  function splitHalf(cs, k) {
+    var n = cs.length;
+    if (!n) return { groups: [], clear: true, cut: [], kept: [] };
+    var edges = mstEdges(cs);
+    var asc = edges.slice().sort(function (a, b) { return a.w - b.w; });
+    var ws = asc.map(function (e) { return e.w; });
+    var nat = naturalThreshold(ws);
+    var cut, kept, clear;
+    if (k && k >= 1) {
+      var kk = Math.min(k, n);
+      cut = asc.slice(asc.length - (kk - 1));
+      kept = asc.slice(0, asc.length - (kk - 1));
+      if (kk === 1) { cut = []; kept = asc; }
+      if (kk === 1) clear = !(nat.thr < Infinity && nat.clear);
+      else {
+        var minCut = cut[0].w, maxKept = kept.length ? kept[kept.length - 1].w : 0;
+        // clear if the cut links are clearly longer than the kept ones: 1.25x in centre distance,
+        // or (for tightly packed piles) at least twice the edge-to-edge gap (offset by DELTA)
+        clear = kept.length ? (minCut >= 1.25 * maxKept || (minCut >= NAT.minUpper && contrast(maxKept, minCut) >= NAT.strongRatio)) : (minCut >= 1.2);
+      }
+      if (kk < k) clear = false;
+    } else {
+      kept = asc.filter(function (e) { return e.w < nat.thr; });
+      cut = asc.filter(function (e) { return e.w >= nat.thr; });
+      clear = nat.clear;
+    }
+    return { groups: groupsFromEdges(n, kept), clear: clear, cut: cut.map(function (e) { return e.w; }), kept: kept.map(function (e) { return e.w; }) };
+  }
+
+  // order groups: rows (top to bottom), each row left to right, in the frame aligned with the fold
+  function orderGroups(groups, cs, ang, coinR) {
+    var ca = Math.cos(ang), sa = Math.sin(ang);
+    var info = groups.map(function (g, gi) {
+      var u = 0, v = 0, vmin = Infinity, vmax = -Infinity;
+      g.forEach(function (i) {
+        var uu = cs[i].x * ca + cs[i].y * sa, vv = -cs[i].x * sa + cs[i].y * ca;
+        u += uu; v += vv; vmin = Math.min(vmin, vv - cs[i].r); vmax = Math.max(vmax, vv + cs[i].r);
+      });
+      return { gi: gi, u: u / g.length, v: v / g.length, vmin: vmin, vmax: vmax };
+    });
+    info.sort(function (a, b) { return a.v - b.v; });
+    var rows = [], cur = null;
+    info.forEach(function (p) {
+      if (cur && p.vmin < cur.vmax - 0.25 * coinR) { cur.items.push(p); cur.vmax = Math.max(cur.vmax, p.vmax); }
+      else { cur = { items: [p], vmax: p.vmax }; rows.push(cur); }
+    });
+    var order = [];
+    rows.forEach(function (r) { r.items.sort(function (a, b) { return a.u - b.u; }); r.items.forEach(function (p) { order.push(groups[p.gi]); }); });
+    return order;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* main reader                                                         */
+  /* ------------------------------------------------------------------ */
+
+  var MESSAGES = {
+    no_paper: "I can't find the white paper. Put the paper on a darker table and fit the whole sheet in the photo.",
+    too_dark: 'The photo is too dark. Turn on a light or move near a window.',
+    no_coins: "I can't see any coins on the paper.",
+    unreadable: "I couldn't read that picture. Please take the photo again."
+  };
+
+  function readCoins(source, w, h, expect) {
+    var t0 = nowMs();
+    w = w || source.naturalWidth || source.videoWidth || source.width;
+    h = h || source.naturalHeight || source.videoHeight || source.height;
+    var long = Math.max(w, h), s = long > 1200 ? 1100 / long : 1;
+    var W = Math.max(1, Math.round(w * s)), H = Math.max(1, Math.round(h * s));
+    var data;
+    try {
+      var cv = makeCanvas(W, H), ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(source, 0, 0, W, H);
+      data = ctx.getImageData(0, 0, W, H).data;
+    } catch (e) {
+      return failResult('unreadable', W, H, t0);
+    }
+    var res = analyze(data, W, H, expect || null);
+    res.scale = s;
+    res.ms = Math.round((nowMs() - t0) * 10) / 10;
+    return res;
+  }
+
+  // reused full-size buffers (avoids ~15 MB of fresh allocations per photo and the GC pauses that come with it)
+  var POOL = {};
+  function buf(name, Type, n, zero) {
+    var b = POOL[name];
+    if (!b || b.length !== n) b = POOL[name] = new Type(n);
+    else if (zero) b.fill(0);
+    return b;
+  }
+
+  function emptyHalf() { return { count: 0, piles: [], pileOf: [], clear: true }; }
+  function failResult(reason, W, H, t0) {
+    return { ok: false, reason: reason, message: MESSAGES[reason], size: { w: W, h: H }, coins: [], coinR: 0,
+      fold: { y: H / 2, found: false, angle: 0 }, paper: null, top: emptyHalf(), bottom: emptyHalf(), confidence: 0,
+      ms: t0 ? Math.round((nowMs() - t0) * 10) / 10 : 0 };
+  }
+
+  function analyze(data, W, H, expect) {
+    var N = W * H, long = Math.max(W, H), i, x, y, TM = [nowMs()];
+    var L = buf('L', Uint8Array, N), C = buf('C', Uint8Array, N);
+    lumSat(data, N, L, C);
+
+    TM.push(nowMs());
+    /* ---- 1. paper: big bright low-chroma regions, then their convex hull ---- */
+    var bs = Math.max(2, Math.round(long / 275));
+    var sw = Math.ceil(W / bs), sh = Math.ceil(H / bs), SN = sw * sh;
+    var bL = new Float32Array(SN), bC = new Float32Array(SN), bN = new Float32Array(SN);
+    var bxi = new Int32Array(W);
+    for (x = 0; x < W; x++) bxi[x] = (x / bs) | 0;
+    blockMeans(L, C, W, H, bs, sw, bxi, bL, bC, bN);
+    var CHROMA_PAPER = 56;   // saturation < 0.22: white / grey paper; wood and coins are ~0.4-0.7
+    var hist = new Float64Array(256), hn = 0;
+    for (i = 0; i < SN; i++) { if (!bN[i]) bN[i] = 1; bL[i] /= bN[i]; bC[i] /= bN[i]; if (bC[i] < CHROMA_PAPER) { hist[bL[i] | 0]++; hn++; } }
+    if (hn < SN * 0.05) return failResult('no_paper', W, H);
+    var acc = 0, p95 = 255;
+    for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= hn * 0.05) { p95 = i; break; } }
+    if (p95 < 55) return failResult('too_dark', W, H);
+    var lT = Math.max(45, 0.55 * p95);
+    var pm = new Uint8Array(SN);
+    for (i = 0; i < SN; i++) pm[i] = (bC[i] < CHROMA_PAPER && bL[i] > lT) ? 1 : 0;
+    // components on block grid
+    var lab = new Int32Array(SN), comps = [], stack = new Int32Array(SN);
+    for (i = 0; i < SN; i++) if (pm[i] && !lab[i]) {
+      var id = comps.length + 1, sp = 0, area = 0;
+      stack[sp++] = i; lab[i] = id;
+      while (sp) {
+        var q = stack[--sp]; area++;
+        var qx = q % sw, qy = (q / sw) | 0;
+        for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+          var nx = qx + dx, ny = qy + dy;
+          if (nx < 0 || ny < 0 || nx >= sw || ny >= sh) continue;
+          var nq = ny * sw + nx;
+          if (pm[nq] && !lab[nq]) { lab[nq] = id; stack[sp++] = nq; }
+        }
+      }
+      comps.push(area);
+    }
+    var biggest = 0;
+    comps.forEach(function (a) { biggest = Math.max(biggest, a); });
+    if (biggest < SN * 0.04) return failResult('no_paper', W, H);
+    var keep = comps.map(function (a) { return a >= Math.max(SN * 0.03, biggest * 0.15); });
+    var hp = [], paperBlocks = 0;
+    for (y = 0; y < sh; y++) {
+      var xl = -1, xr = -1;
+      for (x = 0; x < sw; x++) { var l = lab[y * sw + x]; if (l && keep[l - 1]) { paperBlocks++; if (xl < 0) xl = x; xr = x; } }
+      if (xl >= 0) { hp.push([xl * bs, y * bs], [(xr + 1) * bs, y * bs], [xl * bs, (y + 1) * bs], [(xr + 1) * bs, (y + 1) * bs]); }
+    }
+    var hull = convexHull(hp);
+    var rowL = new Float32Array(H), rowR = new Float32Array(H);
+    var px0 = Infinity, px1 = -Infinity, py0 = Infinity, py1 = -Infinity;
+    hull.forEach(function (p) { px0 = Math.min(px0, p[0]); px1 = Math.max(px1, p[0]); py0 = Math.min(py0, p[1]); py1 = Math.max(py1, p[1]); });
+    px0 = Math.max(0, px0); py0 = Math.max(0, py0); px1 = Math.min(W - 1, px1); py1 = Math.min(H - 1, py1);
+    for (y = 0; y < H; y++) {
+      var yc = y + 0.5, mnx = Infinity, mxx = -Infinity;
+      for (var e = 0; e < hull.length; e++) {
+        var A = hull[e], B = hull[(e + 1) % hull.length];
+        if ((A[1] <= yc && B[1] >= yc) || (B[1] <= yc && A[1] >= yc)) {
+          var xx = A[1] === B[1] ? A[0] : A[0] + (yc - A[1]) * (B[0] - A[0]) / (B[1] - A[1]);
+          if (A[1] === B[1]) { mnx = Math.min(mnx, A[0], B[0]); mxx = Math.max(mxx, A[0], B[0]); }
+          else { mnx = Math.min(mnx, xx); mxx = Math.max(mxx, xx); }
+        }
+      }
+      rowL[y] = mnx; rowR[y] = mxx;
+    }
+    // erode the hull by a margin (convex => check the two end rows)
+    var mg = Math.max(3, Math.round(0.008 * long));
+    var inL = new Int32Array(H), inR = new Int32Array(H);
+    for (y = 0; y < H; y++) {
+      var ya = y - mg, yb = y + mg;
+      if (ya < 0 || yb >= H || !(rowL[ya] <= rowR[ya]) || !(rowL[yb] <= rowR[yb])) { inL[y] = 1; inR[y] = 0; continue; }
+      inL[y] = Math.ceil(Math.max(rowL[ya], rowL[yb], 0) + mg);
+      inR[y] = Math.floor(Math.min(rowR[ya], rowR[yb], W - 1) - mg);
+    }
+    var paper = { x0: Math.round(px0), y0: Math.round(py0), x1: Math.round(px1), y1: Math.round(py1) };
+    var paperFrac = paperBlocks / SN;
+
+    TM.push(nowMs());
+    /* ---- 2. local paper colour (grid, filled, bilinear) ---- */
+    var cs = Math.max(16, Math.round(long / 16));
+    var gx = Math.ceil(W / cs), gy = Math.ceil(H / cs), GN = gx * gy;
+    var sr = new Float64Array(GN), sg = new Float64Array(GN), sb = new Float64Array(GN), sn = new Float64Array(GN);
+    for (y = 0; y < H; y += 2) {
+      var o2 = y * W, cyi = ((y / cs) | 0) * gx;
+      for (x = Math.max(0, inL[y]); x <= inR[y]; x += 2) {
+        var ii = o2 + x;
+        if (C[ii] < CHROMA_PAPER && L[ii] > lT) {
+          var ci = cyi + ((x / cs) | 0);
+          sr[ci] += data[4 * ii]; sg[ci] += data[4 * ii + 1]; sb[ci] += data[4 * ii + 2]; sn[ci]++;
+        }
+      }
+    }
+    var valid = new Uint8Array(GN), cR = new Float32Array(GN), cG = new Float32Array(GN), cB = new Float32Array(GN);
+    var minCnt = cs * cs / 4 * 0.04, anyValid = false, gr = 0, gg = 0, gb = 0, gnn = 0;
+    for (i = 0; i < GN; i++) {
+      if (sn[i] > minCnt) { valid[i] = 1; anyValid = true; cR[i] = sr[i] / sn[i]; cG[i] = sg[i] / sn[i]; cB[i] = sb[i] / sn[i]; }
+      gr += sr[i]; gg += sg[i]; gb += sb[i]; gnn += sn[i];
+    }
+    if (!anyValid) return failResult('no_paper', W, H);
+    for (var pass = 0; pass < gx + gy; pass++) {
+      var changed = false, nv = valid.slice();
+      for (var cy = 0; cy < gy; cy++) for (var cx = 0; cx < gx; cx++) {
+        var c0 = cy * gx + cx;
+        if (valid[c0]) continue;
+        var tr = 0, tg = 0, tb = 0, tn = 0;
+        for (var ddy = -1; ddy <= 1; ddy++) for (var ddx = -1; ddx <= 1; ddx++) {
+          var ax = cx + ddx, ay = cy + ddy;
+          if (ax < 0 || ay < 0 || ax >= gx || ay >= gy) continue;
+          var c1 = ay * gx + ax;
+          if (valid[c1]) { tr += cR[c1]; tg += cG[c1]; tb += cB[c1]; tn++; }
+        }
+        if (tn) { cR[c0] = tr / tn; cG[c0] = tg / tn; cB[c0] = tb / tn; nv[c0] = 1; changed = true; }
+      }
+      valid = nv;
+      if (!changed) break;
+    }
+    var ix0 = new Int32Array(W), ix1 = new Int32Array(W), ixa = new Float32Array(W);
+    for (x = 0; x < W; x++) {
+      var fx = (x + 0.5) / cs - 0.5, i0 = Math.floor(fx);
+      var a0 = fx - i0; if (i0 < 0) { i0 = 0; a0 = 0; } if (i0 >= gx - 1) { i0 = gx - 1; a0 = 0; }
+      ix0[x] = i0; ix1[x] = Math.min(i0 + 1, gx - 1); ixa[x] = a0;
+    }
+
+    TM.push(nowMs());
+    /* ---- 3. coin mask: warm and dark relative to the local paper ---- */
+    var M = buf('M', Uint8Array, N, true), PL = buf('PL', Uint8Array, N);
+    var rr = new Float32Array(gx), rg = new Float32Array(gx), rb = new Float32Array(gx);
+    for (y = 0; y < H; y++) {
+      if (inL[y] > inR[y]) continue;
+      var fy = (y + 0.5) / cs - 0.5, j0 = Math.floor(fy), ay2 = fy - j0;
+      if (j0 < 0) { j0 = 0; ay2 = 0; } if (j0 >= gy - 1) { j0 = gy - 1; ay2 = 0; }
+      var j1 = Math.min(j0 + 1, gy - 1);
+      for (x = 0; x < gx; x++) {
+        var u0 = j0 * gx + x, u1 = j1 * gx + x;
+        rr[x] = cR[u0] + (cR[u1] - cR[u0]) * ay2; rg[x] = cG[u0] + (cG[u1] - cG[u0]) * ay2; rb[x] = cB[u0] + (cB[u1] - cB[u0]) * ay2;
+      }
+      maskRow(data, y * W, Math.max(0, inL[y]), inR[y], rr, rg, rb, ix0, ix1, ixa, M, PL);
+    }
+    TM.push(nowMs());
+    var T1 = buf('T1', Uint8Array, N, true), T2 = buf('T2', Uint8Array, N, true);
+    var mY0 = Math.max(0, Math.floor(py0) - 2), mY1 = Math.min(H - 1, Math.ceil(py1) + 2);
+    morph3(M, W, H, true, T1, T2, mY0, mY1); morph3(T2, W, H, false, T1, M, mY0, mY1);   // close
+    morph3(M, W, H, false, T1, T2, mY0, mY1); morph3(T2, W, H, true, T1, M, mY0, mY1);   // open
+
+    TM.push(nowMs());
+    /* ---- 4. blobs ---- */
+    var CL = buf('CL', Int32Array, N, true), blobs = [];
+    var st = buf('st', Int32Array, N);
+    var minArea = Math.max(25, Math.pow(long * 0.008, 2));
+    labelBlobs(M, W, H, CL, st, blobs, mY0 * W, mY1 * W + W - 1);
+    blobs = blobs.filter(function (b) { return b.area >= minArea; });
+    if (blobs.length > 400) blobs.sort(function (a, b) { return b.area - a.area; }), blobs.length = 400;
+
+    // hole fill + distance transform per blob
+    blobs.forEach(function (b) {
+      var p = 1, ox = b.x0 - p, oy = b.y0 - p, bw = b.x1 - b.x0 + 1 + 2 * p, bh = b.y1 - b.y0 + 1 + 2 * p;
+      var m = new Uint8Array(bw * bh), xx2, yy2;
+      for (yy2 = 0; yy2 < bh; yy2++) {
+        var gy2 = oy + yy2; if (gy2 < 0 || gy2 >= H) continue;
+        for (xx2 = 0; xx2 < bw; xx2++) { var gx2 = ox + xx2; if (gx2 >= 0 && gx2 < W && CL[gy2 * W + gx2] === b.id) m[yy2 * bw + xx2] = 1; }
+      }
+      // flood outside from border
+      var out = new Uint8Array(bw * bh), stk = [], t;
+      for (xx2 = 0; xx2 < bw; xx2++) { stk.push(xx2, (bh - 1) * bw + xx2); }
+      for (yy2 = 0; yy2 < bh; yy2++) { stk.push(yy2 * bw, yy2 * bw + bw - 1); }
+      while (stk.length) {
+        t = stk.pop();
+        if (out[t] || m[t]) continue;
+        out[t] = 1;
+        var tx = t % bw, ty = (t / bw) | 0;
+        if (tx > 0) stk.push(t - 1); if (tx < bw - 1) stk.push(t + 1); if (ty > 0) stk.push(t - bw); if (ty < bh - 1) stk.push(t + bw);
+      }
+      var a2 = 0, sx = 0, sy = 0, mu = null;
+      for (t = 0; t < bw * bh; t++) if (!out[t] && !m[t]) { mu = m.slice(); break; }   // has holes: keep unfilled copy
+      for (t = 0; t < bw * bh; t++) if (!out[t]) { m[t] = 1; a2++; sx += t % bw; sy += (t / bw) | 0; }
+      b.fillArea = a2; b.cx = ox + sx / a2; b.cy = oy + sy / a2;
+      var dt = edt(m, bw, bh), dmax = 0;
+      for (t = 0; t < bw * bh; t++) if (dt[t] > dmax) dmax = dt[t];
+      b.dt = dt; b.m = m; b.mu = mu; b.bw = bw; b.bh = bh; b.ox = ox; b.oy = oy; b.dmax = dmax;
+      b.round = a2 / (PI * dmax * dmax);
+    });
+
+    // typical coin radius
+    var rMinAbs = Math.max(4, long * 0.006);
+    var cand = blobs.filter(function (b) { return b.dmax >= rMinAbs; });
+    var singles = cand.filter(function (b) { return b.round > 0.75 && b.round < 1.7; });
+    var pool = singles.length ? singles : cand;
+    var coinR = 0;
+    if (pool.length) {
+      var ds = pool.map(function (b) { return b.dmax; }).sort(function (a, b) { return b - a; });
+      var rRef = ds[Math.floor(0.2 * ds.length)];
+      coinR = median(ds.filter(function (d) { return d >= 0.45 * rRef; }));
+    }
+
+    TM.push(nowMs());
+    /* ---- 5. coins: greedy distance-transform peaks inside each blob ---- */
+    // greedy: highest DT value first, suppress peaks closer than 0.75*(r1+r2) to an accepted one
+    function peaksOf(dt, bw, bh, thr) {
+      var pk = [], xx3, yy3;
+      for (yy3 = 1; yy3 < bh - 1; yy3++) for (xx3 = 1; xx3 < bw - 1; xx3++) {
+        var t = yy3 * bw + xx3, v = dt[t];
+        if (v < thr) continue;
+        if (v >= dt[t - 1] && v >= dt[t + 1] && v >= dt[t - bw] && v >= dt[t + bw] &&
+            v >= dt[t - bw - 1] && v >= dt[t - bw + 1] && v >= dt[t + bw - 1] && v >= dt[t + bw + 1]) pk.push([v, xx3, yy3]);
+      }
+      pk.sort(function (a, c) { return c[0] - a[0]; });
+      var acc2 = [];
+      pk.forEach(function (p) {
+        for (var j = 0; j < acc2.length; j++) {
+          var q = acc2[j], ddx2 = p[1] - q[1], ddy2 = p[2] - q[2];
+          if (Math.sqrt(ddx2 * ddx2 + ddy2 * ddy2) < 0.75 * (p[0] + q[0])) return;
+        }
+        acc2.push(p);
+      });
+      return acc2;
+    }
+    // how well a set of circles explains the (filled) blob: covered fraction minus spill outside
+    function coverage(pk, m, bw, bh) {
+      var cov = 0, spill = 0, tot = 0, xx3, yy3, j;
+      for (yy3 = 0; yy3 < bh; yy3++) for (xx3 = 0; xx3 < bw; xx3++) {
+        var t = yy3 * bw + xx3, inC = false;
+        for (j = 0; j < pk.length; j++) { var dx = xx3 - pk[j][1], dy = yy3 - pk[j][2], rr = pk[j][0] + 1; if (dx * dx + dy * dy <= rr * rr) { inC = true; break; } }
+        if (m[t]) { tot++; if (inC) cov++; } else if (inC) spill++;
+      }
+      return (cov - 2 * spill) / Math.max(1, tot);
+    }
+    var coins = [], multiInfo = [];
+    if (coinR > 0) {
+      var thr = 0.55 * coinR;
+      blobs.forEach(function (b) {
+        if (b.dmax < 0.5 * coinR) return;
+        var acc2 = peaksOf(b.dt, b.bw, b.bh, thr);
+        if (b.mu && b.fillArea > 1.5 * PI * coinR * coinR) {
+          // holes may be gaps enclosed by a ring of touching coins: also try without filling them
+          var alt = peaksOf(edt(b.mu, b.bw, b.bh), b.bw, b.bh, thr);
+          if (alt.length > acc2.length && coverage(alt, b.m, b.bw, b.bh) > coverage(acc2, b.m, b.bw, b.bh) + 0.1) acc2 = alt;
+        }
+        if (acc2.length === 1 && b.round < 1.7) {
+          coins.push({ x: b.cx, y: b.cy, r: Math.sqrt(b.fillArea / PI), blob: b.id });
+        } else {
+          acc2.forEach(function (p) { coins.push({ x: b.ox + p[1], y: b.oy + p[2], r: p[0] + 0.5, blob: b.id }); });
+          multiInfo.push({ n: acc2.length, est: b.fillArea / (PI * coinR * coinR) });
+        }
+      });
+    }
+    blobs.forEach(function (b) { b.dt = b.m = b.mu = null; });
+
+    TM.push(nowMs());
+    /* ---- 6. fold line: thin dark line, small-angle Hough over a ridge map ---- */
+    var excl = buf('excl', Uint8Array, N, true);
+    coins.forEach(function (c) {
+      var rad = c.r * 1.3 + 2, yA = Math.max(0, Math.floor(c.y - rad)), yB = Math.min(H - 1, Math.ceil(c.y + rad));
+      for (var yy = yA; yy <= yB; yy++) {
+        var hw = Math.sqrt(Math.max(0, rad * rad - (yy - c.y) * (yy - c.y)));
+        var xA = Math.max(0, Math.floor(c.x - hw)), xB = Math.min(W - 1, Math.ceil(c.x + hw));
+        for (var xx = xA; xx <= xB; xx++) excl[yy * W + xx] = 1;
+      }
+    });
+    for (i = mY0 * W; i <= mY1 * W + W - 1; i++) if (M[i]) excl[i] = 1;
+    var ph = py1 - py0, pw = px1 - px0, pcx = (px0 + px1) / 2;
+    var bandA = Math.round(py0 + 0.15 * ph), bandB = Math.round(py0 + 0.85 * ph);
+    var o1 = Math.max(2, Math.round(long / 370)), o2r = 2 * o1;
+    var ridge = buf('ridge', Uint8Array, N, true), ptsX = [], ptsY = [];
+    for (y = Math.max(bandA, o2r); y <= Math.min(bandB, H - 1 - o2r); y++) {
+      ridgeRow(L, PL, excl, ridge, y * W, W, Math.max(0, inL[y] + (inL[y] & 1)), inR[y], o1, o2r);
+    }
+    var RT = 16;
+    for (y = bandA; y <= bandB; y++) for (x = 0; x < W; x += 2) if (ridge[y * W + x] >= RT) { ptsX.push(x); ptsY.push(y); }
+    var fold = null, bestCov = 0;
+    var MAXA = 15, STEP = 0.5, nA = Math.round(2 * MAXA / STEP) + 1;
+    if (ptsX.length) {
+      var accA = new Int32Array(3 * H), cands = [];
+      for (var ai = 0; ai < nA; ai++) {
+        var ang = (-MAXA + ai * STEP) * PI / 180, tn = Math.tan(ang);
+        accA.fill(0);
+        for (var pi2 = 0; pi2 < ptsX.length; pi2++) {
+          var y0 = Math.round(ptsY[pi2] - (ptsX[pi2] - pcx) * tn) + H;
+          if (y0 >= 0 && y0 < 3 * H) accA[y0]++;
+        }
+        var bv = 0, by2 = 0;
+        for (var yy4 = 1; yy4 < 3 * H - 1; yy4++) { var sv = accA[yy4 - 1] + accA[yy4] + accA[yy4 + 1]; if (sv > bv) { bv = sv; by2 = yy4 - H; } }
+        cands.push({ score: bv, ang: ang, y0: by2 });
+      }
+      cands.sort(function (a, b) { return b.score - a.score; });
+      var tried = [];
+      for (var ci2 = 0; ci2 < cands.length && tried.length < 8; ci2++) {
+        var cd = cands[ci2];
+        if (tried.some(function (t) { return Math.abs(t.y0 - cd.y0) < 4 && Math.abs(t.ang - cd.ang) < 0.03; })) continue;
+        tried.push(cd);
+        var tn2 = Math.tan(cd.ang), avail = 0, cov = 0, span = 0;
+        for (x = 2 * Math.ceil(px0 / 2); x <= px1; x += 2) {
+          var yl = Math.round(cd.y0 + (x - pcx) * tn2);
+          if (yl < bandA || yl > bandB || x < inL[yl] || x > inR[yl]) continue;
+          span++;
+          if (excl[yl * W + x]) continue;
+          avail++;
+          for (var d3 = -2; d3 <= 2; d3++) { var yq = yl + d3; if (yq >= 0 && yq < H && ridge[yq * W + x] >= RT) { cov++; break; } }
+        }
+        var covF = avail ? cov / avail : 0;
+        if (avail >= 0.3 * span && span >= 0.25 * pw && covF > bestCov) { bestCov = covF; fold = { y0: cd.y0, ang: cd.ang }; }
+      }
+    }
+    var foldRes;
+    if (fold && bestCov >= 0.5) {
+      foldRes = { y: fold.y0, found: true, angle: fold.ang * 180 / PI, ang: fold.ang, coverage: bestCov };
+    } else {
+      var fy2 = (py0 + py1) / 2, ys = coins.map(function (c) { return c.y; }).sort(function (a, b) { return a - b; });
+      var bA = py0 + 0.25 * ph, bB = py0 + 0.75 * ph, bestGap = 0;
+      for (i = 0; i < ys.length - 1; i++) {
+        var mid = (ys[i] + ys[i + 1]) / 2, gap = ys[i + 1] - ys[i];
+        if (mid >= bA && mid <= bB && gap > bestGap) { bestGap = gap; fy2 = mid; }
+      }
+      if (bestGap < 2.2 * coinR) fy2 = (py0 + py1) / 2;
+      foldRes = { y: fy2, found: false, angle: 0, ang: 0, coverage: bestCov };
+    }
+    var fa = foldRes.ang, ftn = Math.tan(fa);
+    function foldYAt(xq) { return foldRes.y + (xq - pcx) * ftn; }
+    foldRes.x0 = px0; foldRes.y0 = foldYAt(px0); foldRes.x1 = px1; foldRes.y1 = foldYAt(px1);
+    foldRes.y = foldYAt(W / 2);
+    foldRes.y = Math.round(foldRes.y * 10) / 10; foldRes.y0 = Math.round(foldRes.y0 * 10) / 10; foldRes.y1 = Math.round(foldRes.y1 * 10) / 10;
+    foldRes.coverage = Math.round(foldRes.coverage * 100) / 100;
+    foldRes.angle = Math.round(foldRes.angle * 10) / 10;
+    delete foldRes.ang;
+
+    TM.push(nowMs());
+    /* ---- 7. halves and piles ---- */
+    var topIdx = [], botIdx = [];
+    coins.forEach(function (c, ci) { c.half = c.y < foldYAt(c.x) ? 'top' : 'bottom'; (c.half === 'top' ? topIdx : botIdx).push(ci); });
+    function half(idxs, ex) {
+      var cs2 = idxs.map(function (k) { return coins[k]; });
+      var k = ex && ex.piles ? ex.piles : 0;
+      var sp2 = splitHalf(cs2, k);
+      var ordered = orderGroups(sp2.groups, cs2, fa, coinR || 10);
+      var pileOf = coins.map(function () { return -1; });
+      ordered.forEach(function (g, gi) { g.forEach(function (j) { pileOf[idxs[j]] = gi; coins[idxs[j]].pile = gi; }); });
+      return { count: idxs.length, piles: ordered.map(function (g) { return g.length; }), pileOf: pileOf, clear: sp2.clear,
+        links: { cut: sp2.cut.map(round2), kept: sp2.kept.map(round2) } };
+    }
+    function round2(v) { return Math.round(v * 100) / 100; }
+    var top = half(topIdx, expect && expect.top), bottom = half(botIdx, expect && expect.bottom);
+
+    TM.push(nowMs());
+    /* ---- 8. confidence ---- */
+    var conf = 1;
+    if (!foldRes.found) conf *= 0.75;
+    if (!top.clear) conf *= 0.75;
+    if (!bottom.clear) conf *= 0.75;
+    multiInfo.forEach(function (mi) { if (Math.abs(mi.n - mi.est) / mi.n > 0.35) conf *= 0.85; });
+    if (paperFrac < 0.15) conf *= 0.85;
+    if (coins.length) {
+      var rs = coins.map(function (c) { return c.r; }), mr = rs.reduce(function (a, b) { return a + b; }, 0) / rs.length;
+      var sd = Math.sqrt(rs.reduce(function (a, b) { return a + (b - mr) * (b - mr); }, 0) / rs.length);
+      if (sd / mr > 0.2) conf *= 0.9;
+    }
+    conf = Math.round(clamp(conf, 0, 1) * 100) / 100;
+
+    var outCoins = coins.map(function (c) { return { x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, r: Math.round(c.r * 10) / 10, half: c.half, pile: c.pile }; });
+    var res = {
+      ok: coins.length > 0, size: { w: W, h: H }, coins: outCoins, coinR: Math.round(coinR * 10) / 10,
+      fold: foldRes, paper: paper, top: top, bottom: bottom, confidence: coins.length ? conf : 0
+    };
+    TM.push(nowMs()); res.stages = TM.slice(1).map(function (t, k) { return Math.round(t - TM[k]); });
+    if (!coins.length) { res.reason = 'no_coins'; res.message = MESSAGES.no_coins; }
+    return res;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* debug overlay                                                       */
+  /* ------------------------------------------------------------------ */
+  var PAL = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#9a6324', '#469990', '#000075'];
+  function coinsOverlay(source, res) {
+    var W = res.size.w, H = res.size.h, c = makeCanvas(W, H), x = c.getContext('2d');
+    x.drawImage(source, 0, 0, W, H);
+    if (res.paper) { x.setLineDash([6, 4]); x.strokeStyle = '#2050ff'; x.lineWidth = 2; x.strokeRect(res.paper.x0, res.paper.y0, res.paper.x1 - res.paper.x0, res.paper.y1 - res.paper.y0); x.setLineDash([]); }
+    var f = res.fold;
+    if (f) { x.strokeStyle = f.found ? 'rgba(255,0,0,0.9)' : 'rgba(255,140,0,0.9)'; x.lineWidth = 2; if (!f.found) x.setLineDash([10, 6]); x.beginPath(); x.moveTo(f.x0 !== undefined ? f.x0 : 0, f.y0 !== undefined ? f.y0 : f.y); x.lineTo(f.x1 !== undefined ? f.x1 : W, f.y1 !== undefined ? f.y1 : f.y); x.stroke(); x.setLineDash([]); }
+    ['top', 'bottom'].forEach(function (hn, hi) {
+      var hf = res[hn];
+      hf.piles.forEach(function (_, pi) {
+        var pts = [];
+        res.coins.forEach(function (cn, ci) { if (hf.pileOf[ci] === pi) for (var a = 0; a < 16; a++) pts.push([cn.x + (cn.r + 5) * Math.cos(a * PI / 8), cn.y + (cn.r + 5) * Math.sin(a * PI / 8)]); });
+        var hl = convexHull(pts), col = PAL[(pi + hi * 5) % PAL.length];
+        x.beginPath(); hl.forEach(function (p, k) { if (k) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }); x.closePath();
+        x.fillStyle = col + '30'; x.fill(); x.strokeStyle = col; x.lineWidth = 2; if (hi) x.setLineDash([5, 3]); x.stroke(); x.setLineDash([]);
+      });
+    });
+    res.coins.forEach(function (cn, ci) {
+      var hf = res[cn.half], pi = hf.pileOf[ci], col = PAL[(pi + (cn.half === 'bottom' ? 5 : 0)) % PAL.length];
+      x.beginPath(); x.arc(cn.x, cn.y, cn.r, 0, 2 * PI); x.strokeStyle = col; x.lineWidth = 2; x.stroke();
+      x.beginPath(); x.arc(cn.x, cn.y, 2, 0, 2 * PI); x.fillStyle = col; x.fill();
+    });
+    x.font = 'bold ' + Math.max(12, Math.round(Math.max(W, H) / 60)) + 'px sans-serif';
+    var lines = [
+      'TOP ' + res.top.count + ' piles [' + res.top.piles.join(',') + ']' + (res.top.clear ? '' : ' (unclear)'),
+      'BOTTOM ' + res.bottom.count + ' piles [' + res.bottom.piles.join(',') + ']' + (res.bottom.clear ? '' : ' (unclear)'),
+      'fold ' + (res.fold.found ? 'found' : 'FALLBACK') + ' ' + res.fold.angle + '°  conf ' + res.confidence + '  r=' + res.coinR + (res.ms !== undefined ? '  ' + res.ms + 'ms' : '')
+    ];
+    var lh = Math.max(14, Math.round(Math.max(W, H) / 50));
+    x.fillStyle = 'rgba(255,255,255,0.8)'; x.fillRect(4, 4, Math.min(W - 8, lh * 18), lh * lines.length + 8);
+    x.fillStyle = '#111';
+    lines.forEach(function (t, k) { x.fillText(t, 10, 4 + lh * (k + 1)); });
+    return c;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* synthetic sample photos                                             */
+  /* ------------------------------------------------------------------ */
+  function mulberry32(a) {
+    return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+
+  // Lay out piles inside a w*h region. Returns {D, coins:[{x,y,pile,slot}]} in region coords (0..w, 0..h).
+  function layoutHalf(piles, w, h, opt, rnd) {
+    var P = piles.length;
+    if (!P) return { D: 0, coins: [] };
+    var pitch = opt.spacing, gap = opt.gap, best = null;
+    for (var pr = 1; pr <= 3; pr++) {
+      if (pr > P) break;
+      var per = Math.ceil(P / pr), rowsOfPiles = [];
+      for (var k = 0; k < P; k += per) rowsOfPiles.push(piles.slice(k, k + per).map(function (s, j) { return { s: s, i: k + j }; }));
+      for (var m = 1; m <= 12; m++) {
+        var maxW = 0, totH = 0;
+        rowsOfPiles.forEach(function (row) {
+          var rw = 0, rh = 0;
+          row.forEach(function (p, j) {
+            var c = Math.min(p.s, m), rws = Math.ceil(p.s / c);
+            rw += (c - 1) * pitch + 1 + (j ? gap : 0);
+            rh = Math.max(rh, (rws - 1) * pitch + 1);
+          });
+          maxW = Math.max(maxW, rw); totH += rh;
+        });
+        totH += (rowsOfPiles.length - 1) * (gap + 0.4);
+        var D = Math.min(w / maxW, h / totH);
+        if (!best || D > best.D * (pr > best.pr ? 1.15 : 1.0001)) best = { D: D, pr: pr, m: m, rows: rowsOfPiles, maxW: maxW, totH: totH };
+      }
+    }
+    var Dm = Math.min(best.D * 0.95, opt.dMax);
+    var blockW = best.maxW * Dm, blockH = best.totH * Dm;
+    var ox = (w - blockW) * (0.2 + 0.6 * rnd()), oy = (h - blockH) * (0.25 + 0.5 * rnd());
+    var coins = [], yCur = oy;
+    best.rows.forEach(function (row) {
+      var rw = 0, rh = 0;
+      var dims = row.map(function (p, j) {
+        var c = Math.min(p.s, best.m), rws = Math.ceil(p.s / c);
+        rw += (c - 1) * pitch + 1 + (j ? gap : 0);
+        rh = Math.max(rh, (rws - 1) * pitch + 1);
+        return { c: c, rws: rws };
+      });
+      var xCur = ox + (blockW - rw * Dm) * rnd();
+      row.forEach(function (p, j) {
+        var d = dims[j];
+        if (j) xCur += gap * Dm;
+        var ph = ((d.rws - 1) * pitch + 1) * Dm, yOff = yCur + (rh * Dm - ph) * rnd();
+        for (var q = 0; q < p.s; q++) {
+          var cc = q % d.c, rq = Math.floor(q / d.c);
+          coins.push({ x: xCur + Dm / 2 + cc * pitch * Dm, y: yOff + Dm / 2 + rq * pitch * Dm, pile: p.i });
+        }
+        xCur += ((d.c - 1) * pitch + 1) * Dm;
+      });
+      yCur += (rh + gap + 0.4) * Dm;
+    });
+    return { D: Dm, coins: coins };
+  }
+
+  function hsl(h, s, l, a) { return 'hsla(' + h.toFixed(1) + ',' + s.toFixed(1) + '%,' + clamp(l, 0, 100).toFixed(1) + '%,' + (a === undefined ? 1 : a) + ')'; }
+
+  function drawCoin(ctx, x, y, r, rnd, shadow) {
+    var h = 17 + rnd() * 11, s = 50 + rnd() * 22, l = 33 + rnd() * 14;
+    ctx.save();
+    ctx.shadowColor = 'rgba(40,30,20,' + (0.45 * shadow) + ')';
+    ctx.shadowBlur = r * 0.35; ctx.shadowOffsetX = r * 0.10; ctx.shadowOffsetY = r * 0.14;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fillStyle = hsl(h, s, l * 0.8); ctx.fill();
+    ctx.restore();
+    var g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
+    g.addColorStop(0, hsl(h, s, l + 15)); g.addColorStop(0.55, hsl(h, s, l)); g.addColorStop(1, hsl(h, s, l - 12));
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = r * 0.07; ctx.strokeStyle = hsl(h, s, l + 9, 0.7);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.9, 0, 2 * PI); ctx.stroke();
+    ctx.lineWidth = Math.max(1, r * 0.035); ctx.strokeStyle = hsl(h, s, l - 18, 0.9);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.985, 0, 2 * PI); ctx.stroke();
+    // stars and an embossed motif
+    var a0 = rnd() * 2 * PI, k;
+    ctx.fillStyle = hsl(h, s, l + 10, 0.6);
+    for (k = 0; k < 12; k++) { if (rnd() < 0.25) continue; var a = a0 + k * PI / 6; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * 0.76, y + Math.sin(a) * r * 0.76, r * 0.04, 0, 2 * PI); ctx.fill(); }
+    ctx.lineWidth = Math.max(1, r * 0.05);
+    for (k = 0; k < 4; k++) {
+      ctx.strokeStyle = rnd() < 0.5 ? hsl(h, s, l + 12, 0.45) : hsl(h, s, l - 12, 0.45);
+      ctx.beginPath();
+      var rr = r * (0.2 + 0.4 * rnd()), aa = rnd() * 2 * PI;
+      ctx.arc(x + (rnd() - 0.5) * r * 0.5, y + (rnd() - 0.5) * r * 0.5, rr, aa, aa + 1 + 2 * rnd());
+      ctx.stroke();
+    }
+    var hg = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, 0, x - r * 0.3, y - r * 0.35, r * 0.7);
+    hg.addColorStop(0, 'rgba(255,235,200,' + (0.10 + 0.15 * rnd()) + ')'); hg.addColorStop(1, 'rgba(255,235,200,0)');
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fillStyle = hg; ctx.fill();
+  }
+
+  function drawCoinsSample(spec) {
+    spec = spec || {};
+    var seed = (spec.seed === undefined ? 12345 : spec.seed) >>> 0;
+    var rnd = mulberry32(seed * 2654435761 + 1);
+    var W = spec.width || 1200, H = spec.height || 900;
+    var topP = (spec.top || []).slice(), botP = (spec.bottom || []).slice();
+    var rot = ((spec.rotate || 0) + (rnd() - 0.5) * 1.5) * PI / 180;
+    var light = spec.light === undefined ? 1 : spec.light;
+    var spacing = spec.spacing === undefined ? 1.08 : spec.spacing;
+    var gap = spec.gap === undefined ? 1.1 : spec.gap;
+    var mixed = !!spec.mixed, shadow = spec.shadow === undefined ? 1 : spec.shadow;
+    var foldAlpha = spec.fold === undefined ? 0.3 + 0.25 * rnd() : spec.fold;
+    var c = makeCanvas(W, H), ctx = c.getContext('2d');
+
+    // wood
+    var wh = 28 + rnd() * 8, wl = 58 + rnd() * 10;
+    ctx.fillStyle = hsl(wh, 42, wl); ctx.fillRect(0, 0, W, H);
+    for (var k = 0; k < 160; k++) {
+      var yy = rnd() * H, amp = 2 + rnd() * 8, ph2 = rnd() * 6, fq = 0.002 + rnd() * 0.006;
+      ctx.strokeStyle = rnd() < 0.6 ? hsl(wh - 4, 45, wl - 12 - rnd() * 10, 0.08 + rnd() * 0.12) : hsl(wh + 4, 40, wl + 8, 0.08 + rnd() * 0.1);
+      ctx.lineWidth = 0.6 + rnd() * 4;
+      ctx.beginPath();
+      for (var xx = 0; xx <= W; xx += 20) { var yv = yy + amp * Math.sin(xx * fq + ph2); if (xx) ctx.lineTo(xx, yv); else ctx.moveTo(xx, yv); }
+      ctx.stroke();
+    }
+
+    // paper
+    var pw = W * (0.84 + 0.04 * rnd()), phh = pw / 1.414;
+    if (phh > H * 0.86) { phh = H * 0.86; pw = phh * 1.414; }
+    var pcx = W / 2 + (rnd() - 0.5) * 30, pcy = H / 2 + (rnd() - 0.5) * 24;
+    var pr0 = 236 + rnd() * 12, pg0 = pr0 - rnd() * 4, pb0 = pr0 - 4 - rnd() * 10;
+    if (spec.tint === 'cool') { pb0 = Math.min(255, pr0 + 6); pg0 = pr0 + 2; pr0 -= 10; }
+    if (spec.tint === 'warm') { pg0 = pr0 - 8; pb0 = pr0 - 26; }
+    ctx.save();
+    ctx.translate(pcx, pcy); ctx.rotate(rot);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 14; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 5;
+    ctx.fillStyle = 'rgb(' + pr0 + ',' + pg0 + ',' + pb0 + ')'; ctx.fillRect(-pw / 2, -phh / 2, pw, phh);
+    ctx.restore();
+    var tg = ctx.createLinearGradient(0, -phh / 2, 0, 0);
+    tg.addColorStop(0, 'rgba(255,255,255,0.04)'); tg.addColorStop(1, 'rgba(0,0,0,' + (0.02 + 0.04 * rnd()) + ')');
+    ctx.fillStyle = tg; ctx.fillRect(-pw / 2, -phh / 2, pw, phh / 2);
+    var bg = ctx.createLinearGradient(0, 0, 0, phh / 2);
+    bg.addColorStop(0, 'rgba(0,0,0,' + (0.03 + 0.05 * rnd()) + ')'); bg.addColorStop(1, 'rgba(0,0,0,0.01)');
+    ctx.fillStyle = bg; ctx.fillRect(-pw / 2, 0, pw, phh / 2);
+    if (foldAlpha > 0) {
+      ctx.strokeStyle = 'rgba(70,70,70,' + foldAlpha + ')'; ctx.lineWidth = 1.4 + rnd();
+      ctx.beginPath(); ctx.moveTo(-pw / 2, 0); ctx.lineTo(pw / 2, (rnd() - 0.5) * 3); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,' + (foldAlpha * 0.6) + ')'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-pw / 2, -2); ctx.lineTo(pw / 2, -2); ctx.stroke();
+    }
+
+    // coins
+    var mX = pw * 0.05, mY = phh * 0.06, fm = phh * 0.05;
+    var regW = pw - 2 * mX, regH = phh / 2 - mY - fm;
+    var dMax = pw * (0.064 + 0.012 * rnd());
+    if (spec.coinScale) dMax *= spec.coinScale;
+    var opt = { spacing: spacing, gap: gap, dMax: dMax };
+    var truthCoins = [];
+    var sizes = [0.765, 0.882, 1.0];
+    [[topP, -phh / 2 + mY, 'top'], [botP, fm, 'bottom']].forEach(function (hd) {
+      var lay = layoutHalf(hd[0], regW, regH, opt, rnd), R = lay.D / 2;
+      lay.coins.forEach(function (cn) {
+        var rr = mixed ? R * sizes[Math.floor(rnd() * 3)] : R * (0.94 + 0.06 * rnd());
+        var jit = Math.max(0, (spacing - 1.0) * lay.D * 0.3);
+        var lx = -pw / 2 + mX + cn.x + (rnd() - 0.5) * 2 * jit * 0.5 + (spacing < 1.03 ? 0 : 0);
+        var ly = hd[1] + cn.y + (rnd() - 0.5) * 2 * Math.max(jit * 0.5, spacing < 1.03 ? R * 0.02 : 0);
+        truthCoins.push({ lx: lx, ly: ly, r: rr, half: hd[2], pile: cn.pile });
+      });
+    });
+    truthCoins.forEach(function (tc) { drawCoin(ctx, tc.lx, tc.ly, tc.r, rnd, shadow); });
+    ctx.restore();
+
+    // lighting
+    var lx0 = W * rnd(), ly0 = H * rnd();
+    var lg = ctx.createRadialGradient(lx0, ly0, 0, lx0, ly0, Math.max(W, H) * (0.8 + 0.5 * rnd()));
+    var edge = Math.round(255 * (0.72 + 0.15 * rnd()));
+    lg.addColorStop(0, 'rgb(255,255,255)'); lg.addColorStop(1, 'rgb(' + edge + ',' + edge + ',' + edge + ')');
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+    var lv = Math.round(255 * light);
+    ctx.fillStyle = 'rgb(' + lv + ',' + Math.round(lv * (0.98 + 0.02 * rnd())) + ',' + Math.round(lv * (0.93 + 0.06 * rnd())) + ')';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // soft shadow of the phone / a hand across part of the page
+    if (spec.handShadow) {
+      var hx = W * (0.2 + 0.6 * rnd()), hy = H * (0.2 + 0.6 * rnd()), hr = Math.min(W, H) * (0.25 + 0.2 * rnd());
+      var sg2 = ctx.createRadialGradient(hx, hy, hr * 0.2, hx, hy, hr);
+      var sv = Math.round(255 * (1 - spec.handShadow));
+      sg2.addColorStop(0, 'rgb(' + sv + ',' + sv + ',' + Math.min(255, sv + 8) + ')'); sg2.addColorStop(1, 'rgb(255,255,255)');
+      ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = sg2; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';
+    }
+    if (spec.blur) {
+      var bc = makeCanvas(W, H), bx = bc.getContext('2d');
+      bx.filter = 'blur(' + spec.blur + 'px)'; bx.drawImage(c, 0, 0); ctx.clearRect(0, 0, W, H); ctx.drawImage(bc, 0, 0);
+    }
+
+    // sensor noise
+    var id = ctx.getImageData(0, 0, W, H), d = id.data, amp2 = spec.noise === undefined ? 7 : spec.noise;
+    for (var p = 0; p < d.length; p += 4) {
+      var n0 = (rnd() + rnd() - 1) * amp2;
+      d[p] = clamp(d[p] + n0 + (rnd() - 0.5) * 3, 0, 255); d[p + 1] = clamp(d[p + 1] + n0, 0, 255); d[p + 2] = clamp(d[p + 2] + n0 + (rnd() - 0.5) * 3, 0, 255);
+    }
+    ctx.putImageData(id, 0, 0);
+
+    var cr = Math.cos(rot), sr = Math.sin(rot);
+    var tcs = truthCoins.map(function (tc) { return { x: pcx + tc.lx * cr - tc.ly * sr, y: pcy + tc.lx * sr + tc.ly * cr, r: tc.r, half: tc.half, pile: tc.pile }; });
+    c.truth = {
+      top: { count: topP.reduce(function (a, b) { return a + b; }, 0), piles: topP.slice() },
+      bottom: { count: botP.reduce(function (a, b) { return a + b; }, 0), piles: botP.slice() },
+      coins: tcs, fold: { y: pcy, angle: rot * 180 / PI }
+    };
+    return c;
+  }
+
+  // Optional: call once at app start (e.g. while the camera opens). Reads two small synthetic photos so the
+  // browser's JIT compiles the pixel loops before the first real photo. Takes ~100-200 ms; returns that time.
+  function coinsWarmup() {
+    var t = nowMs();
+    for (var k = 0; k < 2; k++) {
+      var c = drawCoinsSample({ top: [2, 2], bottom: [3], seed: 7 + k, width: 480, height: 360, noise: 4 });
+      readCoins(c, c.width, c.height, { top: { piles: 2 }, bottom: { piles: 1 } });
+    }
+    return Math.round(nowMs() - t);
+  }
+
+  root.readCoins = readCoins;
+  root.coinsWarmup = coinsWarmup;
+  root.drawCoinsSample = drawCoinsSample;
+  root.coinsOverlay = coinsOverlay;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+"use strict";
+(function(){
+const VERSION="0.2.0", ITERATION=2, RECORD_SCHEMA="fotofold.record/1";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||"" }catch(e){ return "" } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} } };
+const plural=(k,w)=>k+" "+w+(k===1?"":"s");
+const fr=(a,b)=>'<span class="frac"><span>'+a+'</span><span class="bar"></span><span>'+b+'</span></span>';
+
+/* ======================= THE SET =======================
+   Every step is one thing to do with the coins, one photo, and (for most steps) one number to set.
+   need: what the photo should show, per half: {count, piles}. ask: {kind:"frac", den, target} or {kind:"count", target}. */
+const T=(top,bottom)=>({top,bottom});
+const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it into equal parts, and see how many parts fit.",std:"4.NF.A.1, 5.NF.B.4, 5.NF.B.7, 6.NS.A.1 preview",
+ steps:[
+  {id:"c1.w1.1", label:"whole of 1", prompt:"Make a whole of 1 coin.", sub:"Put 1 coin in the top half of your paper. Take a photo.",
+   need:T({count:1},{count:0}), ask:{kind:"frac",den:1,target:1,q:"What part of the whole (1) is your coin?",hint:"Your whole (1) is 1 coin. Count your coins."}, say:"1/1 = 1. One coin is the whole (1)."},
+  {id:"c1.w2.1", label:"whole of 2", prompt:"Make a whole of 2 coins.", sub:"Add 1 coin to the top half, so the top half has 2 coins. Take a photo.",
+   need:T({count:2},{count:0}), say:"A whole (2): 2 coins."},
+  {id:"c1.w2.2", label:"1 part of 2", prompt:"Group your whole (2) into 2 equal parts.", sub:"Leave a space about one coin wide between the parts. Take a photo.",
+   need:T({count:2,piles:2},{count:0}), ask:{kind:"frac",den:2,target:1,q:"One part is what part of the whole (2)?",hint:"The whole (2) has 2 coins. How many coins are in one part?"}, say:"1/2. Each part is 1 coin of your 2."},
+  {id:"c1.w4.1", label:"whole of 4", prompt:"Make a whole of 4 coins.", sub:"Add 2 coins, so the top half has 4. Take a photo.",
+   need:T({count:4},{count:0}), say:"A whole (4): 4 coins."},
+  {id:"c1.w4.2", label:"coins in 1 of 2 parts", prompt:"Group your whole (4) into 2 equal parts.", sub:"Leave a space about one coin wide between the parts. Take a photo.",
+   need:T({count:4,piles:2},{count:0}), ask:{kind:"count",target:2,q:"How many coins are in each part?",hint:"Count the coins in one part."}, say:"2 coins in each part. One part is 2/4 of the whole (4), and 2/4 = 1/2."},
+  {id:"c1.w4.3", label:"1 part of 4", prompt:"Group your whole (4) into 4 equal parts.", sub:"Leave a space about one coin wide between the parts. Take a photo.",
+   need:T({count:4,piles:4},{count:0}), ask:{kind:"frac",den:4,target:1,q:"One part is what part of the whole (4)?",hint:"The whole (4) has 4 coins. How many coins are in one part?"}, say:"1/4. Each part is 1 coin of your 4."},
+  {id:"c1.w4.4", label:"4/4 − 1/4", prompt:"Take away 1 part.", sub:"Take 1 part off the paper. Take a photo.",
+   need:T({count:3},{count:0}), ask:{kind:"frac",den:4,target:3,q:"What part of the whole (4) is left?",hint:"The whole (4) had 4 coins. How many are on the paper now?"}, say:"3/4 is left. 4/4 − 1/4 = 3/4."},
+  {id:"c1.w12.1", label:"whole of 12", prompt:"Make a whole of 12 coins.", sub:"Add 9 coins, so the top half has 12. Take a photo.",
+   need:T({count:12},{count:0}), say:"A whole (12): 12 coins."},
+  {id:"c1.w12.2", label:"coins in 1 of 4 parts", prompt:"Group your whole (12) into 4 equal parts.", sub:"Leave a space about one coin wide between the parts. Take a photo.",
+   need:T({count:12,piles:4},{count:0}), ask:{kind:"count",target:3,q:"How many coins are in each part?",hint:"Count the coins in one part."}, say:"3 coins in each part. One part is 3/12 of the whole (12), and 3/12 = 1/4."},
+  {id:"c1.w12.3", label:"1 part of 12 coins", prompt:"Take 3 of your 4 parts off the paper.", sub:"Take a photo.",
+   need:T({count:3,piles:1},{count:0}), ask:{kind:"frac",den:12,target:3,q:"What part of the whole (12) is left?",hint:"The whole (12) had 12 coins. How many are on the paper now?"}, say:"3/12 of the whole (12). That's 1 of your 4 parts: 3/12 = 1/4."},
+  {id:"c1.b12.1", label:"bottom whole of 12", prompt:"Make a whole of 12 coins in the bottom half.", sub:"Keep your 3 coins in the top half. Take a photo.",
+   need:T({count:3},{count:12}), say:"A whole (12) in the bottom half, and 1/4 of a whole (12) in the top half."},
+  {id:"c1.b12.2", label:"coins in 1 of 2 parts (bottom)", prompt:"Group the bottom whole (12) into 2 equal parts.", sub:"Leave a space about one coin wide between the parts. Take a photo.",
+   need:T({count:3},{count:12,piles:2}), ask:{kind:"count",target:6,q:"How many coins are in each bottom part?",hint:"Count the coins in one bottom part."}, say:"6 coins in each part. One part is 6/12 of the whole (12), and 6/12 = 1/2."},
+  {id:"c1.b12.3", label:"6/12 in the bottom", prompt:"Take 1 of your 2 bottom parts off the paper.", sub:"Keep your 3 coins in the top half. Take a photo.",
+   need:T({count:3},{count:6,piles:1}), ask:{kind:"frac",den:12,target:6,q:"What part of the whole (12) is in the bottom half now?",hint:"The whole (12) had 12 coins. Count the coins in the bottom half."}, say:"6/12 of the whole (12), and 6/12 = 1/2."},
+  {id:"c1.b12.4", label:"1/2 ÷ 1/4", prompt:"Group your bottom 6 into parts the size of your top part.", sub:"Your top part has 3 coins. Make bottom parts of 3, with a space about one coin wide between them. Take a photo.",
+   need:T({count:3,piles:1},{count:6,piles:2}), ask:{kind:"count",target:2,q:"Your top part is 3 coins. How many 3s make your bottom 6?",hint:"Count the parts of 3 in your bottom half."},mode:"fit", say:"Two 3s make 6. So 2 of your 1/4 make 1/2: 1/2 ÷ 1/4 = 2, because 2 × 1/4 = 1/2."},
+ ]}];
+SETS.forEach(X=>X.steps.forEach(st=>{ st.whole=+(/\.[wb](\d+)\./.exec(st.id)||[0,0])[1]; st.mode=st.mode||(st.ask?st.ask.kind:"build"); st.target=st.ask?(st.ask.kind==="frac"?st.ask.target+"/"+st.ask.den:String(st.ask.target)):(st.need.top.count+"|"+st.need.bottom.count); }));
+
+/* ======================= STATE ======================= */
+const S={set:null,round:1,s:0,results:[],photos:[],events:[],started:new Date().toISOString(),seen:null,img:null,source:null,photoOk:false,stepOk:false,num:0,tries:0,photoTries:0,stepAt:0,firstWhole:null,classCode:store.get("ff.class"),student:store.get("ff.student").replace(/[^0-9]/g,"")};
+const t0=performance.now();
+function log(type,data){ S.events.push(Object.assign({t:+((performance.now()-t0)/1000).toFixed(2),set:S.set&&S.set.key,round:S.round,type},data)); persist(); }
+const PKEY="fs.progress.v1";
+function persist(){ if(!S.set) return; try{ localStorage.setItem(PKEY,JSON.stringify({at:Date.now(),set:S.set.key,round:S.round,s:S.s,stepOk:!!S.stepOk,done:!!S.loggedDone,results:S.results,photos:S.photos,events:S.events,started:S.started})) }catch(e){} }
+function loadProgress(){ try{ const p=JSON.parse(localStorage.getItem(PKEY)||"null"); if(p&&Date.now()-p.at<24*3600e3&&SETS.find(x=>x.key===p.set)) return p }catch(e){} return null }
+function forget(){ try{ localStorage.removeItem(PKEY) }catch(e){} }
+const ST=()=>S.set.steps[S.s];
+function view(v){ for(const x of ["homeView","stepView","doneView"]) $(x).hidden=x!==v; }
+
+/* ======================= HOME ======================= */
+$("classCode").value=S.classCode; $("studentNo").value=S.student;
+$("classCode").oninput=e=>{ S.classCode=e.target.value.trim().slice(0,12); store.set("ff.class",S.classCode); };
+$("studentNo").oninput=e=>{ const v=e.target.value.replace(/[^0-9]/g,"").slice(0,3); if(v!==e.target.value) e.target.value=v; S.student=v; store.set("ff.student",v); };
+function renderHome(){ view("homeView"); $("wholes").innerHTML=""; $("brandSet").textContent="iteration "+ITERATION;
+  $("sets").innerHTML=SETS.map(x=>'<button class="setcard" type="button" data-set="'+x.key+'"><span class="no">'+x.no+'</span><b>'+esc(x.name)+'</b><span class="what">'+esc(x.what)+'</span></button>').join("");
+  const p=loadProgress(); $("resumeCard").hidden=!p;
+  $("sets").querySelectorAll("[data-set]").forEach(b=>b.onclick=()=>{ if(p&&p.set===b.dataset.set&&!p.done) return resume(p); startSet(SETS.find(z=>z.key===b.dataset.set)); });
+  if(p){ $("resumeWhat").textContent=p.done?"Your answers to Set "+SETS.find(x=>x.key===p.set).no+" are still on this phone.":"Pick up where you left off: Set "+SETS.find(x=>x.key===p.set).no+", step "+(Math.min(p.s+(p.stepOk?2:1),SETS.find(x=>x.key===p.set).steps.length))+".";
+    $("resumeBtn").textContent=p.done?"See my answers":"Keep going";
+    $("resumeBtn").onclick=()=>resume(p);
+    $("freshBtn").onclick=()=>{ forget(); S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); $("resumeCard").hidden=true; }; } }
+function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.photos=p.photos||[]; S.events=p.events||[]; S.started=p.started||S.started;
+  S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
+  view("stepView"); log("resume",{step:S.s}); showStep(); }
+function startSet(X){ S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=used.length?Math.max(...used)+1:1; S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); showStep(); }
+$("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.dataset.armed){ delete b.dataset.armed; closeCam(); renderHome(); return } b.dataset.armed="1"; const t=b.textContent; b.textContent="tap again to leave this set"; setTimeout(()=>{ if(b.dataset.armed){ delete b.dataset.armed; b.textContent=t } },3500); } else renderHome(); };
+
+/* ======================= A STEP ======================= */
+function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html; }
+function showStep(){ const st=ST(); closeCam();
+  S.seen=null; S.img=null; S.photoOk=false; S.stepOk=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
+  $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
+  $("where").innerHTML=esc(S.set.name)+' · <b>step '+(S.s+1)+' of '+S.set.steps.length+'</b>';
+  const ws=[...new Set(S.set.steps.map(x=>x.whole))];
+  $("wholes").innerHTML=ws.map(w=>'<span class="'+(w<st.whole?"done":w===st.whole?"now":"")+'">whole ('+w+')</span>').join("");
+  $("stepno").textContent=S.s+1; const h=$("head"); h.classList.remove("enter"); void h.offsetWidth; h.classList.add("enter");
+  $("prompt").textContent=st.prompt; $("sub").textContent=st.sub;
+  $("photoRow").hidden=false; $("sampleBtn").hidden=false; $("anyway").hidden=true; $("answerRow").hidden=true; $("nextRow").hidden=true; setFeedback("","");
+  $("seen").textContent=""; drawStage(); persist();
+  requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} }); }
+
+/* ---- the stage: the photo, with each coin circled by its part ---- */
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const PILE=["#1f6fd1","#e0581c","#1d9a52","#b0369e","#c99400","#0f8f95","#6b4fd8","#c23b3b"];
+function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRatio||1), W=cv.clientWidth||cv.parentElement.clientWidth||360;
+  const R=S.seen, img=S.img; let H=Math.round(W*0.62);
+  if(R&&R.size) H=Math.round(W*R.size.h/R.size.w);
+  cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.height=H+"px";
+  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle=css("--mat"); g.fillRect(0,0,W,H);
+  if(!R||!img){ // an empty sheet, folded
+    const x0=W*.06,y0=H*.08,w=W*.88,hh=H*.84; g.fillStyle=css("--paper"); g.fillRect(x0,y0,w,hh); g.strokeStyle="rgba(0,0,0,.25)"; g.lineWidth=1.5; g.beginPath(); g.moveTo(x0,y0+hh/2); g.lineTo(x0+w,y0+hh/2); g.stroke();
+    g.fillStyle="rgba(0,0,0,.35)"; g.font="600 14px "+(css("--f-body")||"sans-serif"); g.textAlign="center"; g.fillText("top half",W/2,y0+hh/4); g.fillText("bottom half",W/2,y0+hh*3/4); return }
+  const k=W/R.size.w; g.drawImage(img,0,0,W,H);
+  if(R.fold&&R.fold.y!=null){ g.save(); g.setLineDash([8,6]); g.strokeStyle="rgba(31,79,138,.85)"; g.lineWidth=2; g.beginPath(); g.moveTo(0,R.fold.y*k); g.lineTo(W,R.fold.y*k); g.stroke(); g.restore(); }
+  const draw=(half,list)=>{ if(!half) return; (R.coins||[]).forEach((c,i)=>{ const pi=half.pileOf?half.pileOf[i]:undefined; if(pi==null||pi<0) return; g.strokeStyle=PILE[pi%PILE.length]; g.lineWidth=3; g.beginPath(); g.arc(c.x*k,c.y*k,(c.r||R.coinR||10)*k+1.5,0,Math.PI*2); g.stroke(); }); };
+  draw(R.top); draw(R.bottom);
+}
+function seenText(R,countOnly){ const half=(h,name)=>{ if(!h||!h.count) return name+" half: no coins."; const p=countOnly?[]:(h.piles||[]); return name+" half: "+plural(h.count,"coin")+(p.length>1?", in "+p.length+" parts ("+p.join(", ")+").":p.length===1&&h.count>1?", in 1 part.":"."); };
+  return half(R.top,"Top")+" "+half(R.bottom,"Bottom"); }
+
+/* ---- does the photo show what the step asked for? ---- */
+function check(R,need){ const probs=[];
+  for(const [name,h,n] of [["top",R.top,need.top],["bottom",R.bottom,need.bottom]]){
+    const c=h?h.count:0, p=h?(h.piles||[]):[];
+    if(c!==n.count){ probs.push(n.count===0 ? "The "+name+" half should be empty." : "The "+name+" half needs "+plural(n.count,"coin")+" (I count "+c+")."); continue }
+    if(n.piles&&n.piles>1&&h&&h.clear===false&&p.length===n.piles){ probs.push("I can't tell your "+name+" parts apart. Leave a space about one coin wide between parts."); continue }
+    if(n.piles){ if(p.length!==n.piles) probs.push("The "+name+" half needs "+n.piles+" part"+(n.piles===1?"":"s")+" (I see "+p.length+")."+(n.piles>1?" Leave a bigger space between parts.":" Push the coins together."));
+      else if(n.piles>1 && !p.every(x=>x===p[0])) probs.push("The "+name+" parts aren't equal ("+p.join(", ")+"). Each part needs "+plural(n.count/n.piles,"coin")+"."); } }
+  return probs; }
+function expectFor(need){ const e={}; for(const k of ["top","bottom"]){ e[k]={count:need[k].count}; if(need[k].piles) e[k].piles=need[k].piles; } return e; }
+
+function analyse(img,w,h,source){ const st=ST(); let R;
+  try{ R=window.readCoins(img,w,h); // first, just count; look for the asked-for parts only once the counts are right
+    const n=st.need, counts=R.ok&&(R.top?R.top.count:0)===n.top.count&&(R.bottom?R.bottom.count:0)===n.bottom.count;
+    if(counts&&(n.top.piles||n.bottom.piles)) R=window.readCoins(img,w,h,expectFor(n));
+  }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
+  S.seen=R; S.img=img; S.source=source; S.photoTries++;
+  log("photo",{step:st.id,source,ok:!!R.ok,top:R.top?{count:R.top.count,piles:R.top.piles}:null,bottom:R.bottom?{count:R.bottom.count,piles:R.bottom.piles}:null,fold:R.fold?R.fold.found:null,confidence:R.confidence});
+  drawStage();
+  if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put your paper on a table, get the whole sheet in the picture, and take it again.")); $("anyway").hidden=true; return }
+  $("seen").textContent=seenText(R,!(st.need.top.piles||st.need.bottom.piles));
+  const probs=check(R,st.need), ok=!probs.length;
+  S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,
+    correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:{top:R.top?{count:R.top.count,piles:R.top.piles}:null,bottom:R.bottom?{count:R.bottom.count,piles:R.bottom.piles}:null}});
+  if(!S.firstWhole&&st.need.top.count===12&&ok) S.firstWhole=12;
+  const countOff=["top","bottom"].some(k=>((R[k]?R[k].count:0))!==st.need[k].count);
+  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Fix the coins and take the photo again."); $("anyway").hidden=!(source==="photo"&&countOff); persist(); return }
+  photoGood(); }
+function photoGood(){ const st=ST(); S.photoOk=true; $("anyway").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
+  if(st.ask){ setFeedback("",""); $("answerRow").hidden=false; renderEq(); }
+  else { S.stepOk=true; setFeedback("good","<b>"+esc(st.say)+"</b>"); showNext(); } persist(); }
+$("anyway").onclick=()=>{ const st=ST(); log("phone_miscounted",{step:st.id,seen:S.seen?{top:S.seen.top&&S.seen.top.count,bottom:S.seen.bottom&&S.seen.bottom.count}:null});
+  const r=S.photos.filter(x=>x.set===S.set.key&&x.round===S.round&&x.step===st.id).slice(-1)[0]; if(r) r.phone_miscounted=true; photoGood(); };
+
+/* ---- the one number to set ---- */
+function renderEq(){ const a=ST().ask; let h='<span class="say">'+esc(a.q)+'</span>';
+  const arrows='<span class="arrows"><button type="button" id="up" aria-label="Up">▲</button><button type="button" id="down" aria-label="Down">▼</button></span>';
+  if(a.kind==="frac") h+='<span class="nowrap"><span class="frac ask"><span id="num">'+S.num+'</span><span class="bar"></span><span>'+a.den+'</span></span>'+arrows+'</span>';
+  else h+='<span class="nowrap"><span class="countbox" id="num">'+S.num+'</span>'+arrows+'</span>';
+  $("eq").innerHTML=h; $("submit").disabled=false;
+  const max=a.kind==="frac"?a.den:15;
+  $("up").onclick=()=>{ if(S.stepOk) return; S.num=Math.min(max,S.num+1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; };
+  $("down").onclick=()=>{ if(S.stepOk) return; S.num=Math.max(0,S.num-1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; }; }
+$("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("submit").disabled=true;
+  S.tries++; const ok=S.num===a.target, wrote=a.kind==="frac"?S.num+"/"+a.den:String(S.num);
+  S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,color_ok:null,symbol_ok:ok,colored:null,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source});
+  log("answer",{step:st.id,correct:ok,try:S.tries});
+  if(ok){ S.stepOk=true; setFeedback("good","<b>"+esc(st.say)+"</b>"); showNext(); }
+  else { setFeedback("warn","<b>"+(a.kind==="frac"?wrote+" isn't it.":S.num+" isn't it.")+"</b>"+hint(st)+" Change it and Submit again, or go on."); showNext(); }
+  persist(); };
+function hint(st){ return st.ask.hint||"Count your coins." }
+function showNext(){ $("nextRow").hidden=false; const last=S.s===S.set.steps.length-1; $("next").textContent=last?"See my answers":"Next"; $("next").className=S.stepOk?"btn go next":"btn ghost"; }
+$("next").onclick=()=>{ if(!S.stepOk){ // moving on without the right answer: the record says so
+    const st=ST(); if(st.ask) S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,correct:false,try:0});
+    else S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,skipped:true,moved_on:true,correct:false,try:0}); log("moved_on",{step:st.id}); }
+  if(S.s<S.set.steps.length-1){ S.s++; showStep() } else showDone(); };
+
+/* ======================= PHOTOS ======================= */
+function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…");
+  const done=(img,w,h)=>analyse(img,w,h,"photo");
+  if(window.createImageBitmap) createImageBitmap(file).then(b=>done(b,b.width,b.height)).catch(viaImg); else viaImg();
+  function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
+$("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
+$("sampleBtn").onclick=()=>{ const n=ST().need; const pilesOf=h=>{ if(!h.count) return []; const k=h.piles||1, each=h.count/k; return Array.from({length:k},()=>each); };
+  const c=window.drawCoinsSample({top:pilesOf(n.top),bottom:pilesOf(n.bottom),seed:S.s+7*S.round}); analyse(c,c.width,c.height,"sample"); };
+/* the camera inside the page, as in FotoFold */
+const CAM={stream:null,failed:false};
+const liveCamOK=()=>!CAM.failed&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)&&window.isSecureContext!==false;
+$("cam").addEventListener("click",e=>{ if(liveCamOK()){ e.preventDefault(); openCam(); } });
+async function openCam(){ $("camBox").hidden=false; $("stageBox").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true; $("snap").disabled=true; $("camTip").textContent="Starting the camera…"; setFeedback("","");
+  try{ const st=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1920}}});
+    CAM.stream=st; const v=$("camVideo"); v.srcObject=st; try{ await v.play() }catch(e){}
+    let tries=0; const ready=()=>{ if(v.videoWidth>0){ $("snap").disabled=false; $("camTip").textContent="Hold the phone over your paper, with the fold line going left to right. Get the whole sheet in the picture. Then tap Take the photo."; return } if(++tries<50) setTimeout(ready,100); else camFail("nopicture") }; ready();
+  }catch(e){ camFail(e&&e.name) } }
+function stopCam(){ if(CAM.stream) for(const t of CAM.stream.getTracks()) try{ t.stop() }catch(e){} CAM.stream=null; try{ $("camVideo").srcObject=null }catch(e){} }
+function closeCam(){ stopCam(); $("camBox").hidden=true; $("stageBox").hidden=false; if(!S.photoOk){ $("photoRow").hidden=false; $("sampleBtn").hidden=false; } }
+function camFail(why){ CAM.failed=true; closeCam();
+  setFeedback("warn", why==="NotAllowedError" ? "<b>The camera is turned off for this browser.</b>On an iPhone: open Settings, then Apps, then Safari, then Camera, and choose Ask. Then reload this page and tap Allow. Until then, tap <i>Use sample coins</i>."
+                                           : "<b>The camera didn't open here.</b>Tap Take a photo again to use the phone's own camera."); }
+$("camCancel").onclick=()=>closeCam();
+$("snap").onclick=()=>{ const v=$("camVideo"), w=v.videoWidth, h=v.videoHeight; if(!w||!h) return; const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(v,0,0,w,h); closeCam(); analyse(c,w,h,"photo"); };
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&CAM.stream) closeCam(); });
+
+/* ======================= MY ANSWERS AND THE RECORD ======================= */
+const runs=id=>S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
+const shots=id=>S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
+function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student&&("#"+S.student)].filter(Boolean).join(" ");
+  const asked=S.set.steps.filter(st=>st.ask); let first=0; const misses=[];
+  for(const st of asked){ const rs=runs(st.id); if(rs.length&&rs[0].correct) first++; const bad=rs.find(r=>!r.correct&&!r.skipped);
+    if(bad){ const right=rs.find(r=>r.correct&&r.try>bad.try); misses.push(st.label+": wrote "+bad.wrote+(right?" → right on try "+right.try:" → moved on")); } }
+  const photos=S.set.steps.map(st=>shots(st.id).filter(r=>!r.skipped)).filter(a=>a.length), firstPhoto=photos.filter(a=>a[0].correct).length;
+  const miscount=S.set.steps.filter(st=>shots(st.id).some(r=>r.phone_miscounted)).map(st=>st.label);
+  const src=new Set(S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.source).map(r=>r.source));
+  return [(who?who+" · ":"")+"FotoSet "+S.set.no+" · round "+S.round, src.has("sample")?(src.has("photo")?"some sample coins":"sample coins"):"own coins",
+    first+" of "+asked.length+" answers first try"+(misses.length?" ("+misses.join("; ")+")":""), firstPhoto+" of "+photos.length+" photos right first time"+(miscount.length?" · said the phone counted wrong on "+miscount.length+" ("+miscount.join("; ")+")":"")].join(" · "); }
+function showDone(){ view("doneView"); $("wholes").innerHTML=[...new Set(S.set.steps.map(x=>x.whole))].map(w=>'<span class="done">whole ('+w+')</span>').join(""); $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
+  $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
+    const mis=shots(st.id).some(r=>r.phone_miscounted);
+    return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
+  $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); } persist(); }
+function recordObj(){ const done=new Set(S.results.map(r=>r.set));
+  return {schema:RECORD_SCHEMA,app:"FotoSet",version:VERSION,iteration:ITERATION,class_code:S.classCode||null,student:S.student||null,
+    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoSet: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:x.std}))})),
+    started:S.started,saved:new Date().toISOString(),summary:S.set?summaryLine():"",
+    summaries:S.set?[{set:S.set.key,round:S.round,line:summaryLine()}]:[],folds:[],photos:S.photos,results:S.results,events:S.events}; }
+function recordText(){ const r=recordObj(), head=Object.assign({},r), j=x=>JSON.stringify(x); delete head.folds; delete head.photos; delete head.results; delete head.events;
+  const list=(k,a)=>' "'+k+'": [\n'+a.map(x=>"  "+j(x)).join(",\n")+"\n ]";
+  return "{\n"+Object.keys(head).map(k=>" "+j(k)+": "+j(head[k])).join(",\n")+",\n"+list("folds",r.folds)+",\n"+list("photos",r.photos)+",\n"+list("results",r.results)+",\n"+list("events",r.events)+"\n}\n"; }
+const toast=m=>{ $("recToast").textContent=m };
+$("saveRec").onclick=()=>{ const who=[S.classCode,S.student].filter(Boolean).join("-").replace(/[^A-Za-z0-9-]/g,""), name="fotoset-"+(who?who+"-":"")+S.started.slice(0,16).replace(/[:T]/g,"-")+".json";
+  try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([recordText()],{type:"application/json"})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove() },1000); toast("Saving "+name+".") }catch(e){ toast("Saving isn't available here. Use Copy instead.") } };
+$("copyRec").onclick=()=>{ try{ navigator.clipboard.writeText(recordText()).then(()=>toast("Copied."),()=>toast("Copy isn't available here.")) }catch(e){ toast("Copy isn't available here.") } };
+$("redo").onclick=()=>{ S.loggedDone=false; startSet(S.set); };
+$("toStart").onclick=()=>renderHome();
+
+let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(!$("stepView").hidden) drawStage(); },150) });
+try{ if(window.coinsWarmup) setTimeout(()=>window.coinsWarmup(),300) }catch(e){}
+renderHome();
+window.__fs={S,SETS,recordText,recordObj,summaryLine,analyse,check};
+})();
+</script>
+</body></html>

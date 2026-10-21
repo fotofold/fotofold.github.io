@@ -353,7 +353,7 @@ function draw(){ if(!T) return; const S=model();
   $("stat").innerHTML='<span>'+joined+' joined</span><span class="ok">'+done+' done</span>'+(look?'<span class="bad">'+look+' maybe stuck</span>':'')+'<span>'+left()+'</span>';
   if(!nums.length) $("tiles").innerHTML='<p class="sub">Waiting for students. Each one shows up here, by number, as they join.</p>';
   detail(S); missed(S); stats(S); }
-const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)"};
+const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)"};
 function stats(S){ const by={set:new Map(),kind:new Map(),std:new Map()}; let tot=[0,0];
   const add=(m,k,ok)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[1]++; if(ok) e[0]++; };
   for(const s of S.values()) for(const R of s.sets.values()) for(const P of R.steps.values()){ if(!P.runs.length) continue; const ok=P.runs[0].correct===true;

@@ -485,7 +485,7 @@ function build(){
   for(const T of sets.values()){
     T.wholes=[]; for(const s of T.steps){ s.whole=wholeKeyOf(s.id); let W=T.wholes.find(w=>w.key===s.whole);
       if(!W){ W={key:s.whole,n:nOf[T.key+"."+s.whole]||null,steps:[]}; T.wholes.push(W) } W.steps.push(s) }
-    T.wholes.forEach(W=>{ W.tag = W.key==="bridge"?"bridge":(W.n?W.n+" parts":W.key) });
+    T.wholes.forEach(W=>{ const m=/^([wb])(\d+)$/.exec(W.key); W.tag = W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]:(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins
     T.steps=T.wholes.flatMap(W=>W.steps); T.steps.forEach((s,i)=>{ s.i=i; s.g0 = T.wholes.find(W=>W.key===s.whole).steps[0]===s });
   }
   // cells
@@ -591,7 +591,9 @@ function renderHeadline(T,rows,stats){
   if(!rows.length){ h.innerHTML='<p class="lead">No one in this class has Set '+esc(T.no)+' yet.</p>'; return }
   const w=worstOf(stats);
   let lead;
-  if(!w) lead="Every step was right on the first try for every student who reached it.";
+  const sw=/^FotoSet/.test(T.name||"")?"sample coins":"sample strip";
+  if(!counted.length) lead="No answers counted yet: this work was done on the "+sw+". Tick the sample box above to include it.";
+  else if(!w) lead= stats.some(o=>o.miss>0) ? "Too few students yet to name a most-missed step (it takes 3 who reached it)." : "Every step was right on the first try for every student who reached it.";
   else if(w.share>=0.8) lead="No step stands out. The most missed, "+stepName(w.step)+", was missed by "+w.miss+" of "+w.n+" on the first try.";
   else { const m=mostly(w); lead="Most missed: "+stepName(w.step)+" — "+w.miss+" of "+w.n+" missed it on the first try"+(m?", mostly "+m:"")+"."; }
   const also=stats.filter(o=>o!==w&&o.n>=3&&o.share<0.7).sort((a,b)=>a.share-b.share).slice(0,3);
@@ -614,7 +616,7 @@ function renderHeadline(T,rows,stats){
    '<div class="tile"><b>'+(scores.length?fmtNum(median(scores)):"—")+' <small style="font-size:15px;font-weight:600">of '+T.steps.length+'</small></b><span>median steps right on the first try</span></div>'+
    '<div class="tile"><b>'+again.length+'</b><span>did the set again</span></div></div>';
 }
-const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)"};
+const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)"};
 function renderPct(){ const by={set:new Map(),kind:new Map(),std:new Map()}, tot=[0,0];
   const add=(m,k,ok,n)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[0]+=ok; e[1]+=n; };
   for(const T of [...M.sets.values()].sort((a,b)=>a.no-b.no)){ const stats=stepStats(T,rowsFor(T.key));
