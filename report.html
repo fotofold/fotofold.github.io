@@ -274,7 +274,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
     <div class="filters" role="group" aria-label="Filters">
       <div class="seg" id="setSeg" role="group" aria-label="Set"></div>
       <label class="flab" for="classSel">Class <select id="classSel"></select></label>
-      <label class="flab" for="incSample"><input type="checkbox" id="incSample"> Count sample-strip work</label>
+      <label class="flab" for="incSample"><input type="checkbox" id="incSample"> Count sample work (strip or coins)</label>
       <nav class="jump" aria-label="Jump to"><a href="#pctSec">First-try percentages</a><a href="#gridSec">Class grid</a><a href="#storySec">Each step's story</a><a href="#baSec">Before and after</a></nav>
     </div>
 
@@ -293,7 +293,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
         <span><i class="m no">✗</i>never right (moved on)</span>
         <span><i class="m skip">skip</i>moved on, no answer</span>
         <span><i class="m nr">—</i>not reached</span>
-        <span><i class="m ok smp">✓</i>sample strip</span>
+        <span><i class="m ok smp">✓</i>sample strip or coins</span>
         <span><i class="m ok unev">✓</i>uneven fold on this whole</span>
       </div>
       <div class="row" style="justify-content:space-between">
@@ -335,7 +335,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
     </section>
 
     <footer>
-      <div>FotoFold class report · reads fotofold.record/1 · Work on the sample strip is marked and left out of the class numbers unless you count it. Class numbers use each student's first round of the set.</div>
+      <div>FotoFold class report · reads fotofold.record/1 · Work on the sample strip or sample coins is marked and left out of the class numbers unless you count it. Class numbers use each student's first round of the set.</div>
     </footer>
   </div>
 </main>
@@ -412,6 +412,10 @@ async function takeFiles(files){
 
 /* ======================= THE MODEL ======================= */
 function wholeKeyOf(id){ const p=String(id).split("."); return p.length>=3?p[1]:"?" }
+// FotoSet's sets ("FotoSet 1", …) sit after FotoFold's ("Set 1", …) and are named apart from them
+const isFS=T=>/^FotoSet/.test(T&&T.name||"")||/^c\d/.test(T&&T.key||"");
+const sl=T=>(isFS(T)?"FotoSet ":"Set ")+T.no, ord=T=>(isFS(T)?100:0)+(+T.no||0), nmOf=T=>String(T.name||"").replace(/^FotoSet: /,"");
+const smpW=T=>isFS(T)?"sample coins":"sample strip";
 const swipesTxt=r=>{ const ls=r.live_swipes||(r.swipe_parts||[]).filter(d=>d>0); return "colored "+r.colored+" in "+ls.length+" swipe"+(ls.length===1?"":"s")+(ls.length?" ("+ls.join("+")+")":"") };
 function missText(r){
   if(!r) return "";
@@ -434,7 +438,7 @@ function kindOf(r,uneven){
 }
 function tryText(x){ // one try, in the teacher's words
   if(x.skipped) return "moved on without answering";
-  const what = (x.mode==="compare"||x.mode==="estimate") ? "picked "+x.wrote : x.per_swipe_ok===false ? swipesTxt(x)+", wrote "+x.wrote : x.mode==="name" ? "wrote "+x.wrote : (x.mode==="sub"?"left ":"colored ")+x.colored+", wrote "+x.wrote;
+  const what = (x.mode==="compare"||x.mode==="estimate") ? "picked "+x.wrote : x.per_swipe_ok===false ? swipesTxt(x)+", wrote "+x.wrote : (x.mode==="name"||x.colored==null) ? "wrote "+x.wrote : (x.mode==="sub"?"left ":"colored ")+x.colored+", wrote "+x.wrote;
   return (x.correct?"✓ ":"✗ ")+what+(x.moved_on?(x.set_by_phone?" → moved on (the phone set it)":" → moved on"):"");
 }
 const KIND_WORD={hands:"hands (color)",steps:"steps (not one unit per swipe)",symbol:"symbol",both:"both",paper:"paper (uneven fold)",skip:"skipped"};
@@ -566,12 +570,12 @@ function rebuild(){
   const bad=st.files.filter(f=>!f.ok);
   if(!any){ $("emptyToast").textContent = bad.length ? "None of those were FotoFold records ("+bad.length+" file"+(bad.length===1?"":"s")+" not read: "+bad.slice(0,3).map(f=>f.name.split("/").pop()+", "+f.reason).join("; ")+")." : ""; return }
   const nf=st.files.filter(f=>f.ok).length, ns=M.students.size;
-  $("loadedWhat").textContent = nf+" record"+(nf===1?"":"s")+" from "+ns+" student"+(ns===1?"":"s")+" · "+[...M.sets.values()].sort((a,b)=>a.no-b.no).map(T=>"Set "+T.no).join(", ");
+  $("loadedWhat").textContent = nf+" record"+(nf===1?"":"s")+" from "+ns+" student"+(ns===1?"":"s")+" · "+[...M.sets.values()].sort((a,b)=>ord(a)-ord(b)).map(sl).join(", ");
   $("badBox").hidden=!bad.length; $("badSum").textContent=bad.length+" file"+(bad.length===1?"":"s")+" not read";
   $("badList").innerHTML=bad.map(f=>"<li><span class='mono'>"+esc(f.name)+"</span>: "+esc(f.reason)+"</li>").join("");
-  const keys=[...M.sets.values()].sort((a,b)=>a.no-b.no).map(T=>T.key);
+  const keys=[...M.sets.values()].sort((a,b)=>ord(a)-ord(b)).map(T=>T.key);
   if(!keys.includes(st.set)) st.set=keys[keys.length-1]||null;
-  $("setSeg").innerHTML=keys.map(k=>{ const T=M.sets.get(k); return '<button type="button" data-set="'+esc(k)+'" aria-pressed="'+(k===st.set)+'">Set '+esc(T.no)+(T.name?'<span class="nm"> · '+esc(T.name)+'</span>':'')+'</button>' }).join("");
+  $("setSeg").innerHTML=keys.map(k=>{ const T=M.sets.get(k); return '<button type="button" data-set="'+esc(k)+'" aria-pressed="'+(k===st.set)+'">'+esc(sl(T))+(T.name?'<span class="nm"> · '+esc(nmOf(T))+'</span>':'')+'</button>' }).join("");
   const opts=[["all","All classes"]].concat(M.classes.map(c=>[c,c||"No class code"]));
   if(!opts.find(o=>o[0]===st.cls)) st.cls="all";
   $("classSel").innerHTML=opts.map(o=>'<option value="'+esc(o[0])+'"'+(o[0]===st.cls?' selected':'')+'>'+esc(o[1])+'</option>').join("");
@@ -588,10 +592,10 @@ function render(){
 function renderHeadline(T,rows,stats){
   const h=$("headline"); const out=[];
   const counted=rows.filter(({as})=>T.steps.some(s=>counts(as[0].cells[s.id])));
-  if(!rows.length){ h.innerHTML='<p class="lead">No one in this class has Set '+esc(T.no)+' yet.</p>'; return }
+  if(!rows.length){ h.innerHTML='<p class="lead">No one in this class has '+esc(sl(T))+' yet.</p>'; return }
   const w=worstOf(stats);
   let lead;
-  const sw=/^FotoSet/.test(T.name||"")?"sample coins":"sample strip";
+  const sw=smpW(T);
   if(!counted.length) lead="No answers counted yet: this work was done on the "+sw+". Tick the sample box above to include it.";
   else if(!w) lead= stats.some(o=>o.miss>0) ? "Too few students yet to name a most-missed step (it takes 3 who reached it)." : "Every step was right on the first try for every student who reached it.";
   else if(w.share>=0.8) lead="No step stands out. The most missed, "+stepName(w.step)+", was missed by "+w.miss+" of "+w.n+" on the first try.";
@@ -603,7 +607,7 @@ function renderHeadline(T,rows,stats){
   const stopped=rows.filter(({as})=>as[as.length-1].reached<as[as.length-1].total);
   if(stopped.length) out.push("Stopped partway: "+list(stopped.map(({S,as})=>{const a=as[as.length-1]; return "<b>"+esc(S.label)+"</b> (reached "+a.reached+" of "+a.total+" steps)"}))+".");
   const smp=rows.filter(({as})=>as.some(a=>a.sample));
-  if(smp.length) out.push((st.sample?"Counted, though on the sample strip: ":"Left out of the class numbers, sample strip: ")+list(smp.map(({S,as})=>"<b>"+esc(S.label)+"</b>"+(as.every(a=>a.sample==="all")?"":" (some wholes)")))+".");
+  if(smp.length) out.push((st.sample?"Counted, though on the "+sw+": ":"Left out of the class numbers, "+sw+": ")+list(smp.map(({S,as})=>"<b>"+esc(S.label)+"</b>"+(as.every(a=>a.sample==="all")?"":" (some wholes)")))+".");
   const unev=rows.filter(({as})=>as.some(a=>a.uneven.length));
   if(unev.length) out.push("Uneven folds: "+list(unev.map(({S,as})=>{ const ws=[...new Set(as.flatMap(a=>a.uneven.map(z=>z.n+" parts")))]; return "<b>"+esc(S.label)+"</b> ("+ws.join(", ")+")" }))+".");
   const again=rows.filter(({as})=>as.length>1);
@@ -619,23 +623,24 @@ function renderHeadline(T,rows,stats){
 const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)"};
 function renderPct(){ const by={set:new Map(),kind:new Map(),std:new Map()}, tot=[0,0];
   const add=(m,k,ok,n)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[0]+=ok; e[1]+=n; };
-  for(const T of [...M.sets.values()].sort((a,b)=>a.no-b.no)){ const stats=stepStats(T,rowsFor(T.key));
-    for(const o of stats){ if(!o.n) continue; add(by.set,T.no,o.ok,o.n); add(by.kind,KIND_NAME[o.step.mode]||"Other",o.ok,o.n); add(by.std,o.step.standard||T.standards||"",o.ok,o.n); tot[0]+=o.ok; tot[1]+=o.n; } }
+  for(const T of [...M.sets.values()].sort((a,b)=>ord(a)-ord(b))){ const stats=stepStats(T,rowsFor(T.key));
+    for(const o of stats){ if(!o.n) continue; add(by.set,T.key,o.ok,o.n); add(by.kind,KIND_NAME[o.step.mode]||"Other",o.ok,o.n); add(by.std,o.step.standard||T.standards||"",o.ok,o.n); tot[0]+=o.ok; tot[1]+=o.n; } }
   if(!tot[1]){ $("pcts").innerHTML='<p class="muted">No answers to count yet.</p>'; return }
   const row=(label,[a,n],cls)=>{ const pc=Math.round(100*a/n); return '<div class="prow'+(cls?" "+cls:"")+'"><span>'+esc(label)+'</span><span class="bar"><i style="width:'+pc+'%"></i></span><span class="n"><b>'+pc+'%</b> · '+a+' of '+n+'</span></div>'; };
-  const setName=no=>{ const T=[...M.sets.values()].find(x=>x.no===no); return "Set "+no+(T&&T.name?" · "+T.name:""); };
+  const setName=k=>{ const T=M.sets.get(k); return T?sl(T)+(T.name?" · "+nmOf(T):""):String(k); };
   const block=(title,m,lab,sort)=>'<div><h3>'+title+'</h3>'+[...m].filter(([k])=>k!=="").sort(sort).map(([k,v])=>row(lab(k),v)).join("")+'</div>';
-  $("pcts").innerHTML=block("By set",by.set,setName,(x,y)=>x[0]-y[0])+block("By kind of step (lowest first)",by.kind,k=>k,(x,y)=>x[1][0]/x[1][1]-y[1][0]/y[1][1])+block("By standard",by.std,k=>k,(x,y)=>String(x[0]).localeCompare(String(y[0]),undefined,{numeric:true}))+row("All answers",tot,"total"); }
+  $("pcts").innerHTML=block("By set",by.set,setName,(x,y)=>ord(M.sets.get(x[0])||{})-ord(M.sets.get(y[0])||{}))+block("By kind of step (lowest first)",by.kind,k=>k,(x,y)=>x[1][0]/x[1][1]-y[1][0]/y[1][1])+block("By standard",by.std,k=>k,(x,y)=>String(x[0]).localeCompare(String(y[0]),undefined,{numeric:true}))+row("All answers",tot,"total"); }
 const fmtNum=x=>x==null?"—":(Math.round(x*10)/10).toString();
 
+let CUR_T=null;   // the set the grid is showing
 function cellHTML(c,extra){
   const cls="m "+c.s+(c.sample?" smp":"")+(c.uneven&&c.s!=="nr"?" unev":"");
   let t=stepName(c.step)+": "+WORD[c.s];
   if(c.rs&&c.rs.length){ t+=" ("+c.rs.map(tryText).join("; ")+")"; if(c.secs!=null) t+=", first try at "+fmtSecs(c.secs); }
-  if(c.uneven) t+=". Uneven fold on this whole"; if(c.sample) t+=". Sample strip";
+  if(c.uneven) t+=". Uneven fold on this whole"; if(c.sample) t+=". "+(isFS(CUR_T)?"Sample coins":"Sample strip");
   return '<td class="c'+(c.step.g0?" g0":"")+'" title="'+esc(t)+'"'+(extra||"")+'><span class="'+cls+'" aria-label="'+esc(t)+'">'+MARK[c.s]+'</span></td>';
 }
-function renderGrid(T,rows,stats){
+function renderGrid(T,rows,stats){ CUR_T=T;
   const w=worstOf(stats);
   let rs=rows.slice();
   if(st.sort==="low") rs.sort((p,q)=>{ const a=p.as[0], b=q.as[0]; return a.first/(a.total||1)-b.first/(b.total||1) });
@@ -645,7 +650,7 @@ function renderGrid(T,rows,stats){
   for(const {S,as} of rs){
     as.forEach((a,i)=>{
       const tags=[]; if(i>0) tags.push("round "+a.n+(fmtDay(a.started)!==fmtDay(a.prev.started)?" · "+fmtDay(a.started):" · same day"));
-      if(a.sample) tags.push(a.sample==="all"?"sample strip":"some sample strip");
+      if(a.sample) tags.push(a.sample==="all"?smpW(T):"some "+smpW(T));
       if(a.reached<a.total) tags.push("stopped at step "+(a.reached+1));
       const excl = a.sample==="all" && !st.sample;
       if(excl) tags.push("not counted");
@@ -659,7 +664,7 @@ function renderGrid(T,rows,stats){
     stats.map(o=>'<td class="c'+(o.step.g0?" g0":"")+(o.n&&o.share<0.5?" low":"")+(w&&w.step===o.step&&w.share<0.8?" worst":"")+'" data-step="'+esc(o.step.id)+'">'+(o.n?o.ok+"/"+o.n+"<small>"+Math.round(o.share*100)+"%</small>":"—")+'</td>').join("")+'<td class="score"></td></tr></tfoot>';
   $("grid").innerHTML=h;
   const nr=rs.reduce((k,r)=>k+r.as.length,0);
-  $("gridNote").textContent=rs.length+" student"+(rs.length===1?"":"s")+(nr>rs.length?", "+nr+" rounds":"")+". Tap a student for their steps. The bottom row counts each student's first round"+(st.sample?"":", without sample-strip work")+".";
+  $("gridNote").textContent=rs.length+" student"+(rs.length===1?"":"s")+(nr>rs.length?", "+nr+" rounds":"")+". Tap a student for their steps. The bottom row counts each student's first round"+(st.sample?"":", without "+smpW(T)+" work")+".";
 }
 
 function renderStory(T,rows,stats){
@@ -667,7 +672,7 @@ function renderStory(T,rows,stats){
   const w=worstOf(stats);
   let list_=stats.slice(); if(st.order==="missed") list_.sort((a,b)=>a.share-b.share||b.miss-a.miss||a.step.i-b.step.i);
   const N=Math.max(0,...stats.map(o=>o.n));
-  $("storyNote").textContent="Each student's first round of Set "+T.no+(st.sample?", sample-strip work included":", without sample-strip work")+". Up to "+N+" students per step; students who did not reach a step are not counted for it.";
+  $("storyNote").textContent="Each student's first round of "+sl(T)+(st.sample?", "+smpW(T)+" work included":", without "+smpW(T)+" work")+". Up to "+N+" students per step; students who did not reach a step are not counted for it.";
   $("items").innerHTML=list_.map(o=>{
     const s=o.step, W=T.wholes.find(x=>x.key===s.whole);
     const low=o.n&&o.share<0.7, isW=w&&w.step===s&&w.share<0.8;
@@ -686,7 +691,7 @@ function renderStory(T,rows,stats){
 
 function renderBA(T,rows){
   const box=$("ba"); const again=rows.filter(({as})=>as.length>1);
-  if(!again.length){ box.innerHTML='<p class="empty">No one did Set '+esc(T.no)+' more than once yet. When a student taps <b>Do it again</b>, or saves a later file, it shows here.</p>'; return }
+  if(!again.length){ box.innerHTML='<p class="empty">No one did '+esc(sl(T))+' more than once yet. When a student taps <b>Do it again</b>, or saves a later file, it shows here.</p>'; return }
   const per=again.map(({S,as})=>{ const a=as[0], b=as[as.length-1]; const moved=[], slipped=[];
     for(const s of T.steps){ const x=a.cells[s.id], y=b.cells[s.id]; if(x.s==="nr"||y.s==="nr") continue;
       if(x.s!=="ok"&&y.s==="ok") moved.push(s); else if(x.s==="ok"&&y.s!=="ok") slipped.push(s) }
@@ -694,11 +699,11 @@ function renderBA(T,rows){
   const up=per.filter(p=>p.d>0).length, same=per.filter(p=>p.d===0).length, down=per.filter(p=>p.d<0).length;
   const bySt=T.steps.map(s=>({s,moved:per.filter(p=>p.moved.includes(s)).map(p=>p.S.label),slipped:per.filter(p=>p.slipped.includes(s)).map(p=>p.S.label)})).filter(x=>x.moved.length||x.slipped.length)
     .sort((x,y)=>y.moved.length-x.moved.length||x.s.i-y.s.i);
-  let h='<p id="baLead"><b>'+again.length+' student'+(again.length===1?"":"s")+'</b> did Set '+esc(T.no)+' again. First-try score went up for '+up+(same?', stayed the same for '+same:'')+(down?', went down for '+down:'')+'.</p>';
+  let h='<p id="baLead"><b>'+again.length+' student'+(again.length===1?"":"s")+'</b> did '+esc(sl(T))+' again. First-try score went up for '+up+(same?', stayed the same for '+same:'')+(down?', went down for '+down:'')+'.</p>';
   h+='<h3>By step: who moved from ✗ to ✓</h3><div class="scroll"><table class="plain" id="baSteps"><thead><tr><th scope="col">Step</th><th scope="col">Moved ✗ → ✓</th><th scope="col">Slipped ✓ → ✗</th></tr></thead><tbody>'+
     (bySt.length?bySt.map(x=>'<tr data-step="'+esc(x.s.id)+'"><td><b>'+esc(stepName(x.s))+'</b><br><code class="muted">'+esc(x.s.id)+'</code></td><td><div class="chips">'+(x.moved.map(l=>'<span class="chip ok">'+esc(l)+'</span>').join("")||'<span class="muted">—</span>')+'</div></td><td><div class="chips">'+(x.slipped.map(l=>'<span class="chip no">'+esc(l)+'</span>').join("")||'<span class="muted">—</span>')+'</div></td></tr>').join(""):'<tr><td colspan="3" class="muted">No step changed.</td></tr>')+'</tbody></table></div>';
   h+='<h3>By student</h3><div class="scroll"><table class="plain" id="baStudents"><thead><tr><th scope="col">Student</th><th scope="col">First try, each round</th><th scope="col">Change</th><th scope="col">Now right on the first try</th><th scope="col">Slipped</th></tr></thead><tbody>'+
-    per.map(p=>'<tr data-stu="'+esc(p.S.key)+'"><td><button type="button" class="who" data-stu="'+esc(p.S.key)+'" style="padding:0"><b>'+esc(p.S.label)+'</b><small>'+esc(p.as.map(a=>fmtDay(a.started)).filter((v,i,arr)=>arr.indexOf(v)===i).join(", "))+(p.as.some(a=>a.sample)?' · sample strip':'')+'</small></button></td>'+
+    per.map(p=>'<tr data-stu="'+esc(p.S.key)+'"><td><button type="button" class="who" data-stu="'+esc(p.S.key)+'" style="padding:0"><b>'+esc(p.S.label)+'</b><small>'+esc(p.as.map(a=>fmtDay(a.started)).filter((v,i,arr)=>arr.indexOf(v)===i).join(", "))+(p.as.some(a=>a.sample)?' · '+smpW(T):'')+'</small></button></td>'+
       '<td class="n num">'+p.as.map(a=>a.first+"/"+a.total).join(" → ")+'</td><td class="n num '+(p.d>0?"up":p.d<0?"down":"")+'" data-change="'+p.d+'">'+(p.d>0?"+":p.d<0?"−":"±")+Math.abs(p.d)+'</td>'+
       '<td><div class="chips">'+(p.moved.map(s=>'<span class="chip ok">'+esc(stepName(s))+'</span>').join("")||'<span class="muted">—</span>')+'</div></td>'+
       '<td><div class="chips">'+(p.slipped.map(s=>'<span class="chip no">'+esc(stepName(s))+'</span>').join("")||'<span class="muted">—</span>')+'</div></td></tr>').join("")+'</tbody></table></div>';
@@ -708,14 +713,14 @@ function renderBA(T,rows){
 /* ======================= STUDENT DETAIL ======================= */
 function openStudent(key){
   const S=M.students.get(key); if(!S) return;
-  const sets=[...M.sets.values()].sort((a,b)=>a.no-b.no).filter(T=>S.bySet[T.key]);
+  const sets=[...M.sets.values()].sort((a,b)=>ord(a)-ord(b)).filter(T=>S.bySet[T.key]);
   let h='<div class="dtop"><div><h2 id="dlgTitle">'+esc(S.label)+'</h2><span class="muted" style="font-size:14px">'+S.files.length+' file'+(S.files.length===1?'':'s')+': <span class="mono">'+S.files.map(f=>esc(f.name.split("/").pop())).join(", ")+'</span></span></div><button class="btn small ghost" type="button" id="dlgClose">Close</button></div>';
   const seen=new Set(), lines=S.files.slice().sort((x,y)=>String(x.rec.saved).localeCompare(String(y.rec.saved))).filter(f=>f.rec.summary&&!seen.has(f.rec.summary)&&seen.add(f.rec.summary));
   if(lines.length) h+='<div style="display:grid;gap:6px"><span class="muted" style="font-size:14px">The teacher\'s one line, as each file has it (it covers the round the student was on when they saved):</span>'+lines.map(f=>'<div class="oneline"><b>'+esc(fmtWhen(f.rec.saved))+'</b> · '+esc(f.rec.summary)+'</div>').join("")+'</div>';
   for(const T of sets) for(const a of S.bySet[T.key]){
     const T_=M.sets.get(a.set);
-    h+='<div class="att"><h3>Set '+esc(T_.no)+' · round '+a.n+' <small>· '+esc(fmtWhen(a.started))+' · '+(a.sample==="all"?"sample strip":a.sample?"some sample strip":"own strips")+' · '+a.first+'/'+a.total+' first try'+(a.reached<a.total?' · reached '+a.reached:'')+(a.fileRound!==a.n?' · the file calls it round '+a.fileRound:'')+'</small></h3>';
-    h+='<div class="foldlist">'+T_.wholes.filter(W=>W.key!=="bridge").map(W=>{ const f=a.folds.find(z=>z.whole===W.key); return f?'<span class="chip '+(f.equal?'ok':'no')+'">'+esc(W.tag)+': '+(f.equal?'equal':'uneven')+', worst '+Math.abs(f.worst_off_in).toFixed(2)+' in'+(f.edited?', fold line fixed by hand':'')+(f.source==="sample"?', sample':'')+'</span>':'<span class="chip smp">'+esc(W.tag)+': no photo</span>' }).join("")+'</div>';
+    h+='<div class="att"><h3>'+esc(sl(T_))+' · round '+a.n+' <small>· '+esc(fmtWhen(a.started))+' · '+(isFS(T_)?(a.sample==="all"?"sample coins":a.sample?"some sample coins":"own coins"):(a.sample==="all"?"sample strip":a.sample?"some sample strip":"own strips"))+' · '+a.first+'/'+a.total+' first try'+(a.reached<a.total?' · reached '+a.reached:'')+(a.fileRound!==a.n?' · the file calls it round '+a.fileRound:'')+'</small></h3>';
+    if(!isFS(T_)) h+='<div class="foldlist">'+T_.wholes.filter(W=>W.key!=="bridge").map(W=>{ const f=a.folds.find(z=>z.whole===W.key); return f?'<span class="chip '+(f.equal?'ok':'no')+'">'+esc(W.tag)+': '+(f.equal?'equal':'uneven')+', worst '+Math.abs(f.worst_off_in).toFixed(2)+' in'+(f.edited?', fold line fixed by hand':'')+(f.source==="sample"?', sample':'')+'</span>':'<span class="chip smp">'+esc(W.tag)+': no photo</span>' }).join("")+'</div>';
     h+='<div class="steplist">'+T_.steps.map(s=>{ const c=a.cells[s.id];
       const tries=(c.rs||[]).map(tryText).join(" · ");
       return '<div><span>'+esc(stepName(s))+'</span><span class="m '+c.s+(c.sample?" smp":"")+(c.uneven&&c.s!=="nr"?" unev":"")+'">'+MARK[c.s]+'</span><span class="tries">'+esc(tries||WORD[c.s])+(c.kind?' · <b>'+esc(c.kind)+'</b>':'')+'</span><span class="s num">'+(c.secs!=null?fmtSecs(c.secs):"")+'</span></div>' }).join("")+'</div></div>';
@@ -734,10 +739,10 @@ function makeCsv(T,rows){
   const head=["class_code","student","set","round","started","file","strips","uneven_folds","first_try","reached","steps"].concat(T.steps.map(s=>s.id));
   const lines=[head.map(csvCell).join(",")]; let n=0;
   for(const {S,as} of rows) for(const a of as){ n++;
-    lines.push([S.code||"", S.num||S.label, "Set "+T.no, a.n, a.started, a.files.map(f=>f.split("/").pop()).join(" "), a.sample==="all"?"sample":a.sample?"some sample":"own", a.uneven.map(z=>z.whole).join(" "), a.first, a.reached, a.total]
+    lines.push([S.code||"", S.num||S.label, sl(T), a.n, a.started, a.files.map(f=>f.split("/").pop()).join(" "), a.sample==="all"?"sample":a.sample?"some sample":"own", a.uneven.map(z=>z.whole).join(" "), a.first, a.reached, a.total]
       .concat(T.steps.map(s=>CODE[a.cells[s.id].s])).map(csvCell).join(",")) }
   const cls=st.cls==="all"?"all-classes":(st.cls||"no-code");
-  lastCsv={name:"fotofold-"+cls.replace(/[^A-Za-z0-9-]/g,"")+"-set"+T.no+".csv", text:lines.join("\r\n")+"\r\n", rows:n};
+  lastCsv={name:(isFS(T)?"fotoset-":"fotofold-")+cls.replace(/[^A-Za-z0-9-]/g,"")+"-set"+T.no+".csv", text:lines.join("\r\n")+"\r\n", rows:n};
   $("csvText").value=lastCsv.text;
 }
 function csvMsg(m){ $("csvToast").textContent=m }

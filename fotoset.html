@@ -3,8 +3,9 @@
   FotoSet: the set model with a camera. A sibling of FotoFold.
   Copyright (c) 2026 G.Coppola. All rights reserved.
   No names, and the photo is never kept: the phone counts the coins and forgets the picture.
+  Nothing is sent anywhere, except in a live class: then the student's number and answers go to the teacher's screen.
 -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 2)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 3)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
@@ -33,6 +34,10 @@ main{max-width:640px;margin:0 auto;display:grid;gap:18px;grid-template-columns:m
 main>*,section>*{min-width:0}
 h1,h2{font-family:var(--f-display);margin:0;line-height:1.08;text-wrap:balance}
 .top{display:grid;gap:8px}
+.livebadge{justify-self:start;font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--good-soft);color:var(--good);overflow-wrap:anywhere}
+.livebadge.wait{background:var(--warn-soft);color:var(--warn)}
+.liveline{font-size:15px;border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--muted)}
+.liveline.on{background:var(--good-soft);color:var(--good)} .liveline.off{background:var(--warn-soft);color:var(--warn)}
 .brand{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 72;font-size:20px;background:none;border:0;padding:0;color:var(--fg);text-align:left;cursor:pointer}
 .brand small{font-weight:600;color:var(--muted);font-size:14px}
 .wholes{display:flex;gap:6px;flex-wrap:wrap}
@@ -97,7 +102,8 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
 <main>
   <div class="top">
-    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 2</small></button>
+    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 3</small></button>
+    <span class="livebadge" id="liveBadge" hidden></span>
     <div class="wholes" id="wholes" aria-label="Wholes"></div>
   </div>
 
@@ -110,7 +116,9 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         <label for="classCode">Class code<input id="classCode" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
         <label for="studentNo">Your number<input id="studentNo" maxlength="3" inputmode="numeric" pattern="[0-9]*" autocomplete="off"></label>
       </div>
+      <div class="liveline" id="liveLine" role="status" hidden></div>
     </div>
+    <div class="card" id="newCard" hidden><b id="newWhat"></b><div class="row"><button class="btn" id="newYes" type="button">Yes, start fresh</button><button class="btn ghost" id="newNo" type="button">No, same student</button></div></div>
     <div class="card" id="resumeCard" hidden><b id="resumeWhat"></b><div class="row"><button class="btn" id="resumeBtn" type="button">Keep going</button><button class="btn ghost" id="freshBtn" type="button">Start fresh</button></div></div>
     <div class="sets" id="sets"></div>
   </section>
@@ -153,6 +161,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         <button class="btn ghost" id="redo" type="button">Do it again</button>
       </div>
       <div class="toast" id="recToast" role="status"></div>
+      <div class="liveline" id="doneLive" role="status" hidden></div>
     </div>
     <div class="row"><button class="btn ghost" id="toStart" type="button">Back to the start</button></div>
   </section>
@@ -161,7 +170,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <summary>Settings</summary>
     <div class="card" style="margin-top:8px"><p class="sub">FotoSet asks for the camera, and it never keeps the photo it takes: it counts the coins and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p></div>
   </details>
-  <footer>FotoSet, iteration 2. A whole of coins, grouped into equal parts. The photo is never kept.</footer>
+  <footer>FotoSet, iteration 3. A whole of coins, grouped into parts, and what is left over. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -1139,7 +1148,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.2.0", ITERATION=2, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.3.0", ITERATION=3, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||"" }catch(e){ return "" } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} } };
@@ -1179,16 +1188,62 @@ const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it i
   {id:"c1.b12.3", label:"6/12 in the bottom", prompt:"Take 1 of your 2 bottom parts off the paper.", sub:"Keep your 3 coins in the top half. Take a photo.",
    need:T({count:3},{count:6,piles:1}), ask:{kind:"frac",den:12,target:6,q:"What part of the whole (12) is in the bottom half now?",hint:"The whole (12) had 12 coins. Count the coins in the bottom half."}, say:"6/12 of the whole (12), and 6/12 = 1/2."},
   {id:"c1.b12.4", label:"1/2 ÷ 1/4", prompt:"Group your bottom 6 into parts the size of your top part.", sub:"Your top part has 3 coins. Make bottom parts of 3, with a space about one coin wide between them. Take a photo.",
-   need:T({count:3,piles:1},{count:6,piles:2}), ask:{kind:"count",target:2,q:"Your top part is 3 coins. How many 3s make your bottom 6?",hint:"Count the parts of 3 in your bottom half."},mode:"fit", say:"Two 3s make 6. So 2 of your 1/4 make 1/2: 1/2 ÷ 1/4 = 2, because 2 × 1/4 = 1/2."},
+   need:T({count:3,piles:1},{count:6,piles:2}), ask:{kind:"count",target:2,q:"Your top part is 3 coins. How many 3s make your bottom 6?",hint:"Count the parts of 3 in your bottom half."},mode:"fit", say:"Two 3s make 6. So 2 of your 1/4 make 1/2: 1/2 ÷ 1/4 = 2, because 2 × 1/4 = 1/2."}, ]},
+ /* Set 2 is built on Prof. Kurz's own examples: 1 ÷ 2/3, and 5/6 with 1/4 both ways. The bottom half holds the amount;
+   the top half holds the measuring part. */
+ {key:"c2",no:2,name:"Left over",what:"How many parts fit, and what part of one more part is left over.",std:"5.NF.B.7, 6.NS.A.1",
+ steps:[
+  {id:"c2.w3.1", label:"whole of 3", prompt:"Make a whole of 3 coins in the bottom half.", sub:"Start with an empty paper. Put 3 coins in the bottom half. Take a photo.",
+   need:T({count:0},{count:3}), say:"A whole (3) in the bottom half."},
+  {id:"c2.w3.2", label:"1/3 on top", prompt:"In the top half, show 1/3 of the whole (3).", sub:"Put that many coins in the top half. Take a photo.",
+   need:T({count:1},{count:3}), say:"1 coin is 1/3 of the whole (3)."},
+  {id:"c2.w3.3", label:"1 ÷ 1/3", prompt:"Group your bottom 3 into parts the size of your top part.", sub:"Your top part is 1 coin. Make bottom parts of 1, with a space about one coin wide between them. Take a photo.",
+   need:T({count:1},{count:3,piles:3}), ask:{kind:"count",target:3,q:"How many 1s make your bottom 3?",hint:"Count the parts in your bottom half."},mode:"fit",
+   say:"Three 1s make 3. So three of your 1/3 make the whole (3): 1 ÷ 1/3 = 3, because 3 × 1/3 = 1."},
+  {id:"c2.w3.4", label:"2/3 on top", prompt:"Add 1 coin to your top part.", sub:"Take a photo.",
+   need:T({count:2,piles:1},{count:3}), ask:{kind:"frac",den:3,target:2,q:"What part of the whole (3) is your top part now?",hint:"The whole (3) has 3 coins. Count the coins in your top part."},
+   say:"2/3 of the whole (3)."},
+  {id:"c2.w3.5", label:"full 2s in 3", prompt:"Group your bottom 3 into parts the size of your top part, as far as they go.", sub:"Your top part is 2 coins. Make bottom parts of 2. A coin that doesn't make a full part stays by itself. Take a photo.",
+   need:T({count:2},{count:3,sizes:[2,1]}), ask:{kind:"count",target:1,q:"How many full 2s fit in your bottom 3?",hint:"Count the full parts of 2 in your bottom half."},mode:"fit",
+   say:"One full 2, and 1 coin left over."},
+  {id:"c2.w3.6", label:"1 ÷ 2/3", reuse:true, prompt:"Look at the coin left over.", sub:"Compare it with your top part of 2 coins.",
+   need:T({count:2},{count:3,sizes:[2,1]}), ask:{kind:"frac",den:2,target:1,q:"The coin left over is what part of a 2?",hint:"A 2 is 2 coins. How many coins are left over?"},mode:"fit",
+   say:"1/2 of a 2. So 1½ of your 2/3 make the whole (3): 1 ÷ 2/3 = 1½, because 1½ × 2/3 = 1."},
+  {id:"c2.w12.1", label:"whole of 12", prompt:"Make a whole of 12 coins in the bottom half.", sub:"Clear the paper first. Then put 12 coins in the bottom half. Take a photo.",
+   need:T({count:0},{count:12}), say:"A whole (12) in the bottom half."},
+  {id:"c2.w12.2", label:"coins in 1 of 6 parts", prompt:"Group your whole (12) into 6 equal parts.", sub:"Leave a space about one coin wide between the parts. Take a photo.",
+   need:T({count:0},{count:12,piles:6}), ask:{kind:"count",target:2,q:"How many coins are in each part?",hint:"Count the coins in one part."},
+   say:"2 coins in each part. One part is 2/12 of the whole (12), and 2/12 = 1/6."},
+  {id:"c2.w12.3", label:"12/12 − 2/12", prompt:"Take 1 of your 6 parts off the paper.", sub:"Take a photo.",
+   need:T({count:0},{count:10}), ask:{kind:"frac",den:12,target:10,q:"What part of the whole (12) is left?",hint:"The whole (12) had 12 coins. Count the coins in the bottom half."},
+   say:"10/12 of the whole (12), and 10/12 = 5/6."},
+  {id:"c2.w12.4", label:"3/12 on top", prompt:"Put 3 coins together in the top half.", sub:"Keep your 10 coins in the bottom half. Take a photo.",
+   need:T({count:3,piles:1},{count:10}), ask:{kind:"frac",den:12,target:3,q:"What part of the whole (12) is your top part?",hint:"The whole (12) is 12 coins. Count the coins in your top part."},
+   say:"3/12 of the whole (12), and 3/12 = 1/4."},
+  {id:"c2.w12.5", label:"full 3s in 10", prompt:"Group your bottom 10 into parts the size of your top part, as far as they go.", sub:"Your top part is 3 coins. Make bottom parts of 3. A coin that doesn't make a full part stays by itself. Take a photo.",
+   need:T({count:3},{count:10,sizes:[3,3,3,1]}), ask:{kind:"count",target:3,q:"How many full 3s fit in your bottom 10?",hint:"Count the full parts of 3 in your bottom half."},mode:"fit",
+   say:"Three full 3s, and 1 coin left over."},
+  {id:"c2.w12.6", label:"5/6 ÷ 1/4", reuse:true, prompt:"Look at the coin left over.", sub:"Compare it with your top part of 3 coins.",
+   need:T({count:3},{count:10,sizes:[3,3,3,1]}), ask:{kind:"frac",den:3,target:1,q:"The coin left over is what part of a 3?",hint:"A 3 is 3 coins. How many coins are left over?"},mode:"fit",
+   say:"1/3 of a 3. So 3 and 1/3 of your 1/4 make 5/6: 5/6 ÷ 1/4 = 3⅓, because 3⅓ × 1/4 = 5/6."},
+  {id:"c2.w12.7", label:"1/4 ÷ 5/6", reuse:true, prompt:"Now the other way.", sub:"Your top 3 is less than one bottom 10.",
+   need:T({count:3},{count:10,sizes:[3,3,3,1]}), ask:{kind:"frac",den:10,target:3,q:"Your top 3 is what part of your bottom 10?",hint:"Your bottom has 10 coins. How many coins are in your top part?"},mode:"fit",
+   say:"3/10. So 3/10 of your 5/6 makes 1/4: 1/4 ÷ 5/6 = 3/10, because 3/10 × 5/6 = 1/4. And 5/6 ÷ 1/4 was 3⅓, which is 10/3. 10/3 and 3/10 are flips of each other."},
  ]}];
-SETS.forEach(X=>X.steps.forEach(st=>{ st.whole=+(/\.[wb](\d+)\./.exec(st.id)||[0,0])[1]; st.mode=st.mode||(st.ask?st.ask.kind:"build"); st.target=st.ask?(st.ask.kind==="frac"?st.ask.target+"/"+st.ask.den:String(st.ask.target)):(st.need.top.count+"|"+st.need.bottom.count); }));
+/* the standard each question works on (CCSS-M) */
+const STD={"c1.w1.1":"3.NF.A.3c","c1.w2.2":"3.NF.A.1","c1.w4.2":"4.NF.A.1","c1.w4.3":"3.NF.A.1","c1.w4.4":"4.NF.B.3a","c1.w12.2":"4.NF.A.1","c1.w12.3":"4.NF.A.1",
+  "c1.b12.2":"4.NF.A.1","c1.b12.3":"4.NF.B.3a","c1.b12.4":"6.NS.A.1",
+  "c2.w3.3":"5.NF.B.7b","c2.w3.4":"3.NF.A.1","c2.w3.5":"6.NS.A.1","c2.w3.6":"6.NS.A.1","c2.w12.2":"4.NF.A.1","c2.w12.3":"4.NF.B.3a","c2.w12.4":"4.NF.A.1",
+  "c2.w12.5":"6.NS.A.1","c2.w12.6":"6.NS.A.1","c2.w12.7":"6.NS.A.1"};
+SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=+(/\.[wb](\d+)\./.exec(st.id)||[0,0])[1]; st.mode=st.mode||(st.ask?st.ask.kind:"build"); st.target=st.ask?(st.ask.kind==="frac"?st.ask.target+"/"+st.ask.den:String(st.ask.target)):(st.need.top.count+"|"+st.need.bottom.count); }));
 
 /* ======================= STATE ======================= */
 const S={set:null,round:1,s:0,results:[],photos:[],events:[],started:new Date().toISOString(),seen:null,img:null,source:null,photoOk:false,stepOk:false,num:0,tries:0,photoTries:0,stepAt:0,firstWhole:null,classCode:store.get("ff.class"),student:store.get("ff.student").replace(/[^0-9]/g,"")};
 const t0=performance.now();
 function log(type,data){ S.events.push(Object.assign({t:+((performance.now()-t0)/1000).toFixed(2),set:S.set&&S.set.key,round:S.round,type},data)); persist(); }
 const PKEY="fs.progress.v1";
-function persist(){ if(!S.set) return; try{ localStorage.setItem(PKEY,JSON.stringify({at:Date.now(),set:S.set.key,round:S.round,s:S.s,stepOk:!!S.stepOk,done:!!S.loggedDone,results:S.results,photos:S.photos,events:S.events,started:S.started})) }catch(e){} }
+function persist(){ if(!S.set) return; try{ localStorage.setItem(PKEY,JSON.stringify({at:Date.now(),set:S.set.key,round:S.round,s:S.s,stepOk:!!S.stepOk,done:!!S.loggedDone,seen:slim(S.seen),source:S.source||null,results:S.results,photos:S.photos,events:S.events,started:S.started})) }catch(e){} }
+const slim=R=>R&&R.ok?{ok:true,top:R.top?{count:R.top.count,piles:R.top.piles||[]}:null,bottom:R.bottom?{count:R.bottom.count,piles:R.bottom.piles||[]}:null}:null;
 function loadProgress(){ try{ const p=JSON.parse(localStorage.getItem(PKEY)||"null"); if(p&&Date.now()-p.at<24*3600e3&&SETS.find(x=>x.key===p.set)) return p }catch(e){} return null }
 function forget(){ try{ localStorage.removeItem(PKEY) }catch(e){} }
 const ST=()=>S.set.steps[S.s];
@@ -1196,26 +1251,27 @@ function view(v){ for(const x of ["homeView","stepView","doneView"]) $(x).hidden
 
 /* ======================= HOME ======================= */
 $("classCode").value=S.classCode; $("studentNo").value=S.student;
-$("classCode").oninput=e=>{ S.classCode=e.target.value.trim().slice(0,12); store.set("ff.class",S.classCode); };
-$("studentNo").oninput=e=>{ const v=e.target.value.replace(/[^0-9]/g,"").slice(0,3); if(v!==e.target.value) e.target.value=v; S.student=v; store.set("ff.student",v); };
+$("classCode").oninput=e=>{ S.classCode=e.target.value.trim().slice(0,12); store.set("ff.class",S.classCode); codeChanged(); };
+$("studentNo").oninput=e=>{ const v=e.target.value.replace(/[^0-9]/g,"").slice(0,3); if(v!==e.target.value) e.target.value=v; S.student=v; store.set("ff.student",v); liveUI(); };
+$("studentNo").onchange=()=>numberSettled();
 function renderHome(){ view("homeView"); $("wholes").innerHTML=""; $("brandSet").textContent="iteration "+ITERATION;
   $("sets").innerHTML=SETS.map(x=>'<button class="setcard" type="button" data-set="'+x.key+'"><span class="no">'+x.no+'</span><b>'+esc(x.name)+'</b><span class="what">'+esc(x.what)+'</span></button>').join("");
   const p=loadProgress(); $("resumeCard").hidden=!p;
-  $("sets").querySelectorAll("[data-set]").forEach(b=>b.onclick=()=>{ if(p&&p.set===b.dataset.set&&!p.done) return resume(p); startSet(SETS.find(z=>z.key===b.dataset.set)); });
-  if(p){ $("resumeWhat").textContent=p.done?"Your answers to Set "+SETS.find(x=>x.key===p.set).no+" are still on this phone.":"Pick up where you left off: Set "+SETS.find(x=>x.key===p.set).no+", step "+(Math.min(p.s+(p.stepOk?2:1),SETS.find(x=>x.key===p.set).steps.length))+".";
+  $("sets").querySelectorAll("[data-set]").forEach(b=>b.onclick=()=>{ if(askNew()) return; if(p&&p.set===b.dataset.set&&!p.done) return resume(p); startSet(SETS.find(z=>z.key===b.dataset.set)); });
+  if(p){ $("resumeWhat").textContent=p.done?"Your answers to FotoSet "+SETS.find(x=>x.key===p.set).no+" are still on this phone.":"Pick up where you left off: FotoSet "+SETS.find(x=>x.key===p.set).no+", step "+(Math.min(p.s+(p.stepOk?2:1),SETS.find(x=>x.key===p.set).steps.length))+".";
     $("resumeBtn").textContent=p.done?"See my answers":"Keep going";
-    $("resumeBtn").onclick=()=>resume(p);
-    $("freshBtn").onclick=()=>{ forget(); S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); $("resumeCard").hidden=true; }; } }
+    $("resumeBtn").onclick=()=>{ if(!askNew()) resume(p); };
+    $("freshBtn").onclick=()=>{ forget(); S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); $("resumeCard").hidden=true; renderHome(); }; } }
 function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.photos=p.photos||[]; S.events=p.events||[]; S.started=p.started||S.started;
-  S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
+  S.seen=p.seen||null; S.img=null; S.source=p.source||null; S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
   view("stepView"); log("resume",{step:S.s}); showStep(); }
-function startSet(X){ S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=used.length?Math.max(...used)+1:1; S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); showStep(); }
+function startSet(X){ S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(X.key)); bumpRound(X.key,S.round); setOwner(S.student); S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); sendJoin(); note("step",{type:"start",set:X.key,no:X.no,round:S.round,of:asked().length}); showStep(); }
 $("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.dataset.armed){ delete b.dataset.armed; closeCam(); renderHome(); return } b.dataset.armed="1"; const t=b.textContent; b.textContent="tap again to leave this set"; setTimeout(()=>{ if(b.dataset.armed){ delete b.dataset.armed; b.textContent=t } },3500); } else renderHome(); };
 
 /* ======================= A STEP ======================= */
-function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html; }
+function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; f.innerHTML=""; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html; }
 function showStep(){ const st=ST(); closeCam();
-  S.seen=null; S.img=null; S.photoOk=false; S.stepOk=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
+  if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
   $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
   $("where").innerHTML=esc(S.set.name)+' · <b>step '+(S.s+1)+' of '+S.set.steps.length+'</b>';
   const ws=[...new Set(S.set.steps.map(x=>x.whole))];
@@ -1224,6 +1280,7 @@ function showStep(){ const st=ST(); closeCam();
   $("prompt").textContent=st.prompt; $("sub").textContent=st.sub;
   $("photoRow").hidden=false; $("sampleBtn").hidden=false; $("anyway").hidden=true; $("answerRow").hidden=true; $("nextRow").hidden=true; setFeedback("","");
   $("seen").textContent=""; drawStage(); persist();
+  if(st.reuse){ $("photoRow").hidden=true; $("sampleBtn").hidden=true; if(S.seen&&S.seen.ok) $("seen").textContent=seenText(S.seen,false); S.photoOk=true; $("answerRow").hidden=false; renderEq(); }
   requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} }); }
 
 /* ---- the stage: the photo, with each coin circled by its part ---- */
@@ -1250,22 +1307,28 @@ function check(R,need){ const probs=[];
   for(const [name,h,n] of [["top",R.top,need.top],["bottom",R.bottom,need.bottom]]){
     const c=h?h.count:0, p=h?(h.piles||[]):[];
     if(c!==n.count){ probs.push(n.count===0 ? "The "+name+" half should be empty." : "The "+name+" half needs "+plural(n.count,"coin")+" (I count "+c+")."); continue }
+    if(n.sizes){ const want=n.sizes.slice().sort((a,b)=>b-a), got=p.slice().sort((a,b)=>b-a), each=want[0];
+      if(h&&h.clear===false&&got.length===want.length){ probs.push("I can't tell your "+name+" parts apart. Leave a space about one coin wide between parts."); continue }
+      if(got.join()!==want.join()) probs.push("Make "+name+" parts of "+each+". A coin that doesn't make a full part stays by itself. (I see parts of "+(got.join(", ")||"none")+".)");
+      continue }
     if(n.piles&&n.piles>1&&h&&h.clear===false&&p.length===n.piles){ probs.push("I can't tell your "+name+" parts apart. Leave a space about one coin wide between parts."); continue }
     if(n.piles){ if(p.length!==n.piles) probs.push("The "+name+" half needs "+n.piles+" part"+(n.piles===1?"":"s")+" (I see "+p.length+")."+(n.piles>1?" Leave a bigger space between parts.":" Push the coins together."));
       else if(n.piles>1 && !p.every(x=>x===p[0])) probs.push("The "+name+" parts aren't equal ("+p.join(", ")+"). Each part needs "+plural(n.count/n.piles,"coin")+"."); } }
   return probs; }
-function expectFor(need){ const e={}; for(const k of ["top","bottom"]){ e[k]={count:need[k].count}; if(need[k].piles) e[k].piles=need[k].piles; } return e; }
+function expectFor(need){ const e={}; for(const k of ["top","bottom"]){ e[k]={count:need[k].count}; if(need[k].piles) e[k].piles=need[k].piles; if(need[k].sizes) e[k].piles=need[k].sizes.length; } return e; }
 
 function analyse(img,w,h,source){ const st=ST(); let R;
   try{ R=window.readCoins(img,w,h); // first, just count; look for the asked-for parts only once the counts are right
     const n=st.need, counts=R.ok&&(R.top?R.top.count:0)===n.top.count&&(R.bottom?R.bottom.count:0)===n.bottom.count;
-    if(counts&&(n.top.piles||n.bottom.piles)) R=window.readCoins(img,w,h,expectFor(n));
+    if(counts&&(n.top.piles||n.bottom.piles||n.top.sizes||n.bottom.sizes)){ const R0=R; R=window.readCoins(img,w,h,expectFor(n));
+      // parts of different sizes, asked for on purpose: if the coins plainly sit in some other number of parts, say what is really there
+      for(const k of ["top","bottom"]) if(n[k].sizes&&R[k]&&R[k].clear===false&&R0[k]&&R0[k].piles.length!==n[k].sizes.length) R[k]=R0[k]; }
   }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
   S.seen=R; S.img=img; S.source=source; S.photoTries++;
   log("photo",{step:st.id,source,ok:!!R.ok,top:R.top?{count:R.top.count,piles:R.top.piles}:null,bottom:R.bottom?{count:R.bottom.count,piles:R.bottom.piles}:null,fold:R.fold?R.fold.found:null,confidence:R.confidence});
   drawStage();
   if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put your paper on a table, get the whole sheet in the picture, and take it again.")); $("anyway").hidden=true; return }
-  $("seen").textContent=seenText(R,!(st.need.top.piles||st.need.bottom.piles));
+  $("seen").textContent=seenText(R,!(st.need.top.piles||st.need.bottom.piles||st.need.top.sizes||st.need.bottom.sizes));
   const probs=check(R,st.need), ok=!probs.length;
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,
     correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:{top:R.top?{count:R.top.count,piles:R.top.piles}:null,bottom:R.bottom?{count:R.bottom.count,piles:R.bottom.piles}:null}});
@@ -1292,6 +1355,7 @@ $("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("s
   S.tries++; const ok=S.num===a.target, wrote=a.kind==="frac"?S.num+"/"+a.den:String(S.num);
   S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,color_ok:null,symbol_ok:ok,colored:null,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source});
   log("answer",{step:st.id,correct:ok,try:S.tries});
+  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.mode,std:st.std,i:asked().indexOf(st)+1,of:asked().length,correct:ok,try:S.tries,wrote,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)});
   if(ok){ S.stepOk=true; setFeedback("good","<b>"+esc(st.say)+"</b>"); showNext(); }
   else { setFeedback("warn","<b>"+(a.kind==="frac"?wrote+" isn't it.":S.num+" isn't it.")+"</b>"+hint(st)+" Change it and Submit again, or go on."); showNext(); }
   persist(); };
@@ -1299,7 +1363,7 @@ function hint(st){ return st.ask.hint||"Count your coins." }
 function showNext(){ $("nextRow").hidden=false; const last=S.s===S.set.steps.length-1; $("next").textContent=last?"See my answers":"Next"; $("next").className=S.stepOk?"btn go next":"btn ghost"; }
 $("next").onclick=()=>{ if(!S.stepOk){ // moving on without the right answer: the record says so
     const st=ST(); if(st.ask) S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,correct:false,try:0});
-    else S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,skipped:true,moved_on:true,correct:false,try:0}); log("moved_on",{step:st.id}); }
+    else S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,skipped:true,moved_on:true,correct:false,try:0}); log("moved_on",{step:st.id}); if(st.ask) note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,i:asked().indexOf(st)+1,of:asked().length}); }
   if(S.s<S.set.steps.length-1){ S.s++; showStep() } else showDone(); };
 
 /* ======================= PHOTOS ======================= */
@@ -1308,7 +1372,7 @@ function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…"
   if(window.createImageBitmap) createImageBitmap(file).then(b=>done(b,b.width,b.height)).catch(viaImg); else viaImg();
   function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
 $("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
-$("sampleBtn").onclick=()=>{ const n=ST().need; const pilesOf=h=>{ if(!h.count) return []; const k=h.piles||1, each=h.count/k; return Array.from({length:k},()=>each); };
+$("sampleBtn").onclick=()=>{ const n=ST().need; const pilesOf=h=>{ if(!h.count) return []; if(h.sizes) return h.sizes.slice(); const k=h.piles||1, each=h.count/k; return Array.from({length:k},()=>each); };
   const c=window.drawCoinsSample({top:pilesOf(n.top),bottom:pilesOf(n.bottom),seed:S.s+7*S.round}); analyse(c,c.width,c.height,"sample"); };
 /* the camera inside the page, as in FotoFold */
 const CAM={stream:null,failed:false};
@@ -1344,10 +1408,10 @@ function showDone(){ view("doneView"); $("wholes").innerHTML=[...new Set(S.set.s
   $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
     const mis=shots(st.id).some(r=>r.phone_miscounted);
     return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
-  $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); } persist(); }
+  $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); sendDone(); } persist(); doneLiveLine(); }
 function recordObj(){ const done=new Set(S.results.map(r=>r.set));
-  return {schema:RECORD_SCHEMA,app:"FotoSet",version:VERSION,iteration:ITERATION,class_code:S.classCode||null,student:S.student||null,
-    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoSet: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:x.std}))})),
+  return {schema:RECORD_SCHEMA,app:"FotoSet",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
+    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoSet: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
     started:S.started,saved:new Date().toISOString(),summary:S.set?summaryLine():"",
     summaries:S.set?[{set:S.set.key,round:S.round,line:summaryLine()}]:[],folds:[],photos:S.photos,results:S.results,events:S.events}; }
 function recordText(){ const r=recordObj(), head=Object.assign({},r), j=x=>JSON.stringify(x); delete head.folds; delete head.photos; delete head.results; delete head.events;
@@ -1360,10 +1424,124 @@ $("copyRec").onclick=()=>{ try{ navigator.clipboard.writeText(recordText()).then
 $("redo").onclick=()=>{ S.loggedDone=false; startSet(S.set); };
 $("toStart").onclick=()=>renderHome();
 
+/* ======================= LIVE CLASS =======================
+   The same live class as FotoFold. A student who joined it in FotoFold is already in it here (same phone, same code and
+   number). Notes (each answer, the finished set) wait in an outbox on the phone and are sent again until they get through.
+   Without a live class, nothing is sent anywhere. */
+const RELAY=(()=>{ let r="https://fotofold-relay.fotofold.workers.dev"; if(r.indexOf("/*")===0) r="";
+  try{ const q=new URLSearchParams(location.search).get("relay"); if(q&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(q)) sessionStorage.setItem("ff.relay",q);
+    const t=sessionStorage.getItem("ff.relay"); if(t) r=t; }catch(e){}
+  return r.replace(/\/+$/,""); })();
+const LIVE_RE=/^[A-HJ-NP-Z2-9]{5}$/;
+let LIVE=null; try{ const l=JSON.parse(store.get("ff.live")||"null"); if(l&&Date.now()-l.at<7*24*3600e3) LIVE=l; }catch(e){}
+function cls(){ return (LIVE&&LIVE.ok&&LIVE.label)||S.classCode }
+const asked=()=>S.set?S.set.steps.filter(st=>st.ask):[];
+function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new AbortController():null; const t=c?setTimeout(()=>c.abort(),ms||10000):null;
+  return fetch(url,Object.assign({},opt||{},c?{signal:c.signal}:{})).finally(()=>{ if(t) clearTimeout(t) }); }
+const OUT={q:[],busy:false,timer:null,fails:0,delivered:{}};
+try{ OUT.q=JSON.parse(store.get("fs.outbox.v1")||"[]")||[]; OUT.delivered=JSON.parse(store.get("fs.delivered")||"{}")||{}; }catch(e){ OUT.q=[] }
+const saveOut=()=>{ store.set("fs.outbox.v1",JSON.stringify(OUT.q.slice(-400))); store.set("fs.delivered",JSON.stringify(OUT.delivered)); };
+function devId(){ let d=store.get("ff.dev"); if(!d){ d="d"+Math.random().toString(36).slice(2,10)+Date.now().toString(36); store.set("ff.dev",d) } return d }
+let noteSeq=parseInt(store.get("fs.seq")||"0",10)||0;
+function note(kind,body){ if(!RELAY||!LIVE||!LIVE.ok||!S.student) return;
+  const mid=devId()+"-s"+(++noteSeq)+"-"+Date.now().toString(36); store.set("fs.seq",String(noteSeq));
+  OUT.q.push({code:LIVE.code,mid,n:S.student,kind,body:Object.assign({dev:devId(),app:"FotoSet"},body||{})}); saveOut(); flush(); }
+const dkey=(code,n,set,round)=>code+"|"+n+"|"+set+"|"+round;
+async function flush(){ if(OUT.busy||!OUT.q.length||!RELAY){ liveUI(); return } OUT.busy=true; clearTimeout(OUT.timer);
+  try{ while(OUT.q.length){ const m=OUT.q[0]; let r=null;
+      try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ r=null }
+      if(r&&r.ok){ if(m.kind==="join"){ let j={}; try{ j=await r.json() }catch(e){} if(LIVE&&LIVE.code===m.code){ LIVE.taken=j.taken?m.n:null; store.set("ff.live",JSON.stringify(LIVE)); } }
+        OUT.q.shift(); OUT.fails=0; if(m.kind==="done") OUT.delivered[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; saveOut(); continue }
+      if(r&&r.status===413&&m.kind==="done"&&m.body&&m.body.record){ m.body.record=null; m.body.too_big=true; saveOut(); continue } // too big: send the summary only
+      if(r&&r.status===404){ OUT.q=OUT.q.filter(x=>x.code!==m.code); saveOut(); if(LIVE&&LIVE.code===m.code) liveEnded(); continue }
+      if(r&&(r.status===400||r.status===413||r.status===429)){ OUT.q.shift(); saveOut(); continue } // can't ever go through
+      OUT.fails++; break } }   // no answer, or a passing problem: keep it and try again
+  finally{ OUT.busy=false; liveUI(); if(OUT.q.length){ OUT.timer=setTimeout(flush,Math.min(30000,1500*Math.pow(2,Math.min(OUT.fails,5)))) } } }
+addEventListener("online",()=>{ flush(); drainOther("ff.outbox.v1","ff.delivered"); if(LIVE_RE.test((S.classCode||"").toUpperCase())&&!(LIVE&&LIVE.ok)) codeChanged(); });
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) flush() });
+/* whose work is on this phone: a different number with work here asks "new student?", as in FotoFold */
+let lastNum=store.get("fs.owner")||S.student;
+function setOwner(v){ lastNum=v||""; store.set("fs.owner",lastNum); }
+const hasWork=()=>!!(S.results.length||S.photos.length||loadProgress());
+function askNew(){ if(S.student&&lastNum&&S.student!==lastNum&&hasWork()){ $("newCard").hidden=false; $("newWhat").textContent="Number "+S.student+" now. Is this a new student on this phone?"; try{ $("newCard").scrollIntoView({block:"center"}) }catch(e){} return true } return false }
+function numberSettled(){ const v=S.student; if(!v||v===lastNum){ sendJoin(); return }
+  if(LIVE&&LIVE.taken&&LIVE.taken===lastNum){ setOwner(v); LIVE.taken=null; sendJoin(); return } // fixing a number another phone had: same student
+  if(lastNum&&hasWork()){ askNew(); return }
+  setOwner(v); sendJoin(); }
+$("newYes").onclick=()=>{ forget(); S.set=null; S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false;
+  $("newCard").hidden=true; setOwner(S.student); if(LIVE) LIVE.joined=null; sendJoin(); renderHome(); };
+$("newNo").onclick=()=>{ $("newCard").hidden=true; setOwner(S.student); sendJoin(); };
+/* rounds go on counting in a class even after Start fresh, so the teacher never sees two tries mixed as one */
+function roundKey(k){ return (LIVE&&LIVE.ok?LIVE.code:"")+"|"+(S.student||"")+"|"+k }
+function nextRound(k){ try{ const m=JSON.parse(store.get("ff.rounds")||"{}"); return (m[roundKey(k)]||0)+1 }catch(e){ return 1 } }
+function bumpRound(k,r){ try{ const m=JSON.parse(store.get("ff.rounds")||"{}"); m[roundKey(k)]=Math.max(m[roundKey(k)]||0,r); store.set("ff.rounds",JSON.stringify(m)) }catch(e){} }
+/* notes FotoFold left waiting on this phone (say, the student tapped over to FotoSet before they went): send them too */
+let draining=false, drainT=null;
+async function drainOther(qk,dk){ if(!RELAY||draining) return; draining=true; clearTimeout(drainT);
+  try{ if(await drainOnce(qk,dk)===false) drainT=setTimeout(()=>drainOther(qk,dk),20000); } finally { draining=false } }
+async function drainOnce(qk,dk){ let q=[]; try{ q=JSON.parse(store.get(qk)||"[]")||[] }catch(e){ return }
+  for(const m of q){ let r=null;
+    try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ r=null }
+    if(!r||r.status>=500) return false;   // no connection: leave the rest for later
+    if(r.status===413&&m.kind==="done"&&m.body&&m.body.record){ m.body.record=null; m.body.too_big=true;   // too big: the summary only
+      try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ return false } if(!r||r.status>=500) return false; }
+    try{ const now=JSON.parse(store.get(qk)||"[]")||[]; store.set(qk,JSON.stringify(now.filter(x=>x.mid!==m.mid)));
+      if(r.ok&&m.kind==="done"){ const d=JSON.parse(store.get(dk)||"{}")||{}; d[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; store.set(dk,JSON.stringify(d)); } }catch(e){} } }
+function sendJoin(){ if(LIVE&&LIVE.ok&&S.student&&LIVE.joined!==S.student){ LIVE.joined=S.student; store.set("ff.live",JSON.stringify(LIVE)); note("join",{version:VERSION}); } liveUI(); }
+function recordFor(k,rd){ const r=recordObj(), keep=x=>x&&x.set===k&&x.round===rd;
+  r.results=r.results.filter(keep); r.photos=r.photos.filter(keep); r.events=r.events.filter(keep);
+  r.sets=r.sets.filter(x=>x.set===k); r.summaries=r.summaries.filter(keep); return r; }
+function sendDone(){ if(!LIVE||!LIVE.ok) return; note("done",{set:S.set.key,no:S.set.no,round:S.round,of:asked().length,summary:summaryLine(),record:recordFor(S.set.key,S.round)}); }
+function liveEnded(){ LIVE.ok=false; store.set("ff.live",JSON.stringify(LIVE)); liveUI("ended"); }
+// work on this phone from an earlier class doesn't follow the student into a new one
+function newClass(c){ const prev=store.get("fs.lastLive"); store.set("fs.lastLive",c);
+  if(prev&&prev!==c&&$("stepView").hidden&&(S.results.length||S.photos.length||loadProgress())){ forget(); S.set=null; S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false; $("resumeCard").hidden=true; renderHome(); } }
+let codeT=null, codeAsked="", codeTries=0;
+function codeChanged(){ clearTimeout(codeT); const c=(S.classCode||"").toUpperCase();
+  if(LIVE&&LIVE.code!==c&&LIVE.label!==c){ LIVE=null; store.set("ff.live",""); }
+  if(LIVE&&LIVE.ok){ newClass(LIVE.code); liveUI(); return }
+  if(!RELAY||!LIVE_RE.test(c)){ codeAsked=""; liveUI(); return }
+  codeTries=0; codeT=setTimeout(()=>checkCode(c),350); }
+async function checkCode(c){ codeAsked=c; liveUI("checking");
+  let r=null; try{ r=await tfetch(RELAY+"/session/"+c,{},10000) }catch(e){}
+  if(codeAsked!==c) return;
+  if(r&&r.ok){ let j={}; try{ j=await r.json() }catch(e){}
+    LIVE={code:c,label:j.label||null,ok:true,at:Date.now()}; store.set("ff.live",JSON.stringify(LIVE)); newClass(c);
+    sendJoin(); flush(); liveUI(); return }
+  if(r&&r.status===404){ liveUI("notlive"); return }
+  codeTries++; liveUI("noreach"); codeT=setTimeout(()=>{ if(codeAsked===c) checkCode(c) },Math.min(30000,3000*codeTries)); } // keep looking
+function liveUI(state){ const line=$("liveLine"), badge=$("liveBadge"), on=LIVE&&LIVE.ok, waiting=OUT.q.length>0;
+  const name=on?"class "+(LIVE.label||LIVE.code):"";
+  const dup=on&&LIVE.taken&&LIVE.taken===S.student;
+  badge.hidden=!on; if(on){ badge.textContent=dup?"⚠ #"+S.student+" is on another phone too":(waiting&&OUT.fails?"○ Live · waiting for wifi":"● Live · "+name+(S.student?" · #"+S.student:"")); badge.className="livebadge"+((waiting&&OUT.fails)||dup?" wait":""); }
+  let t="", k="";
+  if(state==="checking"){ t="Looking for the live class…" }
+  else if(state==="notlive"){ t="No live class with this code right now. That's fine for homework: your work stays on this phone." }
+  else if(state==="noreach"){ t="Looking for the live class… (no connection yet). You can start: your answers wait on this phone."; k="off" }
+  else if(LIVE&&!LIVE.ok){ t="The live class has ended. Your work is still on this phone. Save or Copy it at the end."; k="off" }
+  else if(on&&!S.student){ t="Joined "+name+". Now type your number."; k="on" }
+  else if(dup){ t="Another phone already joined as #"+S.student+". Check your number with your teacher, then fix it here."; k="off" }
+  else if(on){ t="You're in "+name+" as #"+S.student+". Your teacher sees your answers as you go."; k="on" }
+  line.hidden=!t; line.textContent=t; line.className="liveline"+(k?" "+k:"");
+  doneLiveLine(); }
+function doneLiveLine(){ const el=$("doneLive"); if(!el) return; if(!LIVE||!S.set||$("doneView").hidden){ el.hidden=true; return }
+  const got=OUT.delivered[dkey(LIVE.code,S.student,S.set.key,S.round)];
+  el.hidden=false;
+  if(got==="full"){ el.textContent="Your teacher has your answers."; el.className="liveline on" }
+  else if(got){ el.textContent="Your teacher has your one-line summary. Tap Save my work or Copy to give your teacher the rest."; el.className="liveline off" }
+  else if(!LIVE.ok){ el.textContent="The live class ended before your answers were sent. Save or Copy them for your teacher."; el.className="liveline off" }
+  else if(OUT.fails){ el.textContent="Can't reach your teacher yet. The phone keeps trying. You can also Save or Copy."; el.className="liveline off" }
+  else { el.textContent="Sending your answers to your teacher…"; el.className="liveline" } }
+(function(){ let j=""; try{ j=(new URLSearchParams(location.search).get("join")||"").toUpperCase().replace(/[^A-Z0-9]/g,"") }catch(e){}
+  if(j){ $("classCode").value=S.classCode=j; store.set("ff.class",j); codeChanged(); try{ history.replaceState(null,"",location.pathname+location.hash) }catch(e){} }
+  else if(LIVE&&LIVE.ok){ newClass(LIVE.code); sendJoin(); flush(); }
+  else codeChanged();
+  setTimeout(()=>drainOther("ff.outbox.v1","ff.delivered"),800); })();
+
 let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(!$("stepView").hidden) drawStage(); },150) });
 try{ if(window.coinsWarmup) setTimeout(()=>window.coinsWarmup(),300) }catch(e){}
-renderHome();
-window.__fs={S,SETS,recordText,recordObj,summaryLine,analyse,check};
+renderHome(); liveUI();
+window.__fs={S,SETS,recordText,recordObj,summaryLine,analyse,check,OUT,live:()=>LIVE};
 })();
 </script>
 </body></html>

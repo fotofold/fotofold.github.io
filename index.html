@@ -5,7 +5,7 @@
   No names, and the photo is never kept. Nothing is sent anywhere, except in a live class:
   then the student's number and answers go to the teacher's screen through the relay.
 -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Fold a paper strip, photograph it, color the parts, hear the fraction."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoFold (iteration 18)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Fold a paper strip, photograph it, color the parts, hear the fraction."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoFold (iteration 19)</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
@@ -135,7 +135,7 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
 
 <main>
   <div class="top">
-    <button class="brand" id="home" type="button" aria-label="FotoFold, back to the sets">FotoFold <small id="brandSet">iteration 18</small></button>
+    <button class="brand" id="home" type="button" aria-label="FotoFold, back to the sets">FotoFold <small id="brandSet">iteration 19</small></button>
     <span class="livebadge" id="liveBadge" hidden></span>
     <div class="wholes" id="wholes" aria-label="Wholes"></div>
   </div>
@@ -159,7 +159,7 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
     <div class="card" id="newCard" hidden><b id="newWhat"></b><div class="row"><button class="btn" id="newYes" type="button">Yes, start fresh</button><button class="btn ghost" id="newNo" type="button">No, same student</button></div></div>
     <div class="card" id="resumeCard" hidden><b id="resumeWhat"></b><div class="row"><button class="btn" id="resumeBtn" type="button">Keep going</button><button class="btn ghost" id="freshBtn" type="button">Start fresh</button></div></div>
     <div class="sets" id="sets"></div>
-    <a class="setcard" href="fotoset.html" id="fotosetLink"><span class="no" style="background:var(--good)">+</span><b>New: FotoSet</b><span class="what">Fractions with coins: make a whole, group it into equal parts, see how many fit. New, for trying out.</span></a>
+    <a class="setcard" href="fotoset.html" id="fotosetLink"><span class="no" style="background:var(--good)">+</span><b>New: FotoSet</b><span class="what">Fractions with coins: make a whole, group it into parts, see how many fit and what is left over. New, for trying out.</span></a>
     <button class="btn link" id="teacherLink" type="button">I'm the teacher: start a live class</button>
   </section>
 
@@ -230,7 +230,7 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
 <script>
 "use strict";
 (function(){
-const VERSION="0.18.0", ITERATION=18, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.19.0", ITERATION=19, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function toast(m){ const el=$("recToast"); if(el) el.textContent=m }
@@ -748,9 +748,9 @@ function common(){ if(typeof stopCam==="function"&&CAM.stream) closeCam(); S.sub
   requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:reduceMotion.matches?"auto":"smooth"}) }catch(e){} }); }
 
 function startSet(SET){
-  if(S.student&&lastNum&&S.student!==lastNum&&S.results.length){ view("homeView"); $("newCard").hidden=false; $("newWhat").textContent="Number "+S.student+" now. Is this a new student on this phone?"; try{ $("newCard").scrollIntoView({block:"center"}) }catch(e){} return }
+  if(askNew()) return;
   S.set=SET; const used=S.results.filter(r=>r.set===SET.key).map(r=>r.round).concat(Object.values(S.folds).filter(f=>f.set===SET.key).map(f=>f.round));
-  S.round=used.length?Math.max(...used)+1:1; S.loggedDone=false; view("stepView"); log("set_start",{set:SET.key}); keepAwake(); sendJoin(); note("step",{type:"start",set:SET.key,no:SET.no,round:S.round,of:flatSteps().length}); startWhole(0); }
+  S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(SET.key)); bumpRound(SET.key,S.round); setOwner(S.student); S.loggedDone=false; view("stepView"); log("set_start",{set:SET.key}); keepAwake(); sendJoin(); note("step",{type:"start",set:SET.key,no:SET.no,round:S.round,of:flatSteps().length}); startWhole(0); }
 function resume(p){ // the photo is never kept, so the student photographs this whole again, then carries on from the step they were on
   S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.folds=p.folds||{}; S.mem=p.mem||{}; S.events=p.events||[]; S.started=p.started||S.started; S.length=p.length||S.length; S.loggedDone=false;
   const next = p.s<0 ? 0 : (p.stepOk ? p.s+1 : p.s);
@@ -1073,7 +1073,7 @@ function renderHome(){
   if(p){ const X=SETS.find(x=>x.key===p.set), Wp=X.plan[p.w];
     $("resumeWhat").textContent = p.done ? "Your answers to Set "+X.no+" are still on this phone." : "Pick up where you left off: Set "+X.no+", "+Wp.name.toLowerCase()+", step "+(p.s+(Wp.same?1:2))+".";
     $("resumeBtn").textContent = p.done ? "See my answers" : "Keep going";
-    $("resumeBtn").onclick=()=>{ if(p.done){ S.set=X; S.round=p.round; S.results=p.results; S.folds=p.folds; S.mem=p.mem; S.events=p.events; S.started=p.started; S.loggedDone=true; showDone(); } else resume(p); };
+    $("resumeBtn").onclick=()=>{ if(askNew()) return; if(p.done){ S.set=X; S.round=p.round; S.results=p.results; S.folds=p.folds; S.mem=p.mem; S.events=p.events; S.started=p.started; S.loggedDone=true; showDone(); } else resume(p); };
     $("freshBtn").onclick=()=>{ forgetProgress(); S.set=null; S.results=[]; S.folds={}; S.mem={}; S.events=[]; S.started=new Date().toISOString(); $("resumeCard").hidden=true; }; }
 }
 $("classCode").value=S.classCode=store.get("ff.class"); $("studentNo").value=S.student=store.get("ff.student").replace(/[^0-9]/g,"");
@@ -1115,16 +1115,36 @@ async function flush(){ if(OUT.busy||!OUT.q.length||!RELAY){ liveUI(); return } 
       if(r&&(r.status===400||r.status===413||r.status===429)){ OUT.q.shift(); saveOut(); continue } // can't ever go through
       OUT.fails++; break } }   // no answer, or a passing problem (500): keep it and try again
   finally{ OUT.busy=false; liveUI(); if(OUT.q.length){ OUT.timer=setTimeout(flush,Math.min(30000,1500*Math.pow(2,Math.min(OUT.fails,5)))) } } }
-addEventListener("online",()=>{ flush(); if(LIVE_RE.test((S.classCode||"").toUpperCase())&&!(LIVE&&LIVE.ok)) codeChanged(); });
+addEventListener("online",()=>{ flush(); drainOther("fs.outbox.v1","fs.delivered"); if(LIVE_RE.test((S.classCode||"").toUpperCase())&&!(LIVE&&LIVE.ok)) codeChanged(); });
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) flush() });
-let lastNum=S.student;
+let lastNum=store.get("ff.owner")||S.student;   // whose work is on this phone
+function setOwner(v){ lastNum=v||""; store.set("ff.owner",lastNum); }
+const hasWork=()=>!!(S.results.length||loadProgress());   // work on this phone, even before it's resumed after a reload
+function askNew(){ if(S.student&&lastNum&&S.student!==lastNum&&hasWork()){ view("homeView"); $("newCard").hidden=false; $("newWhat").textContent="Number "+S.student+" now. Is this a new student on this phone?"; try{ $("newCard").scrollIntoView({block:"center"}) }catch(e){} return true } return false }
 function numberSettled(){ const v=S.student; if(!v||v===lastNum) { sendJoin(); return }
-  if(LIVE&&LIVE.taken&&LIVE.taken===lastNum){ lastNum=v; LIVE.taken=null; sendJoin(); return } // fixing a number another phone had: same student
-  if(lastNum && S.results.length){ $("newCard").hidden=false; $("newWhat").textContent="Number "+v+" now. Is this a new student on this phone?"; return }
-  lastNum=v; sendJoin(); }
+  if(LIVE&&LIVE.taken&&LIVE.taken===lastNum){ setOwner(v); LIVE.taken=null; sendJoin(); return } // fixing a number another phone had: same student
+  if(lastNum && hasWork()){ askNew(); return }
+  setOwner(v); sendJoin(); }
 $("newYes").onclick=()=>{ forgetProgress(); S.set=null; S.results=[]; S.folds={}; S.mem={}; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false;
-  $("resumeCard").hidden=true; $("newCard").hidden=true; lastNum=S.student; if(LIVE) LIVE.joined=null; sendJoin(); };
-$("newNo").onclick=()=>{ $("newCard").hidden=true; lastNum=S.student; sendJoin(); };
+  $("resumeCard").hidden=true; $("newCard").hidden=true; setOwner(S.student); if(LIVE) LIVE.joined=null; sendJoin(); };
+$("newNo").onclick=()=>{ $("newCard").hidden=true; setOwner(S.student); sendJoin(); };
+/* rounds go on counting in a class even after Start fresh, so the teacher never sees two tries mixed as one */
+function roundKey(k){ return (LIVE&&LIVE.ok?LIVE.code:"")+"|"+(S.student||"")+"|"+k }
+function nextRound(k){ try{ const m=JSON.parse(store.get("ff.rounds")||"{}"); return (m[roundKey(k)]||0)+1 }catch(e){ return 1 } }
+function bumpRound(k,r){ try{ const m=JSON.parse(store.get("ff.rounds")||"{}"); m[roundKey(k)]=Math.max(m[roundKey(k)]||0,r); store.set("ff.rounds",JSON.stringify(m)) }catch(e){} }
+/* notes FotoSet left waiting on this phone (say, the student came back here before they went): send them too */
+let draining=false, drainT=null;
+async function drainOther(qk,dk){ if(!RELAY||draining) return; draining=true; clearTimeout(drainT);
+  try{ if(await drainOnce(qk,dk)===false) drainT=setTimeout(()=>drainOther(qk,dk),20000); } finally { draining=false } }
+async function drainOnce(qk,dk){ let q=[]; try{ q=JSON.parse(store.get(qk)||"[]")||[] }catch(e){ return }
+  for(const m of q){ let r=null;
+    try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ r=null }
+    if(!r||r.status>=500) return false;   // no connection: leave the rest for later
+    if(r.status===413&&m.kind==="done"&&m.body&&m.body.record){ m.body.record=null; m.body.too_big=true;   // too big: the summary only
+      try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ return false } if(!r||r.status>=500) return false; }
+    try{ const now=JSON.parse(store.get(qk)||"[]")||[]; store.set(qk,JSON.stringify(now.filter(x=>x.mid!==m.mid)));
+      if(r.ok&&m.kind==="done"){ const d=JSON.parse(store.get(dk)||"{}")||{}; d[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; store.set(dk,JSON.stringify(d)); } }catch(e){} } }
+
 function sendJoin(){ if(!$("newCard").hidden) return; if(LIVE&&LIVE.ok&&S.student&&LIVE.joined!==S.student){ LIVE.joined=S.student; store.set("ff.live",JSON.stringify(LIVE)); note("join",{version:VERSION}); } liveUI(); }
 function recordFor(k,rd){ const r=recordObj(), keep=x=>x&&x.set===k&&x.round===rd;
   r.results=r.results.filter(keep); r.folds=r.folds.filter(keep); r.events=r.events.filter(keep);
@@ -1181,7 +1201,8 @@ $("teacherLink").hidden=!RELAY;
   if(j){ store.set("ff.role","student"); $("classCode").value=S.classCode=j; store.set("ff.class",j); codeChanged(); try{ history.replaceState(null,"",location.pathname+location.hash) }catch(e){} }
   else if(RELAY&&!store.get("ff.role")){ showChoice(true); }
   else if(LIVE&&LIVE.ok) { liveUI(); flush(); }
-  else codeChanged(); })();
+  else codeChanged();
+  setTimeout(()=>drainOther("fs.outbox.v1","fs.delivered"),800); })();
 $("home").onclick=()=>{ if(!$("stepView").hidden) armed($("brandSet"),"tap again to leave this set",()=>{ log("left_set",{}); renderHome(); }); else renderHome(); };
 
 /* ======================= START ======================= */

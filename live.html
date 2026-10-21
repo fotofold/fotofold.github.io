@@ -2,7 +2,7 @@
 <!--
   FotoFold: live class.
   Copyright (c) 2026 G.Coppola. All rights reserved.
-  Students' phones send a number and their answers, never a name or photo. The relay deletes a class 12 hours after it starts.
+  Students' phones send a number and their answers, never a name or photo. The relay deletes a class a week after it starts.
 -->
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Run a live FotoFold class: a code for the board, a tile per student number."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoFold Live Class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -321,7 +321,7 @@ function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
     if(x.kind==="join"){ s.joined=s.joined||x.at; continue }
     if(!b.set) continue; s.joined=s.joined||x.at;
     const round=whole(b.round,1,99)||1, of=whole(b.of,0,60), key=b.set+"|"+round;
-    if(!s.sets.has(key)) s.sets.set(key,{key,set:String(b.set),no:whole(b.no,0,9),round,of,steps:new Map(),done:null,at:x.at});
+    if(!s.sets.has(key)) s.sets.set(key,{key,set:String(b.set),no:whole(b.no,0,9),app:b.app==="FotoSet"?"FotoSet":"",round,of,steps:new Map(),done:null,at:x.at});
     const R=s.sets.get(key); R.at=x.at; if(of) R.of=of; s.cur=key;
     if(x.kind==="done"){ R.done=b; continue }
     if(b.type==="answer"||b.type==="moved_on"){ if(!R.steps.has(b.step)) R.steps.set(b.step,{i:whole(b.i,0,60),label:String(b.label||b.step||""),mode:String(b.mode||""),std:String(b.std||""),runs:[],moved:false}); const P=R.steps.get(b.step);
@@ -333,6 +333,7 @@ function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
 function stepState(P){ if(!P) return ""; const rs=P.runs; if(rs.length&&rs[0].correct) return "a"; if(rs.some(r=>r.correct)) return "b"; if(P.moved) return "m"; if(rs.length) return "x"; return ""; }
 function looksStuck(R){ const arr=[...R.steps.values()].sort((a,b)=>a.i-b.i); const P=arr[arr.length-1]; return !R.done && P && !P.moved && P.runs.length>=2 && !P.runs.some(r=>r.correct); }
 const plural=(k,w)=>k+" "+w+(k===1?"":"s");
+const setName=R=>(R.app==="FotoSet"?"FotoSet ":"Set ")+(R.no||"?");   // FotoFold's sets are "Set 1"…, FotoSet's are "FotoSet 1"…
 
 function render(){ try{ draw() }catch(e){ $("runToast").textContent="Something in the notes couldn't be shown. The rest is fine."; } }
 function draw(){ if(!T) return; const S=model();
@@ -343,9 +344,9 @@ function draw(){ if(!T) return; const S=model();
       const R=s.cur&&s.sets.get(s.cur);
       if(R){ const arr=new Array(R.of||0).fill(""); for(const P of R.steps.values()) if(P.i>=1&&P.i<=arr.length) arr[P.i-1]=stepState(P);
         const answered=[...R.steps.values()].length;
-        st="Set "+(R.no||"?")+(R.round>1?" (again)":"")+" · "+answered+" of "+(R.of||"?");
+        st=setName(R)+(R.round>1?" (again)":"")+" · "+answered+" of "+(R.of||"?");
         marks='<span class="marks">'+arr.map(c=>'<i class="'+c+'"></i>').join("")+'</span>';
-        if(R.done){ cls="tile done"; st="Set "+(R.no||"?")+" done ✓"; done++; } 
+        if(R.done){ cls="tile done"; st=setName(R)+" done ✓"; done++; } 
         else if(looksStuck(R)){ cls="tile look"; st+=" · stuck?"; look++; } } }
     if(s&&s.phones>1){ st+=" · "+s.phones+" phones use #"+n.split("·")[0]; cls+=" look"; }
     return '<button class="'+cls+'" type="button" data-n="'+esc(n)+'" aria-pressed="'+(sel===n)+'" aria-label="Number '+esc(n)+', '+esc(st)+'"><span class="no">'+esc(n)+'</span><span class="st">'+esc(st)+'</span>'+marks+'</button>'; }).join("");
@@ -357,11 +358,11 @@ const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length
 function stats(S){ const by={set:new Map(),kind:new Map(),std:new Map()}; let tot=[0,0];
   const add=(m,k,ok)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[1]++; if(ok) e[0]++; };
   for(const s of S.values()) for(const R of s.sets.values()) for(const P of R.steps.values()){ if(!P.runs.length) continue; const ok=P.runs[0].correct===true;
-    add(by.set,R.no||0,ok); add(by.kind,KIND[P.mode]||"Other",ok); if(P.std) add(by.std,P.std,ok); tot[1]++; if(ok) tot[0]++; }
+    add(by.set,setName(R),ok); add(by.kind,KIND[P.mode]||"Other",ok); if(P.std) add(by.std,P.std,ok); tot[1]++; if(ok) tot[0]++; }
   $("statsCard").hidden=!tot[1]; if(!tot[1]) return;
   const row=(label,[a,n],cls)=>{ const pc=Math.round(100*a/n); return '<div class="srow'+(cls?" "+cls:"")+'"><span>'+esc(label)+'</span><span class="bar"><i style="width:'+pc+'%"></i></span><span class="n"><b>'+pc+'%</b> · '+a+' of '+n+'</span></div>'; };
   const block=(title,m,lab,sort)=>'<div><h3>'+title+'</h3>'+[...m].sort(sort||((x,y)=>String(x[0]).localeCompare(String(y[0]),undefined,{numeric:true}))).map(([k,v])=>row(lab(k),v)).join("")+'</div>';
-  $("stats").innerHTML=block("By set",by.set,k=>"Set "+(k||"?"))+block("By kind of step",by.kind,k=>k,(x,y)=>(x[1][0]/x[1][1])-(y[1][0]/y[1][1]))+(by.std.size?block("By standard",by.std,k=>k):"")+row("All answers",tot,"total"); }
+  $("stats").innerHTML=block("By set",by.set,k=>k,(x,y)=>{ const o=k=>(/^FotoSet/.test(k)?100:0)+(parseInt(k.replace(/\D/g,""),10)||0); return o(x[0])-o(y[0]); })+block("By kind of step",by.kind,k=>k,(x,y)=>(x[1][0]/x[1][1])-(y[1][0]/y[1][1]))+(by.std.size?block("By standard",by.std,k=>k):"")+row("All answers",tot,"total"); }
 function left(){ const ms=Math.max(0,(T.ends||0)-Date.now()), d=Math.floor(ms/864e5), h=Math.floor(ms%864e5/3600e3), m=Math.floor(ms%3600e3/60e3);
   return "deleted in "+(d?d+(d===1?" day ":" days ")+h+" h":(h?h+" h ":"")+m+" min"); }
 setInterval(()=>{ if(T&&!$("runView").hidden){ const el=$("stat").lastElementChild; if(el) el.textContent=left(); } },30000);
@@ -373,20 +374,20 @@ function detail(S){ if(!sel){ return } const s=S.get(sel);
   if(!sets.length){ $("dBody").innerHTML='<p class="sub">Joined. Hasn\'t started a set yet.</p>'; return }
   $("dBody").innerHTML=sets.map(R=>{ const arr=[...R.steps.values()].sort((a,b)=>a.i-b.i);
     const first=arr.filter(P=>stepState(P)==="a").length;
-    const head='<h2 style="font-size:18px">Set '+esc(R.no||"?")+(R.round>1?", round "+R.round:"")+(R.done?" · done":"")+'</h2><div class="sub">'+first+' of '+(R.of||arr.length)+' right on the first try'+(R.done?"":" so far")+'.</div>';
+    const head='<h2 style="font-size:18px">'+esc(setName(R))+(R.round>1?", round "+R.round:"")+(R.done?" · done":"")+'</h2><div class="sub">'+first+' of '+(R.of||arr.length)+' right on the first try'+(R.done?"":" so far")+'.</div>';
     const li=arr.map(P=>{ const marks=P.runs.map(r=>r.correct?"✓":"✗").join("→")+(P.moved?" → moved on":""); const ok=P.runs.some(r=>r.correct);
       const lastBad=[...P.runs].reverse().find(r=>!r.correct); const secs=P.runs.reduce((a,r)=>a+(+r.secs||0),0);
       return '<li><span class="i">'+esc(P.i)+'</span><span class="lab">'+esc(P.label)+(lastBad&&lastBad.wrote?' <small>wrote '+esc(lastBad.wrote)+'</small>':'')+'</span><span class="m '+(ok?"ok":"no")+'">'+esc(marks)+' · '+Math.round(secs)+' s</span></li>'; }).join("");
     const sum=R.done&&R.done.summary?'<div class="summary">'+esc(R.done.summary)+'</div>':'';
     const save=R.done&&R.done.record?'<div class="row"><button class="btn small ghost" type="button" data-save="'+esc(R.key)+'">Save this record</button></div>':'';
     return '<div style="display:grid;gap:8px">'+head+'<ol class="steps">'+li+'</ol>'+sum+save+'</div>'; }).join("");
-  $("dBody").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{ const R=s.sets.get(b.dataset.save); download("fotofold-"+fileTag()+"-"+sel+"-set"+(R.no||"")+".json",JSON.stringify(R.done.record,null,1)); }); }
+  $("dBody").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{ const R=s.sets.get(b.dataset.save); download((R.app==="FotoSet"?"fotoset-":"fotofold-")+fileTag()+"-"+sel+"-set"+(R.no||"")+".json",JSON.stringify(R.done.record,null,1)); }); }
 
 function missed(S){ const by=new Map();
-  for(const s of S.values()) for(const R of s.sets.values()) for(const [id,P] of R.steps){ const k=R.set+"|"+id; if(!by.has(k)) by.set(k,{label:P.label,no:R.no,i:P.i,n:0,miss:0}); const e=by.get(k); if(P.runs.length){ e.n++; if(!P.runs[0].correct) e.miss++; } }
+  for(const s of S.values()) for(const R of s.sets.values()) for(const [id,P] of R.steps){ const k=R.set+"|"+id; if(!by.has(k)) by.set(k,{label:P.label,name:setName(R),i:P.i,n:0,miss:0}); const e=by.get(k); if(P.runs.length){ e.n++; if(!P.runs[0].correct) e.miss++; } }
   const top=[...by.values()].filter(e=>e.miss>=2).sort((a,b)=>b.miss/b.n-a.miss/a.n||b.miss-a.miss).slice(0,5);
   $("missedCard").hidden=!top.length;
-  $("missed").innerHTML=top.map(e=>'<li><b>'+esc(e.label)+'</b> (Set '+esc(e.no)+', step '+esc(e.i)+'): '+e.miss+' of '+e.n+' missed it on the first try</li>').join(""); }
+  $("missed").innerHTML=top.map(e=>'<li><b>'+esc(e.label)+'</b> ('+esc(e.name)+', step '+esc(e.i)+'): '+e.miss+' of '+e.n+' missed it on the first try</li>').join(""); }
 
 /* ---- saving ---- */
 function fileTag(){ return (T.label||T.code).replace(/[^A-Za-z0-9-]/g,"") }
