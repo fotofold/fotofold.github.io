@@ -377,7 +377,7 @@ function detail(S){ if(!sel){ return } const s=S.get(sel);
   if(!sets.length){ $("dBody").innerHTML='<p class="sub">Joined. Hasn\'t started a set yet.</p>'; return }
   $("dBody").innerHTML=sets.map(R=>{ const arr=[...R.steps.values()].sort((a,b)=>a.i-b.i);
     const first=arr.filter(P=>stepState(P)==="a").length;
-    const head='<h2 style="font-size:18px">'+esc(setName(R))+(R.round>1?", round "+R.round:"")+(R.done?" · done":"")+(R.iter?' <small style="font-weight:600;color:var(--muted)">· iteration '+R.iter+'</small>':'')+'</h2><div class="sub">'+first+' of '+(R.of||arr.length)+' right on the first try'+(R.done?"":" so far")+'.</div>';
+    const head='<h2 style="font-size:18px">'+esc(setName(R))+(R.round>1?", round "+R.round:"")+(R.done?" · done":"")+(R.iter?' <small style="font-weight:600;color:var(--muted)">· iteration '+R.iter+'</small>':'')+'</h2><div class="sub">'+first+' of '+(R.of||arr.length)+' right on the first try'+(R.done?"":" so far")+'. <small>Seconds run from the start of each step, photo tries included: a rough guide.</small></div>';
     const li=arr.map(P=>{ const marks=P.runs.map(r=>r.correct?"✓":"✗").join("→")+(P.moved?" → moved on":""); const ok=P.runs.some(r=>r.correct);
       const lastBad=[...P.runs].reverse().find(r=>!r.correct); const secs=P.runs.reduce((a,r)=>a+(+r.secs||0),0);
       return '<li><span class="i">'+esc(P.i)+'</span><span class="lab">'+esc(P.label)+(lastBad&&lastBad.wrote?' <small>wrote '+esc(lastBad.wrote)+'</small>':'')+'</span><span class="m '+(ok?"ok":"no")+'">'+esc(marks)+' · '+Math.round(secs)+' s</span></li>'; }).join("");
