@@ -5,7 +5,7 @@
   No names, and the photo is never kept: the phone counts the coins and forgets the picture.
   Nothing is sent anywhere, except in a live class: then the student's number and answers go to the teacher's screen.
 -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 6)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 7)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
@@ -106,7 +106,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
 <main>
   <div class="top">
-    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 6</small></button>
+    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 7</small></button>
     <span class="livebadge" id="liveBadge" hidden></span>
     <div class="wholes" id="wholes" aria-label="Wholes"></div>
   </div>
@@ -114,7 +114,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <section id="homeView" style="display:grid;gap:16px">
     <a class="btn link back" href="index.html" id="allLink">← All activities</a>
     <h1 class="prompt">Count it, photograph it, see the parts.</h1>
-    <p class="sub">You need 15 coins of the same size and a sheet of white paper folded in half: a top half and a bottom half. A part is coins that touch. Leave a space about one coin wide between parts.</p>
+    <p class="sub">You need 15 coins of the same size and a sheet of white paper. Fold it in half and draw a pen line along the fold: a top half and a bottom half. The coins in a part touch. Leave a space about one coin wide between parts.</p>
     <div class="card">
       <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
       <div class="ids">
@@ -176,7 +176,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoSet asks for the camera, and it never keeps the photo it takes: it counts the coins and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
       <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
   </details>
-  <footer>FotoSet, iteration 6. A whole of coins, grouped into parts, and what is left over. The photo is never kept.</footer>
+  <footer>FotoSet, iteration 7. A whole of coins, grouped into parts, and what is left over. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -1296,7 +1296,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.6.0", ITERATION=6, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.7.0", ITERATION=7, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||"" }catch(e){ return "" } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} } };
@@ -1338,7 +1338,7 @@ const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it i
    need:T({count:3},{count:12,piles:2}), ask:{kind:"count",target:6,q:"How many coins are in each bottom part?",hint:"Count the coins in one bottom part."}, say:"6 coins in each part. One part is 6/12 of the whole (12), and 6/12 = 1/2."},
   {id:"c1.b12.3", label:"6/12 in the bottom", prompt:"Take 1 of your 2 bottom parts off the paper.", sub:"Keep your 3 coins in the top half.",
    need:T({count:3},{count:6,piles:1}), ask:{kind:"frac",den:12,target:6,q:"What part of the whole (12) is in the bottom half now?",hint:"The whole (12) had 12 coins. Count the coins in the bottom half."}, say:"6/12 of the whole (12), and 6/12 = 1/2."},
-  {id:"c1.b12.4", label:"1/2 ÷ 1/4", prompt:"Group your bottom 6 into parts the size of your top part.", sub:"Your top part has 3 coins. Make bottom parts of 3, a coin's width apart.",
+  {id:"c1.b12.4", label:"1/2 ÷ 1/4", prompt:"Group your bottom coins into parts the size of your top part.", sub:"Your top part has 3 coins. Make bottom parts of 3, a coin's width apart.",
    need:T({count:3,piles:1},{count:6,piles:2}), ask:{kind:"count",target:2,q:"Your top part is 3 coins. How many 3s make your bottom 6?",hint:"Count the parts of 3 in your bottom half."},mode:"fit", say:"Two 3s make 6. So 2 of your 1/4 make 1/2: 1/2 ÷ 1/4 = 2, because 2 × 1/4 = 1/2."}, ]},
  /* Set 2 is built on Prof. Kurz's own examples: 1 ÷ 2/3, and 5/6 with 1/4 both ways. The bottom half holds the amount;
    the top half holds the measuring part. */
@@ -1348,13 +1348,13 @@ const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it i
    need:T({count:0},{count:3,piles:1}), say:"A whole (3) in the bottom half."},
   {id:"c2.w3.2", label:"1/3 on top", prompt:"In the top half, show 1/3 of the whole (3).", sub:"Put that many coins in the top half.",
    need:T({count:1},{count:3}), say:"1 coin is 1/3 of the whole (3)."},
-  {id:"c2.w3.3", label:"1 ÷ 1/3", prompt:"Group your bottom 3 into parts the size of your top part.", sub:"Your top part is 1 coin. Make bottom parts of 1, a coin's width apart.",
+  {id:"c2.w3.3", label:"1 ÷ 1/3", prompt:"Group your bottom coins into parts the size of your top part.", sub:"Your top part is 1 coin. Make bottom parts of 1, a coin's width apart.",
    need:T({count:1},{count:3,piles:3}), ask:{kind:"count",target:3,q:"How many 1s make your bottom 3?",hint:"Count the parts in your bottom half."},mode:"fit",
    say:"Three 1s make 3. So three of your 1/3 make the whole (3): 1 ÷ 1/3 = 3, because 3 × 1/3 = 1."},
   {id:"c2.w3.4", label:"2/3 on top", prompt:"Add 1 coin to your top part.", sub:"Make it touch the other coin.",
    need:T({count:2,piles:1},{count:3}), ask:{kind:"frac",den:3,target:2,q:"What part of the whole (3) is your top part now?",hint:"The whole (3) has 3 coins. Count the coins in your top part."},
    say:"2/3 of the whole (3)."},
-  {id:"c2.w3.5", label:"full 2s in 3", prompt:"Group your bottom 3 into parts the size of your top part, as far as they go.", sub:"Your top part is 2 coins. Make bottom parts of 2, a coin's width apart. A coin left over goes by itself.",
+  {id:"c2.w3.5", label:"full 2s in 3", prompt:"Group your bottom coins into parts the size of your top part, as far as they go.", sub:"Your top part is 2 coins. Make bottom parts of 2, a coin's width apart. A coin left over goes by itself.",
    need:T({count:2},{count:3,sizes:[2,1]}), ask:{kind:"count",target:1,q:"How many full 2s fit in your bottom 3?",hint:"Count the full parts of 2 in your bottom half."},mode:"fit",
    say:"One full 2, and 1 coin left over."},
   {id:"c2.w3.6", label:"1 ÷ 2/3", reuse:true, prompt:"Look at the coin left over.", sub:"Compare it with your top part of 2 coins.",
@@ -1371,7 +1371,7 @@ const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it i
   {id:"c2.w12.4", label:"3/12 on top", prompt:"Put 3 coins touching in the top half.", sub:"Keep your 10 coins in the bottom half.",
    need:T({count:3,piles:1},{count:10}), ask:{kind:"frac",den:12,target:3,q:"What part of the whole (12) is your top part?",hint:"The whole (12) is 12 coins. Count the coins in your top part."},
    say:"3/12 of the whole (12), and 3/12 = 1/4."},
-  {id:"c2.w12.5", label:"full 3s in 10", prompt:"Group your bottom 10 into parts the size of your top part, as far as they go.", sub:"Your top part is 3 coins. Make bottom parts of 3, a coin's width apart. A coin left over goes by itself.",
+  {id:"c2.w12.5", label:"full 3s in 10", prompt:"Group your bottom coins into parts the size of your top part, as far as they go.", sub:"Your top part is 3 coins. Make bottom parts of 3, a coin's width apart. A coin left over goes by itself.",
    need:T({count:3},{count:10,sizes:[3,3,3,1]}), ask:{kind:"count",target:3,q:"How many full 3s fit in your bottom 10?",hint:"Count the full parts of 3 in your bottom half."},mode:"fit",
    say:"Three full 3s, and 1 coin left over."},
   {id:"c2.w12.6", label:"5/6 ÷ 1/4", reuse:true, prompt:"Look at the coin left over.", sub:"Compare it with your top part of 3 coins.",
@@ -1454,7 +1454,7 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   const cw=C.x1-C.x0, ch=C.y1-C.y0, k=Math.min(W/cw,H/ch), ox=(W-cw*k)/2, oy=(H-ch*k)/2, sc=R.scale||(R.size.w/(img.width||img.naturalWidth||R.size.w));
   g.drawImage(img,C.x0/sc,C.y0/sc,cw/sc,ch/sc,ox,oy,cw*k,ch*k);
   const X=x=>ox+(x-C.x0)*k, Y=y=>oy+(y-C.y0)*k;
-  if(R.fold&&R.fold.y!=null){ g.save(); g.setLineDash([8,6]); g.strokeStyle="rgba(31,79,138,.85)"; g.lineWidth=2; g.beginPath();
+  if(R.fold&&R.fold.y!=null&&R.fold.found!==false){ g.save(); g.setLineDash([8,6]); g.strokeStyle="rgba(31,79,138,.85)"; g.lineWidth=2; g.beginPath();
     if(R.fold.x1!=null&&R.fold.x1>R.fold.x0){ const t=(R.fold.y1-R.fold.y0)/(R.fold.x1-R.fold.x0), yAt=x=>R.fold.y0+(x-R.fold.x0)*t;   // along the crease, tilt and all
       g.moveTo(X(C.x0),Y(yAt(C.x0))); g.lineTo(X(C.x1),Y(yAt(C.x1))); } else { g.moveTo(ox,Y(R.fold.y)); g.lineTo(ox+cw*k,Y(R.fold.y)); }
     g.stroke(); g.restore(); }
@@ -1480,6 +1480,7 @@ function byTouch(R,h){ // regroup one half's coins into parts by touching; retur
   const pileOf=R.coins.map(()=>-1); list.forEach((G,k)=>G.forEach(i=>pileOf[i]=k));
   return Object.assign({},h,{piles:list.map(G=>G.length),pileOf,clear:true,byTouch:true}); }
 function check(R,need){ const probs=[];
+  if(R.fold&&R.fold.found===false&&(R.coins||[]).length) return ["I can't see the fold line. Draw a pen line along the fold, and get the line in the photo."];
   for(const [name,h,n] of [["top",R.top,need.top],["bottom",R.bottom,need.bottom]]){
     const c=h?h.count:0, p=h?(h.piles||[]):[];
     if(c!==n.count){ probs.push(n.count===0 ? "The "+name+" half should be empty." : "The "+name+" half needs "+plural(n.count,"coin")+" (I count "+c+")."); continue }
@@ -1509,7 +1510,7 @@ function analyse(img,w,h,source){ const st=ST(); let R;
   const countOff=["top","bottom"].some(k=>((R[k]?R[k].count:0))!==st.need[k].count);
   if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Fix the coins and take the photo again."); $("anyway").hidden=!(source==="photo"&&(countOff||S.photoTries>=3)); persist(); showResult(); return }
   photoGood(); }
-function showResult(){ requestAnimationFrame(()=>{ const t=[$("answerRow"),$("nextRow"),$("feedback")].find(e=>!e.hidden); try{ const r=t&&t.getBoundingClientRect(); if(r&&(r.bottom>innerHeight||r.top<0)) t.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(e){} }); }   // only when it's out of view
+function showResult(order){ requestAnimationFrame(()=>{ const t=(order||["answerRow","nextRow","feedback"]).map(id=>$(id)).find(e=>!e.hidden); try{ const r=t&&t.getBoundingClientRect(); if(r&&(r.bottom>innerHeight||r.top<0)) t.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(e){} }); }   // only when it's out of view
 function photoGood(){ const st=ST(); S.photoOk=true; $("anyway").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
   if(st.ask){ setFeedback("",""); $("answerRow").hidden=false; renderEq(); }
   else { S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); showNext(); } persist(); showResult(); }
@@ -1532,7 +1533,7 @@ $("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("s
   note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.mode,std:st.std,i:asked().indexOf(st)+1,of:asked().length,correct:ok,try:S.tries,wrote,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)});
   if(ok){ S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); showNext(); }
   else { setFeedback("warn","<b>"+(a.kind==="frac"?wrote+" isn't it.":S.num+" isn't it.")+"</b>"+hint(st)+" Change it and Submit again, or go on."); showNext(); }
-  persist(); };
+  persist(); showResult(["nextRow","feedback"]); };
 function hint(st){ return st.ask.hint||"Count your coins." }
 function showNext(){ $("nextRow").hidden=false; const last=S.s===S.set.steps.length-1; $("next").textContent=last?"See my answers":"Next"; $("next").className=S.stepOk?"btn go next":"btn ghost"; }
 $("next").onclick=()=>{ if(!S.stepOk){ // moving on without the right answer: the record says so
