@@ -1314,7 +1314,7 @@ const fr=(a,b)=>'<span class="frac"><span>'+a+'</span><span class="bar"></span><
    Every step is one thing to do with the coins, one photo, and (for most steps) one number to set.
    need: what the photo should show, per half: {count, piles}. ask: {kind:"frac", den, target} or {kind:"count", target}. */
 const T=(top,bottom)=>({top,bottom});
-const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it into equal parts, and see how many parts fit.",std:"4.NF.A.1, 5.NF.B.4, 5.NF.B.7, 6.NS.A.1 preview",
+const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it into equal parts, and see how many parts fit.",std:"3.NF.A.1, 4.NF.A.1, 4.NF.B.3a, 6.NS.A.1 preview",
  steps:[
   {id:"c1.w1.1", label:"whole of 1", prompt:"Make a whole of 1 coin.", sub:"Put 1 coin in the top half of your paper.",
    need:T({count:1},{count:0}), ask:{kind:"frac",den:1,target:1,q:"What part of the whole (1) is your coin?",hint:"Your whole (1) is 1 coin. Count your coins."}, say:"1/1 = 1. One coin is the whole (1)."},
