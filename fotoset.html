@@ -93,9 +93,7 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .setcard b{font-family:var(--f-display);font-size:21px;font-variation-settings:"wdth" 85}
 .setcard span.what{color:var(--muted);font-size:15px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-#endCard .path{display:grid;gap:6px} #endCard .peq{font-weight:700;font-size:1.1em}
-#endCard .steps{display:flex;flex-wrap:wrap;align-items:center;gap:8px 6px;background:var(--paper);border-radius:8px;padding:8px}
-#endCard .st{display:inline-flex;align-items:center;gap:6px;white-space:nowrap} #endCard .to{color:#6b6b6b;font-weight:700} #endCard svg.mini{display:block;flex:none;max-width:none}
+#endCard .peq{font-weight:700;font-size:1.1em}
 #endCard .endq{font-size:1.15em;font-weight:700}
 .chip{font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 8px;border-radius:999px}
 .chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)} .chip.skip{background:var(--line);color:var(--muted)}
@@ -1391,7 +1389,7 @@ const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it i
    4 × 1/2 ("four groups of one-half"), 1/2 × 6 ("half of a group of six"), then 3/4 × 1/3 and 1/3 × 3/4, which have the same
    answer and look different. FotoSet says "parts of" for her "groups of": here "group" is only a verb. */
  {key:"c3",no:3,name:"Part of a part",what:"4 parts of 1/2, 1/2 of 6, then 3/4 of 1/3 and 1/3 of 3/4.",std:"4.NF.B.4, 5.NF.B.4",
- end:{q:"Same answer. Was it the same picture?",paths:[{eq:"3/4 of 1/3 = 3/12",steps:[[4,4,4],[4],[1,1,1,1],[1,1,1]]},{eq:"1/3 of 3/4 = 3/12",steps:[[3,3,3,3],[3,3,3],[3]]}]},
+ end:{q:"Same amount. Was it the same picture?",lines:["3/4 of 1/3 = 3/12","1/3 of 3/4 = 3/12"]},
  steps:[
   {id:"c3.w2.1", label:"whole of 2", prompt:"Make a whole of 2 coins in the top half.", sub:"Start with an empty paper. Keep the 2 coins touching.",
    need:T({count:2,piles:1},{count:0}), say:"A whole (2) in the top half."},
@@ -1639,13 +1637,10 @@ function showDone(){ if($("doneView").hidden) S.doneAt=performance.now(); view("
     return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
   renderEnd();
   $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); sendDone(); } persist(); doneLiveLine(); }
-/* the set's closing picture: what the coins looked like at each step, both ways (drawn, not the photos) */
-function partsSVG(parts){ const r=9, d=2*r, gap=d*0.9, at=n=>({1:[[0,0]],2:[[0,0],[1,0]],3:[[0,0],[1,0],[.5,.87]],4:[[0,0],[1,0],[0,1],[1,1]]}[n]||Array.from({length:n},(_,i)=>[i%4,Math.floor(i/4)]));
-  let x=r+2, out=""; const H=2*d+6;
-  parts.forEach((n,k)=>{ const P=at(n), w=Math.max(...P.map(p=>p[0]))*d; P.forEach(p=>{ out+='<circle cx="'+(x+p[0]*d).toFixed(1)+'" cy="'+(r+3+p[1]*d).toFixed(1)+'" r="'+(r-0.6)+'" fill="#c98b4a" stroke="'+PILE[k%PILE.length]+'" stroke-width="1.8"/>' }); x+=w+d+gap; });
-  const W=Math.round(x-gap-d+r+2); return '<svg class="mini" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+parts.length+' part'+(parts.length===1?"":"s")+': '+parts.join(", ")+'">'+out+'</svg>'; }
+/* the set's closing lines: the two results, and her question. The picture is the student's own, on the paper (drawn diagrams were tried and dropped:
+   coins laid out another way look different, and the rows of arrows could be read more than one way). */
 function renderEnd(){ const e=S.set&&S.set.end, el=$("endCard"); if(!el) return; if(!e){ el.hidden=true; el.innerHTML=""; return }
-  el.hidden=false; el.innerHTML=e.paths.map(p=>'<div class="path"><div class="peq">'+escEq(p.eq)+'</div><div class="steps">'+p.steps.map((x,i)=>'<span class="st">'+(i?'<span class="to" aria-hidden="true">→</span>':'')+partsSVG(x)+'</span>').join("")+'</div></div>').join("")+'<div class="endq">'+esc(e.q)+'</div>'; }
+  el.hidden=false; el.innerHTML=e.lines.map(t=>'<div class="peq">'+escEq(t)+'</div>').join("")+'<div class="endq">'+esc(e.q)+'</div>'; }
 function recordObj(){ const done=new Set(S.results.map(r=>r.set));
   return {schema:RECORD_SCHEMA,app:"FotoSet",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
     sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoSet: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
