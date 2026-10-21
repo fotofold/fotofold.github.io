@@ -5,7 +5,7 @@
   No names, and the photo is never kept: the phone counts the coins and forgets the picture.
   Nothing is sent anywhere, except in a live class: then the student's number and answers go to the teacher's screen.
 -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet (iteration 7)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoSet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
@@ -93,6 +93,10 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .setcard b{font-family:var(--f-display);font-size:21px;font-variation-settings:"wdth" 85}
 .setcard span.what{color:var(--muted);font-size:15px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+#endCard .path{display:grid;gap:6px} #endCard .peq{font-weight:700;font-size:1.1em}
+#endCard .steps{display:flex;flex-wrap:wrap;align-items:center;gap:8px 6px;background:var(--paper);border-radius:8px;padding:8px}
+#endCard .st{display:inline-flex;align-items:center;gap:6px;white-space:nowrap} #endCard .to{color:#6b6b6b;font-weight:700} #endCard svg.mini{display:block;flex:none;max-width:none}
+#endCard .endq{font-size:1.15em;font-weight:700}
 .chip{font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 8px;border-radius:999px}
 .chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)} .chip.skip{background:var(--line);color:var(--muted)}
 .summary{font-family:var(--f-mono);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-wrap:anywhere}
@@ -106,7 +110,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
 <main>
   <div class="top">
-    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet">iteration 7</small></button>
+    <button class="brand" id="home" type="button" aria-label="FotoSet, back to the start">FotoSet <small id="brandSet"></small></button>
     <span class="livebadge" id="liveBadge" hidden></span>
     <div class="wholes" id="wholes" aria-label="Wholes"></div>
   </div>
@@ -157,6 +161,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <section id="doneView" hidden style="display:grid;gap:14px">
     <h1 class="prompt">My answers</h1>
     <div class="card"><div class="chips" id="answers"></div></div>
+    <div class="card" id="endCard" hidden></div>
     <div class="card">
       <div class="sub">For your teacher, in one line:</div>
       <div class="summary" id="summaryLine"></div>
@@ -176,7 +181,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoSet asks for the camera, and it never keeps the photo it takes: it counts the coins and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
       <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
   </details>
-  <footer>FotoSet, iteration 7. A whole of coins, grouped into parts, and what is left over. The photo is never kept.</footer>
+  <footer>FotoSet, iteration <span id="footIter"></span>. A whole of coins, grouped into parts: how many fit, what is left over, and a part of a part. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -1296,8 +1301,9 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.7.0", ITERATION=7, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.8.0", ITERATION=8, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
+document.title="FotoSet (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||"" }catch(e){ return "" } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} } };
 const plural=(k,w)=>k+" "+w+(k===1?"":"s");
@@ -1380,13 +1386,57 @@ const SETS=[{key:"c1",no:1,name:"Wholes of coins",what:"Make a whole, group it i
   {id:"c2.w12.7", label:"1/4 ÷ 5/6", reuse:true, prompt:"Now the other way.", sub:"Your top 3 is less than one bottom 10.",
    need:T({count:3},{count:10,sizes:[3,3,3,1]}), ask:{kind:"frac",den:10,target:3,q:"Your top 3 is what part of your bottom 10?",hint:"Your bottom has 10 coins. How many coins are in your top part?"},mode:"fit",
    say:"3/10. So 3/10 of your 5/6 makes 1/4: 1/4 ÷ 5/6 = 3/10, because 3/10 × 5/6 = 1/4. And 5/6 ÷ 1/4 was 3⅓, which is 10/3. 10/3 and 3/10 are flips of each other."},
+ ]},
+ /* Set 3 follows Prof. Kurz's own sequence in "Visualizing Fraction Multiplication with Circles and Hexagons" (Kurz & Ganesh, 2023):
+   4 × 1/2 ("four groups of one-half"), 1/2 × 6 ("half of a group of six"), then 3/4 × 1/3 and 1/3 × 3/4, which have the same
+   answer and look different. FotoSet says "parts of" for her "groups of": here "group" is only a verb. */
+ {key:"c3",no:3,name:"Part of a part",what:"4 parts of 1/2, 1/2 of 6, then 3/4 of 1/3 and 1/3 of 3/4.",std:"4.NF.B.4, 5.NF.B.4",
+ end:{q:"Same answer. Was it the same picture?",paths:[{eq:"3/4 of 1/3 = 3/12",steps:[[4,4,4],[4],[1,1,1,1],[1,1,1]]},{eq:"1/3 of 3/4 = 3/12",steps:[[3,3,3,3],[3,3,3],[3]]}]},
+ steps:[
+  {id:"c3.w2.1", label:"whole of 2", prompt:"Make a whole of 2 coins in the top half.", sub:"Start with an empty paper. Keep the 2 coins touching.",
+   need:T({count:2,piles:1},{count:0}), say:"A whole (2) in the top half."},
+  {id:"c3.w2.2", label:"4 parts of 1/2", prompt:"In the bottom half, make 4 parts. Each part is 1/2 of the whole (2).", sub:"Leave a space about one coin wide between parts.",
+   need:T({count:2,piles:1},{count:4,piles:4}), ask:{kind:"frac",den:2,target:4,max:8,q:"How much of the whole (2) is in your bottom half?",hint:"The whole (2) has 2 coins. Count the coins in the bottom half."},
+   say:"4/2 of the whole (2). Four parts of 1/2: 4 × 1/2 = 4/2."},
+  {id:"c3.w2.3", label:"4 × 1/2", prompt:"Group your bottom coins into parts the size of your top part.", sub:"Your top part is the whole (2). Make bottom parts of 2, a coin's width apart.",
+   need:T({count:2,piles:1},{count:4,piles:2}), ask:{kind:"count",target:2,q:"How many wholes (2) make your bottom 4?",hint:"Count the parts of 2 in your bottom half."},
+   say:"Two. Four parts of 1/2 make 2 wholes (2): 4 × 1/2 = 2."},
+  {id:"c3.n6.1", label:"6 coins", prompt:"Put 6 coins in the bottom half.", sub:"Clear the paper first. Keep the 6 coins touching.",
+   need:T({count:0},{count:6,piles:1}), say:"6 coins, touching."},
+  {id:"c3.n6.2", label:"1/2 × 6", prompt:"Group your 6 coins into 2 equal parts.", sub:"Leave a space about one coin wide between parts.",
+   need:T({count:0},{count:6,piles:2}), ask:{kind:"count",target:3,q:"How many coins is 1/2 of 6?",hint:"1/2 of 6 is one of your 2 parts. Count its coins."},
+   say:"3. 1/2 of 6 is 3, and 1/2 × 6 = 3. The of is the ×."},
+  {id:"c3.w12.1", label:"whole of 12", prompt:"Make a whole of 12 coins in the bottom half.", sub:"Clear the paper first. Keep the 12 coins touching.",
+   need:T({count:0},{count:12,piles:1}), say:"A whole (12) in the bottom half."},
+  {id:"c3.w12.2", label:"1 of 3 parts", prompt:"Group your whole (12) into 3 equal parts.", sub:"Leave a space about one coin wide between parts.",
+   need:T({count:0},{count:12,piles:3}), ask:{kind:"frac",den:12,target:4,q:"One part is what part of the whole (12)?",hint:"The whole (12) has 12 coins. How many coins are in one part?"},
+   say:"4/12 of the whole (12), and 4/12 = 1/3."},
+  {id:"c3.w12.3", label:"1/3 of 12", prompt:"Take 2 of your 3 parts off the paper.", sub:"",
+   need:T({count:0},{count:4,piles:1}), say:"1/3 of the whole (12) is on the paper: 4 coins."},
+  {id:"c3.w12.4", label:"1/3 into 4 parts", prompt:"Group your 4 coins into 4 equal parts.", sub:"Leave a space about one coin wide between parts.",
+   need:T({count:0},{count:4,piles:4}), say:"4 parts of 1 coin. Each part is 1/4 of your 1/3."},
+  {id:"c3.w12.5", label:"3/4 × 1/3", prompt:"Take 1 of your 4 parts off the paper.", sub:"",
+   need:T({count:0},{count:3,piles:3}), ask:{kind:"frac",den:12,target:3,q:"3/4 of your 1/3 is on the paper. What part of the whole (12) is it?",hint:"The whole (12) is 12 coins. Count the coins on the paper."},
+   say:"3/12 of the whole (12). 3/4 of 1/3 is 3/12: 3/4 × 1/3 = 3/12."},
+  {id:"c3.s12.1", label:"whole of 12 again", prompt:"Make a whole of 12 coins in the bottom half.", sub:"Clear the paper first. Keep the 12 coins touching.",
+   need:T({count:0},{count:12,piles:1}), say:"A whole (12) again. Now the other way: 1/3 of 3/4."},
+  {id:"c3.s12.2", label:"coins in 1 of 4 parts", prompt:"Group your whole (12) into 4 equal parts.", sub:"Leave a space about one coin wide between parts.",
+   need:T({count:0},{count:12,piles:4}), ask:{kind:"count",target:3,q:"How many coins are in each part?",hint:"Count the coins in one part."},
+   say:"3 coins in each part. One part is 3/12 of the whole (12), and 3/12 = 1/4."},
+  {id:"c3.s12.3", label:"3/4 of 12", prompt:"Take 1 of your 4 parts off the paper.", sub:"",
+   need:T({count:0},{count:9,piles:3}), ask:{kind:"frac",den:12,target:9,q:"What part of the whole (12) is left?",hint:"The whole (12) had 12 coins. Count the coins on the paper."},
+   say:"9/12 of the whole (12), and 9/12 = 3/4."},
+  {id:"c3.s12.4", label:"1/3 × 3/4", prompt:"Take 2 of your 3 parts off the paper.", sub:"",
+   need:T({count:0},{count:3,piles:1}), ask:{kind:"frac",den:12,target:3,q:"1/3 of your 3/4 is on the paper. What part of the whole (12) is it?",hint:"The whole (12) is 12 coins. Count the coins on the paper."},
+   say:"3/12 of the whole (12). 1/3 of 3/4 is 3/12: 1/3 × 3/4 = 3/12. And 3/4 × 1/3 was 3/12 too."},
  ]}];
 /* the standard each question works on (CCSS-M) */
 const STD={"c1.w1.1":"3.NF.A.3c","c1.w2.2":"3.NF.A.1","c1.w4.2":"4.NF.A.1","c1.w4.3":"3.NF.A.1","c1.w4.4":"4.NF.B.3a","c1.w12.2":"4.NF.A.1","c1.w12.3":"4.NF.A.1",
   "c1.b12.2":"4.NF.A.1","c1.b12.3":"4.NF.B.3a","c1.b12.4":"6.NS.A.1",
   "c2.w3.3":"5.NF.B.7b","c2.w3.4":"3.NF.A.1","c2.w3.5":"6.NS.A.1","c2.w3.6":"6.NS.A.1","c2.w12.2":"4.NF.A.1","c2.w12.3":"4.NF.B.3a","c2.w12.4":"4.NF.A.1",
-  "c2.w12.5":"6.NS.A.1","c2.w12.6":"6.NS.A.1","c2.w12.7":"6.NS.A.1"};
-SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=+(/\.[wb](\d+)\./.exec(st.id)||[0,0])[1]; st.mode=st.mode||(st.ask?st.ask.kind:"build"); st.target=st.ask?(st.ask.kind==="frac"?st.ask.target+"/"+st.ask.den:String(st.ask.target)):(st.need.top.count+"|"+st.need.bottom.count); }));
+  "c2.w12.5":"6.NS.A.1","c2.w12.6":"6.NS.A.1","c2.w12.7":"6.NS.A.1",
+  "c3.w2.2":"4.NF.B.4a","c3.w2.3":"4.NF.B.4b","c3.n6.2":"5.NF.B.4a","c3.w12.2":"4.NF.A.1","c3.w12.5":"5.NF.B.4a","c3.s12.2":"4.NF.A.1","c3.s12.3":"4.NF.B.3a","c3.s12.4":"5.NF.B.4a"};
+SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=+(/\.[wbs](\d+)\./.exec(st.id)||[0,0])[1]; st.mode=st.mode||(st.ask?st.ask.kind:"build"); st.target=st.ask?(st.ask.kind==="frac"?st.ask.target+"/"+st.ask.den:String(st.ask.target)):(st.need.top.count+"|"+st.need.bottom.count); }));
 
 /* ======================= STATE ======================= */
 const S={set:null,round:1,s:0,results:[],photos:[],events:[],started:new Date().toISOString(),seen:null,img:null,source:null,photoOk:false,stepOk:false,num:0,tries:0,photoTries:0,stepAt:0,firstWhole:null,classCode:store.get("ff.class"),student:store.get("ff.student").replace(/[^0-9]/g,"")};
@@ -1409,8 +1459,9 @@ function renderHome(){ view("homeView"); $("wholes").innerHTML=""; $("brandSet")
   $("sets").innerHTML=SETS.map(x=>'<button class="setcard" type="button" data-set="'+x.key+'"><span class="no">'+x.no+'</span><b>'+esc(x.name)+'</b><span class="what">'+esc(x.what)+'</span></button>').join("");
   const p=loadProgress(); $("resumeCard").hidden=!p;
   $("sets").querySelectorAll("[data-set]").forEach(b=>b.onclick=()=>{ if(askNew()) return; if(p&&p.set===b.dataset.set&&!p.done) return resume(p); startSet(SETS.find(z=>z.key===b.dataset.set)); });
-  if(p){ $("resumeWhat").textContent=p.done?"Your answers to FotoSet "+SETS.find(x=>x.key===p.set).no+" are still on this phone.":"Pick up where you left off: FotoSet "+SETS.find(x=>x.key===p.set).no+", step "+(Math.min(p.s+(p.stepOk?2:1),SETS.find(x=>x.key===p.set).steps.length))+".";
-    $("resumeBtn").textContent=p.done?"See my answers":"Keep going";
+  if(p){ const X=SETS.find(x=>x.key===p.set), fin=p.done||(p.stepOk&&p.s>=X.steps.length-1);   // the last step done: what's left is My answers
+    $("resumeWhat").textContent=p.done?"Your answers to FotoSet "+X.no+" are still on this phone.":fin?"FotoSet "+X.no+" is finished. Your answers are on this phone.":"Pick up where you left off: FotoSet "+X.no+", step "+(Math.min(p.s+(p.stepOk?2:1),X.steps.length))+".";
+    $("resumeBtn").textContent=fin?"See my answers":"Keep going";
     $("resumeBtn").onclick=()=>{ if(!askNew()) resume(p); };
     $("freshBtn").onclick=()=>{ forget(); S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); $("resumeCard").hidden=true; renderHome(); }; } }
 function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.photos=p.photos||[]; S.events=p.events||[]; S.started=p.started||S.started;
@@ -1425,8 +1476,8 @@ function showStep(){ const st=ST(); closeCam();
   if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
   $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
   $("where").innerHTML=esc(S.set.name)+' · <b>step '+(S.s+1)+' of '+S.set.steps.length+'</b>';
-  const ws=[...new Set(S.set.steps.map(x=>x.whole))];
-  $("wholes").innerHTML=ws.map(w=>'<span class="'+(w<st.whole?"done":w===st.whole?"now":"")+'">whole ('+w+')</span>').join("");
+  const ws=[...new Set(S.set.steps.map(x=>x.whole))].filter(w=>w>0), first=w=>S.set.steps.findIndex(x=>x.whole===w);   // in the order the set meets them
+  $("wholes").innerHTML=ws.map(w=>'<span class="'+(w===st.whole?"now":first(w)<S.s?"done":"")+'">whole ('+w+')</span>').join("");
   $("stepno").textContent=S.s+1; const h=$("head"); h.classList.remove("enter"); void h.offsetWidth; h.classList.add("enter");
   $("prompt").textContent=st.prompt; $("sub").textContent=st.sub; $("sub").hidden=!st.sub;
   $("photoRow").hidden=false; $("sampleBtn").hidden=false; $("anyway").hidden=true; $("answerRow").hidden=true; $("nextRow").hidden=true; setFeedback("","");
@@ -1437,6 +1488,7 @@ function showStep(){ const st=ST(); closeCam();
 /* ---- the stage: the photo, with each coin circled by its part ---- */
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const PILE=["#1f6fd1","#e0581c","#1d9a52","#b0369e","#c99400","#0f8f95","#6b4fd8","#c23b3b"];
+let VH=0, VW=0;   // the tallest the screen has been at this width: Safari's bar coming and going doesn't move the buttons
 function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRatio||1), W=cv.clientWidth||cv.parentElement.clientWidth||360;
   const R=S.seen, img=S.img; let H=Math.round(W*0.62), C=null;
   if(R&&R.size){ C={x0:0,y0:0,x1:R.size.w,y1:R.size.h};
@@ -1444,7 +1496,8 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
       for(const c of (R.coins||[])){ const r=(c.r||R.coinR||10)+pad; C.x0=Math.min(C.x0,c.x-r); C.y0=Math.min(C.y0,c.y-r); C.x1=Math.max(C.x1,c.x+r); C.y1=Math.max(C.y1,c.y+r); }
       C.x0=Math.max(0,C.x0); C.y0=Math.max(0,C.y0); C.x1=Math.min(R.size.w,C.x1); C.y1=Math.min(R.size.h,C.y1); }
     H=Math.round(W*(C.y1-C.y0)/(C.x1-C.x0)); }
-  const vh=window.innerHeight||800, maxH=Math.round(Math.max(vh<500?150:240,vh*0.55));   // a phone on its side: a shorter photo if(H>maxH) H=maxH;
+  if(window.innerWidth!==VW){ VW=window.innerWidth; VH=0 } VH=Math.max(VH,window.innerHeight||0); const vh=VH||800, maxH=Math.round(Math.max(vh<500?150:240,vh*0.55));   // a phone on its side: a shorter photo
+  if(H>maxH) H=maxH;
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.height=H+"px";
   const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle=css("--mat"); g.fillRect(0,0,W,H);
   if(!R||!img){ // an empty sheet, folded
@@ -1523,7 +1576,7 @@ function renderEq(){ const a=ST().ask; let h='<span class="say">'+escEq(a.q)+'</
   if(a.kind==="frac") h+='<span class="nowrap"><span class="frac ask"><span id="num">'+S.num+'</span><span class="bar"></span><span>'+a.den+'</span></span>'+arrows+'</span>';
   else h+='<span class="nowrap"><span class="countbox" id="num">'+S.num+'</span>'+arrows+'</span>';
   $("eq").innerHTML=h; $("submit").disabled=false;
-  const max=a.kind==="frac"?a.den:15;
+  const max=a.max||(a.kind==="frac"?a.den:15);
   $("up").onclick=()=>{ if(S.stepOk) return; S.num=Math.min(max,S.num+1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; };
   $("down").onclick=()=>{ if(S.stepOk) return; S.num=Math.max(0,S.num-1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; }; }
 $("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("submit").disabled=true;
@@ -1580,11 +1633,19 @@ function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student
   const src=new Set(S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.source).map(r=>r.source));
   return [(who?who+" · ":"")+"FotoSet "+S.set.no+" · round "+S.round, src.has("sample")?(src.has("photo")?"some sample coins":"sample coins"):"own coins",
     first+" of "+asked.length+" answers first try"+(misses.length?" ("+misses.join("; ")+")":""), firstPhoto+" of "+photos.length+" photos right first time"+(miscount.length?" · said the phone counted wrong on "+miscount.length+" ("+miscount.join("; ")+")":"")].join(" · "); }
-function showDone(){ if($("doneView").hidden) S.doneAt=performance.now(); view("doneView"); $("wholes").innerHTML=[...new Set(S.set.steps.map(x=>x.whole))].map(w=>'<span class="done">whole ('+w+')</span>').join(""); $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
+function showDone(){ if($("doneView").hidden) S.doneAt=performance.now(); view("doneView"); $("wholes").innerHTML=[...new Set(S.set.steps.map(x=>x.whole))].filter(w=>w>0).map(w=>'<span class="done">whole ('+w+')</span>').join(""); $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
   $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
     const mis=shots(st.id).some(r=>r.phone_miscounted);
     return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
+  renderEnd();
   $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); sendDone(); } persist(); doneLiveLine(); }
+/* the set's closing picture: what the coins looked like at each step, both ways (drawn, not the photos) */
+function partsSVG(parts){ const r=9, d=2*r, gap=d*0.9, at=n=>({1:[[0,0]],2:[[0,0],[1,0]],3:[[0,0],[1,0],[.5,.87]],4:[[0,0],[1,0],[0,1],[1,1]]}[n]||Array.from({length:n},(_,i)=>[i%4,Math.floor(i/4)]));
+  let x=r+2, out=""; const H=2*d+6;
+  parts.forEach((n,k)=>{ const P=at(n), w=Math.max(...P.map(p=>p[0]))*d; P.forEach(p=>{ out+='<circle cx="'+(x+p[0]*d).toFixed(1)+'" cy="'+(r+3+p[1]*d).toFixed(1)+'" r="'+(r-0.6)+'" fill="#c98b4a" stroke="'+PILE[k%PILE.length]+'" stroke-width="1.8"/>' }); x+=w+d+gap; });
+  const W=Math.round(x-gap-d+r+2); return '<svg class="mini" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+parts.length+' part'+(parts.length===1?"":"s")+': '+parts.join(", ")+'">'+out+'</svg>'; }
+function renderEnd(){ const e=S.set&&S.set.end, el=$("endCard"); if(!el) return; if(!e){ el.hidden=true; el.innerHTML=""; return }
+  el.hidden=false; el.innerHTML=e.paths.map(p=>'<div class="path"><div class="peq">'+escEq(p.eq)+'</div><div class="steps">'+p.steps.map((x,i)=>'<span class="st">'+(i?'<span class="to" aria-hidden="true">→</span>':'')+partsSVG(x)+'</span>').join("")+'</div></div>').join("")+'<div class="endq">'+esc(e.q)+'</div>'; }
 function recordObj(){ const done=new Set(S.results.map(r=>r.set));
   return {schema:RECORD_SCHEMA,app:"FotoSet",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
     sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoSet: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
@@ -1734,7 +1795,7 @@ function doneLiveLine(){ const el=$("doneLive"); if(!el) return; if(!LIVE||!S.se
 let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(!$("stepView").hidden) drawStage(); },150) });
 try{ if(window.coinsWarmup) setTimeout(()=>window.coinsWarmup(),300) }catch(e){}
 renderHome(); liveUI();
-window.__fs={S,SETS,recordText,recordObj,summaryLine,analyse,check,byTouch,OUT,live:()=>LIVE};
+window.__fs={S,SETS,recordText,recordObj,summaryLine,analyse,check,byTouch,showDone,OUT,live:()=>LIVE};
 })();
 </script>
 </body></html>

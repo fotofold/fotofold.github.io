@@ -753,7 +753,7 @@ $("retake").onclick=()=>armed($("retake"),"Tap again: start this whole over with
 
 /* ---- screens ---- */
 const SITE_NAME="Fractions by Photo";
-const FOTOSET_ITER=(v=>v.indexOf("/*")===0?"":v)("7");   // put in by the site build: the first screen shows both versions   // the name over both activities (a working title)
+const FOTOSET_ITER=(v=>v.indexOf("/*")===0?"":v)("8");   // put in by the site build: the first screen shows both versions   // the name over both activities (a working title)
 function view(which){ for(const v of ["homeView","stepView","doneView"]) $(v).hidden = v!==which; $("brandName").textContent = which==="homeView" ? SITE_NAME : "FotoFold"; $("homeFoot").hidden = which!=="homeView"; $("mapStatus").hidden = which==="homeView"; $("home").setAttribute("aria-label",(which==="homeView"?SITE_NAME:"FotoFold")+", back to the start"); }
 let FOLD_OPEN=false;   // closed each time the site opens, so both activities show; open while you're working in it
 function openFolder(on,save){ $("foldBody").hidden=!on; $("foldBox").classList.toggle("open",!!on); $("foldFolder").setAttribute("aria-expanded",on?"true":"false"); if(save) FOLD_OPEN=!!on; }
@@ -1251,8 +1251,8 @@ $("teacherLink").hidden=!RELAY;
 $("home").onclick=()=>{ if(!$("stepView").hidden) armed($("brandSet"),"tap again to leave this set",()=>{ log("left_set",{}); renderHome(); }); else renderHome(); };
 
 /* ======================= START ======================= */
-$("mapStatus").textContent = CHECK.ok ? "Fold it, photograph it, hear it. The string is Corda's: "+MAP.point_count+" points, "+MAP.mode_count+" modes from "+F1+" Hz, checked on load. The photo is never kept."
-  : "The string map failed its check: "+CHECK.problems.slice(0,2).join("; ")+". The string will not sound.";
+$("mapStatus").textContent = CHECK.ok ? "Fold it, photograph it, hear it. No names: a class code and a number. The photo is never kept."
+  : "The sound failed its check on load, so FotoFold will be silent this time: "+CHECK.problems.slice(0,2).join("; ")+".";
 const hashSet=SETS.find(x=>"#set"+x.no===location.hash && !x.soon);
 if(hashSet) startSet(hashSet); else renderHome();
 let rz=null; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{ if(!$("stepView").hidden) drawStage(); if(!$("doneView").hidden) showDone(); },150)});

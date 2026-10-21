@@ -490,7 +490,7 @@ function build(){
   for(const T of sets.values()){
     T.wholes=[]; for(const s of T.steps){ s.whole=wholeKeyOf(s.id); let W=T.wholes.find(w=>w.key===s.whole);
       if(!W){ W={key:s.whole,n:nOf[T.key+"."+s.whole]||null,steps:[]}; T.wholes.push(W) } W.steps.push(s) }
-    T.wholes.forEach(W=>{ const m=/^([wb])(\d+)$/.exec(W.key); W.tag = W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]:(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins
+    T.wholes.forEach(W=>{ const m=/^([wbs])(\d+)$/.exec(W.key), c=/^n(\d+)$/.exec(W.key); W.tag = W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]+(m[1]==="s"?", again":""):c?c[1]+" coins":(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins; s12 = a whole of 12 again; n6 = 6 coins, no whole
     T.steps=T.wholes.flatMap(W=>W.steps); T.steps.forEach((s,i)=>{ s.i=i; s.g0 = T.wholes.find(W=>W.key===s.whole).steps[0]===s });
   }
   // cells
