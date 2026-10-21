@@ -26,6 +26,7 @@
   --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-ink:#b8cdc2;
   --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}
 html,body{background:var(--bg);color:var(--fg)}
+button,label.file,.tile,.setcard,a{touch-action:manipulation}
 body{font-family:var(--f-body);font-size:17px;line-height:1.45;margin:0;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
 main{max-width:1180px;margin:0 auto;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
@@ -165,7 +166,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
     <div class="card" id="statsCard" hidden>
       <h2>Right on the first try</h2>
-      <p class="sub">Out of every answer given so far. A step a student tried twice counts once, by its first try.</p>
+      <p class="sub">How many of the steps answered so far were right the first time. A step a student got right on a later try counts as a miss here.</p>
       <div class="stats" id="stats"></div>
     </div>
 
@@ -312,7 +313,10 @@ function netLine(){ if(over) return; const el=$("net"); el.hidden=!fails; if(fai
 function whole(v,lo,hi){ v=Math.round(+v); return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):0 }
 function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
   const st=n=>{ if(!S.has(n)) S.set(n,{n,joined:0,last:0,sets:new Map(),cur:null}); return S.get(n) };
-  for(const x of notes){ const s=st(x.n); s.last=Math.max(s.last,x.at); const b=x.body||{};
+  // which phones use which number: the latest number each phone sent, and the order phones first used a number
+  const order=new Map(), latest=new Map(); for(const x of notes){ const d=x.body&&x.body.dev; if(!d) continue; latest.set(d,x.n); if(!order.has(x.n)) order.set(x.n,[]); if(!order.get(x.n).includes(d)) order.get(x.n).push(d); }
+  const keyOf=x=>{ const d=x.body&&x.body.dev, list=(order.get(x.n)||[]).filter(z=>latest.get(z)===x.n); if(!d||list.length<2) return x.n; const i=list.indexOf(d); return i>0?x.n+"·"+(i+1):x.n; };
+  for(const x0 of notes){ const x=Object.assign({},x0,{n:keyOf(x0)}), s=st(x.n); s.last=Math.max(s.last,x.at); const b=x.body||{};
     if(b.dev){ devNum.set(b.dev,x.n); if(!devs.has(x.n)) devs.set(x.n,new Set()); devs.get(x.n).add(b.dev); }
     if(x.kind==="join"){ s.joined=s.joined||x.at; continue }
     if(!b.set) continue; s.joined=s.joined||x.at;
@@ -324,7 +328,7 @@ function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
       if(b.type==="answer") P.runs.push({correct:b.correct===true,try:whole(b.try,0,99),wrote:b.wrote==null?"":String(b.wrote),secs:whole(b.secs,0,36000)}); else P.moved=true; } }
   // a number that only joined, from a phone that then switched to another number, was a typo: drop it
   for(const [n,s] of [...S]){ const ds=devs.get(n); if(!s.sets.size&&ds&&[...ds].every(d=>devNum.get(d)!==n)) S.delete(n); }
-  for(const [n,s] of S){ const ds=devs.get(n); s.phones=ds?[...ds].filter(d=>devNum.get(d)===n).length:1; }
+  for(const [n,s] of S){ const base=n.split("·")[0], twins=[...S.keys()].filter(k=>k.split("·")[0]===base).length; s.phones=twins; }
   return S; }
 function stepState(P){ if(!P) return ""; const rs=P.runs; if(rs.length&&rs[0].correct) return "a"; if(rs.some(r=>r.correct)) return "b"; if(P.moved) return "m"; if(rs.length) return "x"; return ""; }
 function looksStuck(R){ const arr=[...R.steps.values()].sort((a,b)=>a.i-b.i); const P=arr[arr.length-1]; return !R.done && P && !P.moved && P.runs.length>=2 && !P.runs.some(r=>r.correct); }
@@ -332,7 +336,7 @@ const plural=(k,w)=>k+" "+w+(k===1?"":"s");
 
 function render(){ try{ draw() }catch(e){ $("runToast").textContent="Something in the notes couldn't be shown. The rest is fine."; } }
 function draw(){ if(!T) return; const S=model();
-  const nums=[...S.keys()].sort((a,b)=>(+a)-(+b)||a.localeCompare(b));   // whoever has joined, in number order
+  const nums=[...S.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));   // whoever has joined, in number order
   let joined=0, done=0, look=0;
   $("tiles").innerHTML=nums.map(n=>{ const s=S.get(n); let cls="tile out", st="not here yet", marks="";
     if(s){ joined++; cls="tile in"; st="joined";
@@ -343,7 +347,7 @@ function draw(){ if(!T) return; const S=model();
         marks='<span class="marks">'+arr.map(c=>'<i class="'+c+'"></i>').join("")+'</span>';
         if(R.done){ cls="tile done"; st="Set "+(R.no||"?")+" done ✓"; done++; } 
         else if(looksStuck(R)){ cls="tile look"; st+=" · stuck?"; look++; } } }
-    if(s&&s.phones>1){ st+=" · "+s.phones+" phones use this number"; cls+=" look"; }
+    if(s&&s.phones>1){ st+=" · "+s.phones+" phones use #"+n.split("·")[0]; cls+=" look"; }
     return '<button class="'+cls+'" type="button" data-n="'+esc(n)+'" aria-pressed="'+(sel===n)+'" aria-label="Number '+esc(n)+', '+esc(st)+'"><span class="no">'+esc(n)+'</span><span class="st">'+esc(st)+'</span>'+marks+'</button>'; }).join("");
   $("tiles").querySelectorAll(".tile").forEach(b=>b.onclick=()=>{ sel=b.dataset.n; render(); if(matchMedia("(max-width:979px)").matches) try{ $("detail").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} });
   $("stat").innerHTML='<span>'+joined+' joined</span><span class="ok">'+done+' done</span>'+(look?'<span class="bad">'+look+' maybe stuck</span>':'')+'<span>'+left()+'</span>';
@@ -386,7 +390,7 @@ function missed(S){ const by=new Map();
 
 /* ---- saving ---- */
 function fileTag(){ return (T.label||T.code).replace(/[^A-Za-z0-9-]/g,"") }
-function records(){ const S=model(), out=[]; for(const s of S.values()) for(const R of s.sets.values()) if(R.done&&R.done.record) out.push(R.done.record);
+function records(){ const S=model(), out=[]; for(const s of S.values()) for(const R of s.sets.values()) if(R.done&&R.done.record){ const r=Object.assign({},R.done.record); if(s.n.includes("·")) r.student=s.n.replace("·","-"); out.push(r); }
   // one record per student: a student's later record holds all their sets
   const best=new Map(); for(const r of out){ const sr=(r.results||[])[0]||{}; const k=r.student+"|"+r.started+"|"+sr.set+"|"+sr.round; const prev=best.get(k); if(!prev||(r.saved||"")>(prev.saved||"")) best.set(k,r); }
   return [...best.values()]; }

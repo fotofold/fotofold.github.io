@@ -32,6 +32,7 @@
   --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10;
   --hl:#d9c43a; --hatch:rgba(226,233,229,.22); --on-warn:#111715; color-scheme:dark}
 html,body{background:var(--bg);color:var(--fg)}
+button,label.file,.tile,.setcard,a{touch-action:manipulation}
 body{font-family:var(--f-body);font-size:16px;line-height:1.45;overflow-x:hidden;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 48px}
 *{box-sizing:border-box}
@@ -280,7 +281,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
     <div class="card headline" id="headline" aria-live="polite"></div>
 
     <section id="pctSec" aria-labelledby="pctTitle">
-      <div class="shead"><h2 id="pctTitle">Right on the first try</h2><p class="muted" id="pctNote" style="font-size:14.5px">Every set, for the class shown. Each step counts once per student, by its first try.</p></div>
+      <div class="shead"><h2 id="pctTitle">Right on the first try</h2><p class="muted" id="pctNote" style="font-size:14.5px">Every set, for the class shown: how many of the steps answered were right the first time. A step a student got right on a later try counts as a miss here.</p></div>
       <div class="card pcts" id="pcts"></div>
     </section>
 

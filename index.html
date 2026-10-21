@@ -30,6 +30,7 @@
   --mat:#1b2e28; --mat-grid:#28423a; --mat-ink:#b8cdc2; --paper:#f4f4ee; --paper-edge:#c6c8bd;
   --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}
 html,body{background:var(--bg);color:var(--fg)}
+button,label.file,.tile,.setcard,a{touch-action:manipulation}
 body{font-family:var(--f-body);font-size:17px;line-height:1.45;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
 main{max-width:640px;margin:0 auto;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
@@ -1106,7 +1107,8 @@ const dkey=(code,n,set,round)=>code+"|"+n+"|"+set+"|"+round;
 async function flush(){ if(OUT.busy||!OUT.q.length||!RELAY){ liveUI(); return } OUT.busy=true; clearTimeout(OUT.timer);
   try{ while(OUT.q.length){ const m=OUT.q[0]; let r=null;
       try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ r=null }
-      if(r&&r.ok){ OUT.q.shift(); OUT.fails=0; if(m.kind==="done") OUT.delivered[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; saveOut(); continue }
+      if(r&&r.ok){ if(m.kind==="join"){ let j={}; try{ j=await r.json() }catch(e){} if(LIVE&&LIVE.code===m.code){ LIVE.taken=j.taken?m.n:null; store.set("ff.live",JSON.stringify(LIVE)); } }
+        OUT.q.shift(); OUT.fails=0; if(m.kind==="done") OUT.delivered[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; saveOut(); continue }
       if(r&&r.status===413&&m.kind==="done"&&m.body&&m.body.record){ m.body.record=null; m.body.too_big=true; saveOut(); continue } // too big: send the summary only
       if(r&&r.status===404){ OUT.q=OUT.q.filter(x=>x.code!==m.code); saveOut(); if(LIVE&&LIVE.code===m.code) liveEnded(); continue }
       if(r&&(r.status===400||r.status===413||r.status===429)){ OUT.q.shift(); saveOut(); continue } // can't ever go through
@@ -1116,6 +1118,7 @@ addEventListener("online",()=>{ flush(); if(LIVE_RE.test((S.classCode||"").toUpp
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) flush() });
 let lastNum=S.student;
 function numberSettled(){ const v=S.student; if(!v||v===lastNum) { sendJoin(); return }
+  if(LIVE&&LIVE.taken&&LIVE.taken===lastNum){ lastNum=v; LIVE.taken=null; sendJoin(); return } // fixing a number another phone had: same student
   if(lastNum && S.results.length){ $("newCard").hidden=false; $("newWhat").textContent="Number "+v+" now. Is this a new student on this phone?"; return }
   lastNum=v; sendJoin(); }
 $("newYes").onclick=()=>{ forgetProgress(); S.set=null; S.results=[]; S.folds={}; S.mem={}; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false;
@@ -1138,18 +1141,23 @@ async function checkCode(c){ codeAsked=c; liveUI("checking");
   let r=null; try{ r=await tfetch(RELAY+"/session/"+c,{},10000) }catch(e){}
   if(codeAsked!==c) return;
   if(r&&r.ok){ let j={}; try{ j=await r.json() }catch(e){}
-    LIVE={code:c,label:j.label||null,ok:true,at:Date.now()}; store.set("ff.live",JSON.stringify(LIVE)); sendJoin(); flush(); liveUI(); return }
+    LIVE={code:c,label:j.label||null,ok:true,at:Date.now()}; store.set("ff.live",JSON.stringify(LIVE));
+    const prev=store.get("ff.lastLive"); store.set("ff.lastLive",c);
+    if(prev&&prev!==c&&(S.results.length||loadProgress())&&$("stepView").hidden){ forgetProgress(); S.set=null; S.results=[]; S.folds={}; S.mem={}; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false; $("resumeCard").hidden=true; log("new_class",{code:c}); }
+    sendJoin(); flush(); liveUI(); return }
   if(r&&r.status===404){ liveUI("notlive"); return }
   codeTries++; liveUI("noreach"); codeT=setTimeout(()=>{ if(codeAsked===c) checkCode(c) },Math.min(30000,3000*codeTries)); } // keep looking
 function liveUI(state){ const line=$("liveLine"), badge=$("liveBadge"), on=LIVE&&LIVE.ok, waiting=OUT.q.length>0;
   const name=on?"class "+(LIVE.label||LIVE.code):"";
-  badge.hidden=!on; if(on){ badge.textContent=(waiting&&OUT.fails?"○ Live · waiting for wifi":"● Live · "+name+(S.student?" · #"+S.student:"")); badge.className="livebadge"+(waiting&&OUT.fails?" wait":""); }
+  const dup=on&&LIVE.taken&&LIVE.taken===S.student;
+  badge.hidden=!on; if(on){ badge.textContent=dup?"⚠ #"+S.student+" is on another phone too":(waiting&&OUT.fails?"○ Live · waiting for wifi":"● Live · "+name+(S.student?" · #"+S.student:"")); badge.className="livebadge"+((waiting&&OUT.fails)||dup?" wait":""); }
   let t="", k="";
   if(state==="checking"){ t="Looking for the live class…" }
   else if(state==="notlive"){ t="No live class with this code right now. That's fine for homework: your work stays on this phone." }
   else if(state==="noreach"){ t="Looking for the live class… (no connection yet). You can start: your answers wait on this phone."; k="off" }
   else if(LIVE&&!LIVE.ok){ t="The live class has ended. Your work is still on this phone. Save or Copy it at the end."; k="off" }
   else if(on&&!S.student){ t="Joined "+name+". Now type your number."; k="on" }
+  else if(on&&LIVE.taken&&LIVE.taken===S.student){ t="Another phone already joined as #"+S.student+". Check your number with your teacher, then fix it here."; k="off" }
   else if(on){ t="You're in "+name+" as #"+S.student+". Your teacher sees your answers as you go."; k="on" }
   line.hidden=!t; line.textContent=t; line.className="liveline"+(k?" "+k:"");
   doneLiveLine(); }
