@@ -99,6 +99,9 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .reel{display:grid;justify-items:center;gap:2px;background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:6px 4px}
 .reel small{font-size:13px;color:var(--muted);font-weight:700} .reel b{font-family:var(--f-display);font-size:clamp(34px,11vw,48px);line-height:1.05}
 .reel.spinning b{color:var(--muted)}
+.acts{margin:2px 0 0;padding-left:1.4em;display:grid;gap:3px} .acts li{padding-left:2px}
+.reels.pair{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr) auto;align-items:end;gap:4px}
+.paren{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,13vw,56px);line-height:1;padding-bottom:6px;color:var(--ink)} .paren.comma{align-self:end;padding-bottom:2px}
 /* the number line to answer on: slide along it, the way the coin moved */
 .nl{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;padding:8px 0 4px;flex-basis:100%;max-width:520px}
 .nl svg{display:block;width:100%;height:auto;overflow:visible}
@@ -150,7 +153,8 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <p class="sub" id="sub"></p>
     <div class="card game" id="gameBox" hidden>
       <div class="rules" id="rules" aria-label="Game rules"></div>
-      <div class="reels" aria-live="polite"><div class="reel"><small>start</small><b id="reel0">?</b></div><div class="reel"><small>sign</small><b id="reel1">?</b></div><div class="reel"><small>count</small><b id="reel2">?</b></div></div>
+      <div class="reels" aria-live="polite" aria-atomic="true"><div class="reel"><small>start</small><b id="reel0">?</b></div><div class="reel"><small>sign</small><b id="reel1">?</b></div><div class="reel"><small>count</small><b id="reel2">?</b></div></div>
+      <div class="reels pair" id="pairReels" aria-live="polite" aria-atomic="true" hidden><span class="paren" aria-hidden="true">(</span><div class="reel"><small>x</small><b id="reelX">?</b></div><span class="paren comma" aria-hidden="true">,</span><div class="reel"><small>y</small><b id="reelY">?</b></div><span class="paren" aria-hidden="true">)</span></div>
       <div class="row"><button class="btn go" id="spin" type="button">Spin</button></div>
     </div>
     <div class="stage" id="stageBox"><canvas id="stage" aria-label="Your sheet, as the phone saw it"></canvas></div>
@@ -199,7 +203,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoLine never keeps the photo you take: it looks for your lines and your dot and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
       <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
   </details>
-  <footer>FotoLine, iteration <span id="footIter"></span>. Cut out a square, fold it into two axes and an origin, then play a game along them. The photo is never kept.</footer>
+  <footer>FotoLine, iteration <span id="footIter"></span>. Cut out a square, fold it into two axes and an origin, play a game along them, then graph points and connect them. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -1656,6 +1660,18 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       if (origin.found) { origin.cx = dot.x; origin.cy = dot.y; }
       // back to the photo, for drawing
       var toImg = function (u, v) { var p = applyH(Hg, u, v); return [+p[0].toFixed(1), +p[1].toFixed(1)]; };
+      // dots on grid points (Set 4: plotted points). Every grid point is looked at: a dot where none should be is news too.
+      // On an axis, the point is where the pencil axis crosses the grid line; off the axes, where two printed grid lines cross.
+      var dots = null;
+      if (opts.dots) { dots = [];
+        for (var gxi = -4; gxi <= 4; gxi++) for (var gyi = -4; gyi <= 4; gyi++) { if (!gxi && !gyi) continue;
+          var px = xs[4 + gxi], py = ys[4 - gyi];
+          if (gyi === 0 && hA.drawn) py = hA.fit[0] + hA.fit[1] * px; if (gxi === 0 && vA.drawn) px = vA.fit[0] + vA.fit[1] * py;
+          var dd2 = findDot(D, Rn, px, py, 0.17 * CELL, lineW); if (!dd2.n || dd2.n < 8) continue;
+          var mmd = +(2 * Math.sqrt(dd2.area / Math.PI) / PPI * 25.4).toFixed(1), dkd = +dd2.dark.toFixed(2);
+          var okd = dd2.n >= 25 && mmd >= CFG.dotMm && dkd >= CFG.dotDark && dd2.round <= CFG.dotRound && dd2.diag >= 3;
+          var ptd = toImg(dd2.x, dd2.y), e3 = toImg(dd2.x + Math.sqrt(dd2.area / Math.PI), dd2.y);
+          dots.push({ at: [gxi, gyi], found: okd, n: dd2.n, mm: mmd, dark: dkd, round: dd2.round, diag: dd2.diag, pt: ptd, rpx: +Math.hypot(e3[0] - ptd[0], e3[1] - ptd[1]).toFixed(1) }); } }
       // the coin, and where it is: in squares from the origin, along x and along y (up is +)
       // FotoSet's coin reader first (tuned on real pennies); this sheet's own finder for what it misses (silver)
       var cf = null, seenC = [], cands = [], Hi2g = homography(gc, [[MARGIN, MARGIN], [MARGIN + G, MARGIN], [MARGIN + G, MARGIN + G], [MARGIN, MARGIN + G]]);
@@ -1691,9 +1707,9 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       var soft = pWidth > CFG.soft;   // soft focus: a missing or faint line may be the photo, not the pencil
       var out = Object.assign(base, { ok: true, kind: kind, soft: soft, grid: { quad: gridQuad, mid: mid, q: +Math.min(fv.q, fh.q).toFixed(1) }, printedInk: +pInk.toFixed(2), printedWidth: +pWidth.toFixed(1),
         h: Object.assign({}, hA, { seg: seg(hA, true), fit: undefined }), v: Object.assign({}, vA, { seg: seg(vA, false), fit: undefined }),
-        coin: coin, origin: Object.assign(origin, origin.found ? { pt: toImg(origin.cx, origin.cy), r: +(Math.sqrt(dot.area / Math.PI) * (Hg ? 1 : 1)).toFixed(1) } : {}, { cx: undefined, cy: undefined }) });
+        coin: coin, dots: dots, origin: Object.assign(origin, origin.found ? { pt: toImg(origin.cx, origin.cy), r: +(Math.sqrt(dot.area / Math.PI) * (Hg ? 1 : 1)).toFixed(1) } : {}, { cx: undefined, cy: undefined }) });
       // the dot's radius in photo pixels, for the circle on the stage
-      if (out.origin.found) { var e1 = toImg(origin.cx + out.origin.r, origin.cy); out.origin.rpx = +Math.hypot(e1[0] - out.origin.pt[0], e1[1] - out.origin.pt[1]).toFixed(1); }
+      if (out.origin.found) { var e1 = toImg(dot.x + out.origin.r, dot.y); out.origin.rpx = +Math.hypot(e1[0] - out.origin.pt[0], e1[1] - out.origin.pt[1]).toFixed(1); }
       out.ms = Math.round(nowMs() - t0);
       if (readSheet.coinLog) out.coinSeen = { coins: seenC, sheet: sh ? sh.all : [] };
       if (readSheet.debug) out._debug = { D: D, R: Rn, xs: xs, ys: ys, T: T, pInk: pInk };
@@ -1736,12 +1752,20 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     var H_ = axisSpec(spec.h), V_ = axisSpec(spec.v), ext = 0.15 * F + 0.3 * F * rnd();
     if (H_) { var y = oy + H_.off * cell, half = (3.5 * F + ext) * H_.len; pencilLine(ox - half, y - H_.tilt * half, ox + half, y + H_.tilt * half); }
     if (V_) { var x = ox + V_.off * cell, half2 = (3.5 * F + ext) * V_.len; pencilLine(x + V_.tilt * half2, oy - half2, x - V_.tilt * half2, oy + half2); }
-    if (spec.dot) { var d = spec.dot === true ? {} : spec.dot, mm = d.mm || 4.8 + 2 * rnd(), rr = mm / 2 / 25.4 * F, dx = (d.dx || 0) / 25.4 * F, dy = (d.dy || 0) / 25.4 * F;
-      // an O, then colored in with short strokes (some paper shows through)
-      g.strokeStyle = 'rgba(50,52,58,' + dark + ')'; g.lineWidth = pwid; g.beginPath(); g.arc(ox + dx, oy + dy, rr, 0, 2 * Math.PI); g.stroke();
+    // a colored-in dot: an O, then filled with short strokes (some paper shows through). d: {mm, dx, dy} (mm), at (cx0, cy0) on the flat sheet
+    function drawDot(cx0, cy0, d) { var mm = d.mm || 4.8 + 2 * rnd(), rr = mm / 2 / 25.4 * F, dx = (d.dx || 0) / 25.4 * F, dy = (d.dy || 0) / 25.4 * F, dk = d.dark || dark;
+      g.strokeStyle = 'rgba(50,52,58,' + dk + ')'; g.lineWidth = pwid; g.beginPath(); g.arc(cx0 + dx, cy0 + dy, rr, 0, 2 * Math.PI); g.stroke();
+      if (d.ring) return;   // an O, not colored in
       for (var k3 = 0; k3 < 26 + rr * 3; k3++) { var a1 = rnd() * 2 * Math.PI, r1 = rr * Math.sqrt(rnd()), a2 = a1 + Math.PI + (rnd() - 0.5); g.beginPath();
-        g.moveTo(ox + dx + r1 * Math.cos(a1), oy + dy + r1 * Math.sin(a1)); g.lineTo(ox + dx + rr * 0.9 * Math.cos(a2) * rnd(), oy + dy + rr * 0.9 * Math.sin(a2) * rnd());
-        g.strokeStyle = 'rgba(50,52,58,' + (dark * (0.5 + 0.4 * rnd())) + ')'; g.lineWidth = pwid * 1.2; g.stroke(); } }
+        g.moveTo(cx0 + dx + r1 * Math.cos(a1), cy0 + dy + r1 * Math.sin(a1)); g.lineTo(cx0 + dx + rr * 0.9 * Math.cos(a2) * rnd(), cy0 + dy + rr * 0.9 * Math.sin(a2) * rnd());
+        g.strokeStyle = 'rgba(50,52,58,' + (dk * (0.5 + 0.4 * rnd())) + ')'; g.lineWidth = pwid * 1.2; g.stroke(); } }
+    if (spec.dot) drawDot(ox, oy, spec.dot === true ? {} : spec.dot);
+    // pencil lines between grid points (Set 4: connect the dots): [x0, y0, x1, y1] in squares, y up
+    (spec.segs || []).forEach(function (sg) { pencilLine(ox + sg[0] * cell, oy - sg[1] * cell, ox + sg[2] * cell, oy - sg[3] * cell); });
+    // plotted points: {x, y} in squares from the origin (y up), plus drawDot's options
+    (spec.dots || []).forEach(function (d) { drawDot(ox + d.x * cell, oy - d.y * cell, d); });
+    if (spec.yLabels) { g.fillStyle = 'rgba(55,57,64,' + dark + ')'; g.font = Math.round(0.22 * F) + 'px "Comic Sans MS", cursive, sans-serif';
+      for (i = 1; i <= 4; i++) { g.fillText(String(i), ox + 0.06 * F, oy - i * cell - 0.05 * F); g.fillText('-' + i, ox + 0.06 * F, oy + i * cell - 0.05 * F); } }
     if (spec.negLabels) { g.fillStyle = 'rgba(55,57,64,' + dark + ')'; g.font = Math.round(0.22 * F) + 'px "Comic Sans MS", cursive, sans-serif';
       for (i = 1; i <= 4; i++) g.fillText('-' + i, ox - i * cell + 3, oy + 0.28 * F); }
     [spec.coin, spec.coin2].forEach(function (cn) { if (!cn) return; var cr = (cn.mm || 19) / 2 / 25.4 * F, ccx = ox + (cn.x || 0) * cell + (cn.dx || 0) / 25.4 * F, ccy = oy - (cn.y || 0) * cell + (cn.dy || 0) / 25.4 * F, silver = cn.kind === 'silver';
@@ -1790,7 +1814,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.6.0", ITERATION=6, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.7.0", ITERATION=7, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1891,11 +1915,41 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
   {id:"l3.d", label:"from −3 to 3 on y", do:true, mode:"distance", prompt:"Look at −3 and 3 on y again.", sub:"Count the squares from −3 up to 3, across 0.",
    ask:{kind:"count",target:6,max:9,q:"How many squares from −3 to 3?",hint:"Count from −3 up to 0, then keep counting from 0 to 3."},
    say:"6: 3 squares from −3 to 0, and 3 more from 0 to 3."},
+ ]},
+ /* Set 4: graph points (Arizona 5.G.A.1: "a given point in the plane located by using an ordered pair of numbers, called its coordinates…
+    the first number indicates how far to travel from the origin in the direction of one axis, and the second number indicates how far to
+    travel in the direction of the second axis… x-axis and x-coordinate, y-axis and y-coordinate"; 6.G.A.3: "Draw polygons in the coordinate
+    plane given coordinates for the vertices; use coordinates to find the length of a side joining points with… the same second coordinate").
+    The same game: the reels give two numbers, the coin travels from the origin along x, then along y, and a dot stays where it lands.
+    Four points make a diamond; four more, off the axes, make a square around it. */
+ {key:"l4",no:4,name:"Graph the points",what:"Two numbers tell you where to go: along x, then along y. Make a dot there. Connect the dots and see the shape.",std:"5.G.A.1, 6.NS.C.6c, 6.G.A.3",
+ end:{lines:[],q:"From eight ordered pairs, you drew a square inside a square."},
+ steps:[
+  {id:"l4.r", label:"rule: two numbers", do:true, ruleText:["The first number: how far to go along x.","The second number: how far to go along y."],
+   prompt:"New game: the reels show two numbers.", sub:"Always start at the origin.",
+   say:"First along x, then along y. The signs work as before: + and − on x mean → and ←; on y, ↑ and ↓."},
+  {id:"l4.pt1", plot:[2,0], words:["ordered pair","coordinates","x-coordinate","y-coordinate"],
+   more:"2 is the x-coordinate: how far along the x-axis. 0 is the y-coordinate: how far along the y-axis. Two numbers in order, x first, then y, are an ordered pair. They are the point's coordinates."},
+  {id:"l4.pt2", plot:[0,2], more:"The order matters: (0, 2) is not (2, 0)."},
+  {id:"l4.pt3", plot:[-2,0]},
+  {id:"l4.pt4", plot:[0,-2]},
+  {id:"l4.c1", label:"connect the 4 dots", do:true, prompt:"Connect the dots in order with straight lines.", sub:"(2, 0) to (0, 2) to (−2, 0) to (0, −2), and back to (2, 0). Use the edge of a ruler or a card.",
+   say:"You drew a diamond (a square, turned on its corner)."},
+  {id:"l4.pt5", plot:[2,2], more:"Your first point off the axes."},
+  {id:"l4.pt6", plot:[-2,2]},
+  {id:"l4.pt7", plot:[-2,-2]},
+  {id:"l4.pt8", plot:[2,-2]},
+  {id:"l4.c2", label:"connect the 4 new dots", do:true, prompt:"Connect the new dots in order with straight lines.", sub:"(2, 2) to (−2, 2) to (−2, −2) to (2, −2), and back to (2, 2).",
+   say:"You drew a square around the diamond."},
+  {id:"l4.s", label:"side from (−2, 2) to (2, 2)", do:true, mode:"side", prompt:"Look at the top side of the big square.", sub:"It goes from (−2, 2) to (2, 2).",
+   ask:{kind:"count",target:4,max:8,q:"How many squares from (−2, 2) to (2, 2)?",hint:"Count the squares along the top side, from (−2, 2) to (2, 2)."},
+   say:"4: from −2 to 2 along x. Both points have the same y-coordinate, 2, so the side runs straight across."},
  ]}];
 /* the standard each step works on (Arizona and Common Core) */
 const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","l1.y":"5.G.A.1","l1.n":"2.MD.B.6",
   "l2.c0":"5.G.A.1","l2.p1":"2.MD.B.6","l2.p2":"2.MD.B.6","l2.p3":"2.MD.B.6","l2.p4":"2.MD.B.6","l2.p5":"2.MD.B.6","l2.p6":"7.NS.A.1b","l2.n":"6.NS.C.5","l2.p7":"7.NS.A.1b","l2.p8":"7.NS.A.1b","l2.o":"6.NS.C.7c","l2.d":"7.NS.A.1c",
-  "l3.c0":"5.G.A.1","l3.p1":"7.NS.A.1","l3.p2":"7.NS.A.1","l3.p3":"7.NS.A.1","l3.p4":"7.NS.A.1","l3.p5":"7.NS.A.1","l3.p6":"7.NS.A.1b","l3.n":"6.NS.C.6c","l3.p7":"7.NS.A.1b","l3.p8":"7.NS.A.1b","l3.o":"6.NS.C.7c","l3.d":"7.NS.A.1c"};
+  "l3.c0":"5.G.A.1","l3.p1":"7.NS.A.1","l3.p2":"7.NS.A.1","l3.p3":"7.NS.A.1","l3.p4":"7.NS.A.1","l3.p5":"7.NS.A.1","l3.p6":"7.NS.A.1b","l3.n":"6.NS.C.6c","l3.p7":"7.NS.A.1b","l3.p8":"7.NS.A.1b","l3.o":"6.NS.C.7c","l3.d":"7.NS.A.1c",
+  "l4.r":"5.G.A.1","l4.pt1":"5.G.A.1","l4.pt2":"5.G.A.1","l4.pt3":"6.NS.C.6c","l4.pt4":"6.NS.C.6c","l4.c1":"6.G.A.3","l4.pt5":"5.G.A.2","l4.pt6":"6.NS.C.6c","l4.pt7":"6.NS.C.6c","l4.pt8":"6.NS.C.6c","l4.c2":"6.G.A.3","l4.s":"6.G.A.3"};
 /* a game step: the reels give a start, a sign and a count; the coin's landing is checked, then the student shows where it landed on the slider */
 const minus=v=>v<0?"−"+(-v):String(v), landOf=g=>g.start+(g.sign==="+"?1:-1)*g.count;
 const arrow=(sign,axis)=>axis==="y"?(sign==="+"?"↑":"↓"):(sign==="+"?"→":"←"), axisOf=()=>(S.set&&S.set.axis)||"x";
@@ -1904,7 +1958,14 @@ SETS.forEach(X=>X.steps.forEach(st=>{ if(!st.game) return; const g=st.game, L=la
   st.need={coin:ax==="y"?[0,L]:[L,0]}; st.mode="hop";
   st.ask={kind:"line",axis:ax,target:L,min:-4,max:4,q:"Where did you land?",hint:st.hint||"Look at where your coin is, and slide there."};
   st.say=minus(g.start)+" "+g.sign+" "+g.count+" = "+minus(L)+". You started on "+minus(g.start)+", hopped "+g.count+" this way "+arrow(g.sign,ax)+", and landed on "+minus(L)+"."+(st.more?" "+st.more:""); }));
-SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=0; st.mode=st.mode||(st.ask?st.ask.kind:st.do?"do":"draw"); st.target=st.ask?String(st.ask.target):st.need?(st.need.coin?"coin "+st.need.coin.join(","):["h","v","o"].filter(k=>st.need[k]).join("+")):"done"; }));
+/* a graphing step: the reels give an ordered pair; the coin travels from the origin along x, then along y; a dot stays there; the photo checks the dot */
+const pair=p=>"("+minus(p[0])+", "+minus(p[1])+")", along=(v,ax)=>v===0?"0 along "+ax:Math.abs(v)+" this way "+arrow(v>0?"+":"−",ax)+" along "+ax;
+SETS.forEach(X=>{ const have=[]; X.steps.forEach(st=>{ if(!st.plot) return; const p=st.plot;
+  st.label=st.label||"graph "+pair(p); st.prompt="Spin the reels."; st.sub="They give you two numbers: how far to go along x, then along y.";
+  st.need={dot:p,have:have.slice()}; st.mode="plot"; st.target=pair(p); have.push(p);
+  st.say=pair(p)+": from the origin, "+along(p[0],"x")+", then "+along(p[1],"y")+"."+(st.more?" "+st.more:""); }); });
+const plotted=()=>S.set.steps.filter((x,i)=>x.plot&&i<S.s).map(x=>x.plot);
+SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=0; st.mode=st.mode||(st.ask?st.ask.kind:st.do?"do":"draw"); st.target=st.target||(st.ask?String(st.ask.target):st.need?(st.need.coin?"coin "+st.need.coin.join(","):["h","v","o"].filter(k=>st.need[k]).join("+")):"done"); }));
 
 /* ======================= STATE ======================= */
 const S={set:null,round:1,s:0,results:[],photos:[],events:[],started:new Date().toISOString(),seen:null,img:null,source:null,photoOk:false,stepOk:false,num:0,tries:0,photoTries:0,stepAt:0,firstWhole:null,classCode:store.get("ff.class"),student:store.get("ff.student").replace(/[^0-9]/g,"")};
@@ -1912,7 +1973,7 @@ const t0=performance.now();
 function log(type,data){ S.events.push(Object.assign({t:+((performance.now()-t0)/1000).toFixed(2),set:S.set&&S.set.key,round:S.round,type},data)); persist(); }
 const PKEY="fl.progress.v1";
 function persist(){ if(!S.set) return; try{ localStorage.setItem(PKEY,JSON.stringify({at:Date.now(),set:S.set.key,round:S.round,s:S.s,stepOk:!!S.stepOk,done:!!S.loggedDone,spun:!!S.spun,coinOk:!!(S.photoOk&&ST()&&ST().game&&!S.stepOk),seen:slim(S.seen),source:S.source||null,results:S.results,photos:S.photos,events:S.events,started:S.started})) }catch(e){} }
-const slim=R=>R&&R.ok?{ok:true,h:!!(R.h&&R.h.drawn),v:!!(R.v&&R.v.drawn),o:!!(R.origin&&R.origin.found),coin:R.coin&&R.coin.found?(R.coin.at||"off"):null}:null;
+const slim=R=>R&&R.ok?{ok:true,h:!!(R.h&&R.h.drawn),v:!!(R.v&&R.v.drawn),o:!!(R.origin&&R.origin.found),coin:R.coin&&R.coin.found?(R.coin.at||"off"):null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined}:null;
 function loadProgress(){ try{ const p=JSON.parse(localStorage.getItem(PKEY)||"null"); if(p&&Date.now()-p.at<24*3600e3&&SETS.find(x=>x.key===p.set)) return p }catch(e){} return null }
 function forget(){ try{ localStorage.removeItem(PKEY) }catch(e){} }
 const ST=()=>S.set.steps[S.s];
@@ -1935,26 +1996,38 @@ function renderHome(){ view("homeView"); $("wholes").innerHTML=""; $("brandSet")
 function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.photos=p.photos||[]; S.events=p.events||[]; S.started=p.started||S.started;
   S.seen=p.seen||null; S.img=null; S.source=p.source||null; S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
   view("stepView"); log("resume",{step:S.s}); showStep();
-  const st=ST(); if(st.game&&(p.spun||p.coinOk)){ S.spun=true; afterSpin(st); $("photoRow").hidden=!!p.coinOk; $("sampleBtn").hidden=!!p.coinOk;
+  const st=ST(); if((st.game||st.plot)&&(p.spun||p.coinOk)){ S.spun=true; afterSpin(st); $("photoRow").hidden=!!p.coinOk; $("sampleBtn").hidden=!!p.coinOk;
     if(p.coinOk){ S.photoOk=true; S.seen=p.seen||null; $("seen").textContent="Your coin photo was checked."; $("answerRow").hidden=false; renderEq(); } } }
 function startSet(X){ S.prev=null; S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(X.key)); bumpRound(X.key,S.round); setOwner(S.student); S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); sendJoin(); note("step",{type:"start",set:X.key,no:X.no,round:S.round,of:asked().length}); showStep(); }
 $("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.dataset.armed){ delete b.dataset.armed; closeCam(); renderHome(); return } b.dataset.armed="1"; const t=b.textContent; b.textContent="tap again to leave this set"; setTimeout(()=>{ if(b.dataset.armed){ delete b.dataset.armed; b.textContent=t } },3500); } else renderHome(); };
 
 /* ======================= A STEP ======================= */
 /* the game: the rules so far in this set, and the three reels (spun by the student, stopping on the step's start, sign and count) */
-function renderGame(st){ const box=$("gameBox"), g=st.game, rules=S.set.steps.filter((x,i)=>x.rule&&i<=S.s);
-  box.hidden=!(g||st.rule); if(box.hidden) return; S.spun=false;
-  $("rules").innerHTML=rules.map((x,i)=>'<div class="'+(x===st?"new":"")+'">'+esc(x.rule)+' means move this way '+arrow(x.rule,axisOf())+'</div>').join("");
-  box.querySelector(".reels").hidden=!g; $("spin").hidden=!g; ["reel0","reel1","reel2"].forEach(id=>$(id).textContent="?"); }
-$("spin").onclick=()=>{ const st=ST(), g=st.game; if(!g||S.spun) return; $("spin").disabled=true; const reels=[...document.querySelectorAll(".reel")];
+function renderGame(st){ const box=$("gameBox"), g=st.game, P=st.plot, rules=S.set.steps.filter((x,i)=>(x.rule||x.ruleText)&&i<=S.s);
+  box.hidden=!(g||P||st.rule||st.ruleText); if(box.hidden) return; S.spun=false;
+  $("rules").innerHTML=rules.map(x=>(x.ruleText||[esc(x.rule)+' means move this way '+arrow(x.rule,axisOf())]).map(t=>'<div class="'+(x===st?"new":"")+'">'+(x.ruleText?esc(t):t)+'</div>').join("")).join("");
+  box.querySelector(".reels").hidden=!g; $("pairReels").hidden=!(P||st.ruleText); $("spin").hidden=!(g||P); ["reel0","reel1","reel2","reelX","reelY"].forEach(id=>$(id).textContent="?"); }
+$("spin").onclick=()=>{ const st=ST(), g=st.game; if(st.plot) return spinPair(st); if(!g||S.spun) return; $("spin").disabled=true; const reels=[...document.querySelectorAll(".reels:not(.pair) .reel")];
   const rnd=a=>a[Math.floor(Math.random()*a.length)], starts=["−4","−3","−2","−1","0","1","2","3","4"], signs=S.set.steps.some((x,i)=>x.rule==="−"&&i<S.s)?["+","−"]:["+"];
-  const slow=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches, stops=slow?[1,1,1]:[9,13,17]; let tick=0; reels.forEach(r=>r.classList.add("spinning"));
+  const slow=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches, stops=slow?[1,1,1]:[9,13,17]; let tick=0; reels.forEach(r=>r.classList.add("spinning")); const rbox=document.querySelector(".reels:not(.pair)"); rbox.setAttribute("aria-busy","true");
   const t=setInterval(()=>{ tick++; [[starts,minus(g.start)],[signs,g.sign],[["1","2","3","4"],String(g.count)]].forEach(([pool,fin],k)=>{ const b=$("reel"+k);
       if(tick>=stops[k]){ b.textContent=fin; reels[k].classList.remove("spinning"); } else b.textContent=rnd(pool); });
-    if(tick>=stops[2]){ clearInterval(t); $("spin").disabled=false; if(ST()!==st) return;   // the student moved on while it spun
+    if(tick>=stops[2]){ clearInterval(t); rbox.removeAttribute("aria-busy"); $("spin").disabled=false; if(ST()!==st) return;   // the student moved on while it spun
       S.spun=true; log("spin",{step:st.id}); persist(); afterSpin(st); $("photoRow").hidden=false; $("sampleBtn").hidden=false; showResult(["photoRow"]); } },70); };
+/* Set 4: two reels, x then y, stopping on the step's ordered pair */
+function spinPair(st){ if(S.spun) return; $("spin").disabled=true; const reels=[...document.querySelectorAll("#pairReels .reel")], P=st.plot, pool=["−4","−3","−2","−1","0","1","2","3","4"];
+  const rnd=a=>a[Math.floor(Math.random()*a.length)], slow=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches, stops=slow?[1,1]:[10,16]; let tick=0; reels.forEach(r=>r.classList.add("spinning"));
+  const box=$("pairReels"); box.setAttribute("aria-busy","true");   // read out the pair once it stops, not every frame
+  const t=setInterval(()=>{ tick++; ["reelX","reelY"].forEach((id,k)=>{ if(tick>=stops[k]){ $(id).textContent=minus(P[k]); reels[k].classList.remove("spinning"); } else $(id).textContent=rnd(pool); });
+    if(tick>=stops[1]){ clearInterval(t); box.removeAttribute("aria-busy"); $("spin").disabled=false; if(ST()!==st) return;
+      S.spun=true; log("spin",{step:st.id}); persist(); afterSpin(st); $("photoRow").hidden=false; $("sampleBtn").hidden=false; showResult(["photoRow"]); } },70); }
 /* after the spin: the reels show the turn, and the instruction says what to do with it */
-function afterSpin(st){ const g=st.game; $("reel0").textContent=minus(g.start); $("reel1").textContent=g.sign; $("reel2").textContent=String(g.count); $("spin").hidden=true;
+function afterSpin(st){ if(st.plot){ const P=st.plot; $("reelX").textContent=minus(P[0]); $("reelY").textContent=minus(P[1]); $("spin").hidden=true;
+    document.querySelectorAll(".reel").forEach(r=>r.classList.remove("spinning"));
+    $("prompt").textContent="Go to "+pair(P)+"."; $("sub").hidden=false;
+    $("sub").innerHTML='<ol class="acts">'+["Put the coin on the origin.",P[0]===0?"Go 0 along x: stay there.":"Move it "+along(P[0],"x")+".",P[1]===0?"Then go 0 along y: stay there.":"Then move it "+along(P[1],"y")+".","Lift the coin. Color in a dot where it was.","Take a photo."].map(t=>"<li>"+esc(t)+"</li>").join("")+"</ol>";
+    return }
+  const g=st.game; $("reel0").textContent=minus(g.start); $("reel1").textContent=g.sign; $("reel2").textContent=String(g.count); $("spin").hidden=true;
   document.querySelectorAll(".reel").forEach(r=>r.classList.remove("spinning"));
   $("prompt").textContent="Hop from "+minus(g.start)+"."; $("sub").hidden=false; const ax=axisOf();
   $("sub").textContent="Put the coin on "+(g.start===0?"the origin":minus(g.start)+(ax==="y"?" on y":""))+". Read the sign: "+g.sign+" means move this way "+arrow(g.sign,ax)+". Hop "+g.count+", one square at a time. Leave the coin where you land, and take a photo."; }
@@ -1972,8 +2045,8 @@ function showStep(){ const st=ST(); closeCam();
   $("photoRow").hidden=false; $("sampleBtn").hidden=false; $("anyway").hidden=true; $("answerRow").hidden=true; $("nextRow").hidden=true; $("didRow").hidden=true; setFeedback("","");
   renderGame(st);
   $("stageBox").hidden=!!st.do; $("seen").hidden=!!st.do; $("seen").textContent=""; drawStage(); persist();
-  if(st.game&&!S.spun){ $("photoRow").hidden=true; $("sampleBtn").hidden=true; }   // spin first
-  if(st.need&&!st.ask&&S.prev&&S.prev.set===S.set.key&&S.prev.round===S.round&&!check(S.prev.R,st.need).length) return already(st);
+  if((st.game||st.plot)&&!S.spun){ $("photoRow").hidden=true; $("sampleBtn").hidden=true; }   // spin first
+  if(st.need&&!st.ask&&!st.plot&&S.prev&&S.prev.set===S.set.key&&S.prev.round===S.round&&!check(S.prev.R,st.need).length) return already(st);
   if(st.do){ S.photoOk=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;   // no photo: done when the student says so, or when they answer
     if(st.ask){ $("answerRow").hidden=false; renderEq(); } else $("didRow").hidden=false; }
   requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} }); }
@@ -2000,6 +2073,7 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(!R.ok||!R.grid) return;
   const q=R.grid.quad; g.save(); g.strokeStyle="rgba(31,79,138,.55)"; g.lineWidth=2; g.beginPath(); q.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]))); g.closePath(); g.stroke(); g.restore();
   const need=(ST()&&ST().need)||{};
+  if(need.dot){ (R.dots||[]).filter(d=>d.found).forEach(d=>{ const ok=samePt(d.at,need.dot)||need.have.some(h=>samePt(h,d.at)); g.save(); g.strokeStyle=ok?"rgba(29,122,69,.95)":"rgba(154,91,0,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(d.pt[0]),Y(d.pt[1]),Math.max(9,(d.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }); return }   // Set 4: the dots
   if(need.coin){ if(R.coin&&R.coin.found){ const ok=R.coin.at&&R.coin.at[0]===need.coin[0]&&R.coin.at[1]===need.coin[1]; g.save(); g.strokeStyle=ok?"rgba(29,122,69,.95)":"rgba(154,91,0,.95)"; g.lineWidth=4; g.beginPath(); g.arc(X(R.coin.pt[0]),Y(R.coin.pt[1]),Math.max(12,(R.coin.rpx||20)*k+5),0,Math.PI*2); g.stroke(); g.restore(); } return }   // the game: the coin is what counts
   const good=A=>A&&A.seg&&Math.abs(A.offset||0)<=OFF&&A.straight!==false;   // green: a line that counts; amber dashes: where the phone looked for one
   const show=(A,mid,needed)=>{ if(good(A)) return seg(A.seg,"rgba(29,122,69,.9)",4); if(needed||(A&&A.seg)) seg(mid,"rgba(154,91,0,.9)",3,[9,7]); };
@@ -2007,6 +2081,7 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(R.origin&&R.origin.found){ g.save(); g.strokeStyle="rgba(29,122,69,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(R.origin.pt[0]),Y(R.origin.pt[1]),Math.max(9,(R.origin.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }
 }
 function seenText(R){ if(!R||!R.ok) return ""; const parts=["the grid"];
+  if(ST()&&ST().need&&ST().need.dot){ const P=ST().need.dot; return (R.dots||[]).some(d=>d.found&&samePt(d.at,P))?"I see your dot on "+pair(P)+".":"I see the grid and your axes."; }
   if(ST()&&ST().need&&ST().need.coin){ return R.coin&&R.coin.found?"I see your coin.":"I see the grid, but no coin."; }   // not where it is: that's the question that comes next
   if(R.h&&R.h.drawn&&Math.abs(R.h.offset||0)<=OFF&&R.h.straight!==false) parts.push("a line across the middle"); if(R.v&&R.v.drawn&&Math.abs(R.v.offset||0)<=OFF&&R.v.straight!==false) parts.push("a line up the middle"); if(R.origin&&R.origin.found) parts.push("a dot where they cross");
   return "I see "+(parts.length>2?parts.slice(0,-1).join(", ")+", and "+parts[parts.length-1]:parts.join(" and "))+"."; }
@@ -2017,7 +2092,22 @@ function seenText(R){ if(!R||!R.ok) return ""; const parts=["the grid"];
 const OFF=0.2;
 const where=k=>k===0?"on 0, the origin":k>0?"on "+k+(axisOf()==="y"?" on y":""):(negNamed()?"on "+minus(k)+(axisOf()==="y"?" on y":""):plural(-k,"square")+" to the left of 0");
 const negNamed=()=>!!S.set&&(S.set.key!=="l2"||S.set.steps.findIndex(x=>x.id==="l2.n")<S.s);   // Set 2 names negative numbers; Set 3 comes after it
+const samePt=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+/* Set 4: is there a dot on the point the reels gave? found: the grid points with a dot (the origin left out) */
+function dotProbs(R,need){ const P=need.dot, found=(R.dots||[]).filter(d=>d.found).map(d=>d.at), isOld=a=>need.have.some(h=>samePt(h,a));
+  const fresh=found.filter(a=>!isOld(a)&&!samePt(a,P)), there=found.some(a=>samePt(a,P)), how="From the origin, go "+along(P[0],"x")+", then "+along(P[1],"y")+".";
+  const list=a=>a.map(pair).join(" and ");
+  if(there&&fresh.length) return ["I also see a dot on "+list(fresh)+". Erase "+(fresh.length>1?"those":"it")+": the dots go only where the reels sent you. If there's no dot there, the phone made a mistake."];
+  if(there) return [];
+  if(fresh.length===1){ const a=fresh[0];
+    if(samePt(a,[P[1],P[0]])&&P[0]!==P[1]) return ["Your dot is on "+pair(a)+". The first number is for x, the second for y. "+how+" Erase the dot on "+pair(a)+"."];
+    return ["Your dot is on "+pair(a)+", not "+pair(P)+". "+how+" Erase the dot on "+pair(a)+"."]; }
+  if(fresh.length>1) return ["I see dots on "+list(fresh)+". The dot for "+pair(P)+" goes one place. "+how+" Erase the dots that aren't on "+pair(P)+"."];
+  const near=(R.dots||[]).find(d=>samePt(d.at,P));
+  if(near&&near.n>=25) return ["Make the dot on "+pair(P)+" bigger and darker: about as big as a pencil eraser, colored in."];
+  return ["I can't see a dot on "+pair(P)+". Lift the coin, and color in a dot right where it was, on the grid point."]; }
 function check(R,need){ const probs=[];
+  if(need.dot) return dotProbs(R,need);
   if(need.coin){ const c=R.coin, st=ST(), g=st&&st.game;
     if(!c||!c.found) return ["I can't see your coin. Put it on the sheet, keep your hand and its shadow off the sheet, and tilt the phone a little if the coin shines."];
     if(c.count>1) return ["I see more than one coin. Leave just your game piece on the sheet."];
@@ -2043,17 +2133,29 @@ function check(R,need){ const probs=[];
   return probs; }
 
 function analyse(img,w,h,source){ const st=ST(); let R;
-  try{ R=window.readSheet(img,w,h,{coin:!!(st.need&&st.need.coin),axis:axisOf()}); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
+  try{ R=window.readSheet(img,w,h,{coin:!!(st.need&&st.need.coin),dots:!!(st.need&&st.need.dot),axis:axisOf()}); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
   S.seen=R; S.img=img; S.source=source; S.photoTries++;
-  const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found,coin:R.coin&&R.coin.found?{at:R.coin.at,x:R.coin.x,y:R.coin.y}:null}:null;
+  const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found,coin:R.coin&&R.coin.found?{at:R.coin.at,x:R.coin.x,y:R.coin.y}:null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined}:null;
   log("photo",{step:st.id,source,w,h,ok:!!R.ok,reason:R.reason||null,seen:brief,ms:R.ms});
   drawStage();
   if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put the sheet on a table, get all of it in the picture, and take it again.")); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); showResult(); return }
   $("seen").textContent=seenText(R);
   const probs=check(R,st.need), ok=!probs.length;
+  if(st.plot) plotAnswer(st,R,ok);
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:brief});
   if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); persist(); showResult(); return }
   photoGood(); }
+/* Set 4: each point is an answer, as each hop was: right when its dot is there; wrong when a new dot is somewhere else
+   (what it says is where that dot is). No new dot, or a stray dot beside the right one: not yet, and no answer counted. */
+function plotAnswer(st,R,ok){ const P=st.plot, found=(R.dots||[]).filter(d=>d.found).map(d=>d.at), fresh=found.filter(a=>!st.need.have.some(h=>samePt(h,a))&&!samePt(a,P));
+  if(!ok&&(found.some(a=>samePt(a,P))||!fresh.length)) return;
+  const wrote=ok?pair(P):fresh.map(pair).join(" and "), last=runs(st.id).slice(-1)[0];
+  if(!ok&&last&&!last.correct&&last.wrote===wrote) return;   // the same wrong dot again: one miss, not two
+  answer(st,ok,wrote); }
+function answer(st,ok,wrote,extra){ S.tries++;
+  S.results.push(Object.assign({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,symbol_ok:ok,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source},extra||{}));
+  log("answer",{step:st.id,correct:ok,try:S.tries});
+  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.mode,std:st.std,i:asked().indexOf(st)+1,of:asked().length,correct:ok,try:S.tries,wrote,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)}); }
 function showResult(order){ requestAnimationFrame(()=>{ const t=(order||["answerRow","nextRow","feedback"]).map(id=>$(id)).find(e=>!e.hidden); try{ const r=t&&t.getBoundingClientRect(); if(r&&(r.bottom>innerHeight||r.top<0)) t.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(e){} }); }   // only when it's out of view
 /* the last photo already shows what this step asks for (the student drew ahead): say so, name it, and go on */
 function already(st){ S.seen=S.prev.R; S.img=S.prev.img; S.source="photo"; S.photoOk=true; S.stepOk=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
@@ -2065,7 +2167,11 @@ function photoGood(){ const st=ST(); S.photoOk=true; if(S.seen&&S.seen.ok&&S.img
   if(st.ask){ setFeedback("",""); $("answerRow").hidden=false; renderEq(); }
   else { S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); } persist(); showResult(); }
 $("anyway").onclick=()=>{ const st=ST(); log("phone_miscounted",{step:st.id,seen:slim(S.seen)});
-  const r=S.photos.filter(x=>x.set===S.set.key&&x.round===S.round&&x.step===st.id).slice(-1)[0]; if(r) r.phone_miscounted=true; photoGood(); };
+  const r=S.photos.filter(x=>x.set===S.set.key&&x.round===S.round&&x.step===st.id).slice(-1)[0]; if(r) r.phone_miscounted=true;
+  if(st.plot&&!runs(st.id).some(x=>x.correct)){   // not counted right or wrong: the teacher sees the phone was overruled
+    S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,phone_miscounted:true,correct:false,try:0});
+    note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,phone:true,i:asked().indexOf(st)+1,of:asked().length}); }
+  photoGood(); };
 /* a step done by hand, with nothing for the phone to check */
 $("did").onclick=()=>{ const st=ST(); if(S.stepOk||!st.do) return; S.stepOk=true; $("didRow").hidden=true;
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,did:true,correct:true,try:1,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)}); log("did",{step:st.id});
@@ -2113,10 +2219,8 @@ function renderLineY(a){ const before=S.set.steps.findIndex(x=>/\.p6$/.test(x.id
   $("nlU").onclick=()=>set(S.num+1); $("nlD").onclick=()=>set(S.num-1);
   show(); $("submit").disabled=!S.moved; }
 $("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("submit").disabled=true;
-  S.tries++; const ok=S.num===a.target, wrote=a.kind==="frac"?S.num+"/"+a.den:a.kind==="line"?minus(S.num):String(S.num);
-  S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,symbol_ok:ok,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source});
-  log("answer",{step:st.id,correct:ok,try:S.tries});
-  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.mode,std:st.std,i:asked().indexOf(st)+1,of:asked().length,correct:ok,try:S.tries,wrote,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)});
+  const ok=S.num===a.target, wrote=a.kind==="frac"?S.num+"/"+a.den:a.kind==="line"?minus(S.num):String(S.num);
+  answer(st,ok,wrote);
   if(ok){ S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); }
   else { setFeedback("warn","<b>"+(a.kind==="frac"||a.kind==="line"?wrote+" isn't it.":S.num+" isn't it.")+"</b>"+hint(st)+" Change it and Submit again, or go on."); showNext(); }
   persist(); showResult(["nextRow","feedback"]); };
@@ -2134,6 +2238,9 @@ function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…"
   function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
 $("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
 $("sampleBtn").onclick=()=>{ const n=ST().need||{}, game=S.set.key!=="l1", labels=game||S.set.steps.findIndex(x=>x.id==="l1.z")<S.s;
+  if(n.dot){ const done=id=>S.set.steps.findIndex(x=>x.id===id)<S.s, D=[[2,0,0,2],[0,2,-2,0],[-2,0,0,-2],[0,-2,2,0]], Q=[[2,2,-2,2],[-2,2,-2,-2],[-2,-2,2,-2],[2,-2,2,2]];
+    const c=window.drawSheetSample({h:true,v:true,dot:true,labels:true,negLabels:true,yLabels:true,cut:true,dots:n.have.concat([n.dot]).map(p=>({x:p[0],y:p[1]})),segs:(done("l4.c1")?D:[]).concat(done("l4.c2")?Q:[]),seed:S.s+7*S.round,width:900,height:1100});
+    return analyse(c,c.width,c.height,"sample"); }
   const c=window.drawSheetSample(game?{h:true,v:true,dot:true,labels,negLabels:negNamed(),coin:{x:n.coin[0],y:n.coin[1]},cut:true,seed:S.s+7*S.round,width:900,height:1100}
                                      :{h:!!n.h,v:!!n.v,dot:!!n.o,labels,cut:true,seed:S.s+7*S.round,width:900,height:1100}); analyse(c,c.width,c.height,"sample"); };
 /* the camera inside the page, as in FotoFold */
@@ -2159,7 +2266,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden&&CAM.strea
 const runs=id=>S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
 const shots=id=>S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
 function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student&&("#"+S.student)].filter(Boolean).join(" ");
-  const asked=S.set.steps.filter(st=>st.ask); let first=0; const misses=[];
+  const asked=S.set.steps.filter(st=>st.ask||st.plot); let first=0; const misses=[];
   for(const st of asked){ const rs=runs(st.id); if(rs.length&&rs[0].correct) first++; const bad=rs.find(r=>!r.correct&&!r.skipped);
     if(bad){ const right=rs.find(r=>r.correct&&r.try>bad.try); misses.push(st.label+": wrote "+bad.wrote+(right?" → right on try "+right.try:" → moved on")); } }
   const photos=S.set.steps.filter(st=>st.need).map(st=>shots(st.id).filter(r=>!r.skipped)).filter(a=>a.length), firstPhoto=photos.filter(a=>a[0].correct).length;
@@ -2168,7 +2275,7 @@ function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student
   return [(who?who+" · ":"")+"FotoLine "+S.set.no+" · round "+S.round, src.has("sample")?(src.has("photo")?"some sample sheets":"sample sheet"):"own sheet",
     first+" of "+asked.length+" answers first try"+(misses.length?" ("+misses.join("; ")+")":""), firstPhoto+" of "+photos.length+" steps right first time"+(miscount.length?" · said the phone got it wrong on "+miscount.length+" ("+miscount.join("; ")+")":"")].join(" · "); }
 function showDone(){ if($("doneView").hidden) S.doneAt=performance.now(); view("doneView"); renderWords(true); $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
-  $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
+  $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask||st.plot?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
     const mis=shots(st.id).some(r=>r.phone_miscounted);
     return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
   renderEnd();
@@ -2178,7 +2285,7 @@ function renderEnd(){ const e=S.set&&S.set.end, el=$("endCard"); if(!el) return;
   el.hidden=false; el.innerHTML=(e.lines||[]).map(t=>'<div class="peq">'+escEq(t)+'</div>').join("")+'<div class="endq">'+esc(e.q)+'</div>'; }
 function recordObj(){ const done=new Set(S.results.concat(S.photos).map(r=>r.set));
   return {schema:RECORD_SCHEMA,app:"FotoLine",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
-    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoLine: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
+    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoLine: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask||st.plot).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
     started:S.started,saved:new Date().toISOString(),summary:S.set?summaryLine():"",
     summaries:S.set?[{set:S.set.key,round:S.round,line:summaryLine()}]:[],folds:[],photos:S.photos,results:S.results,events:S.events}; }
 function recordText(){ const r=recordObj(), head=Object.assign({},r), j=x=>JSON.stringify(x); delete head.folds; delete head.photos; delete head.results; delete head.events;
@@ -2205,7 +2312,7 @@ const RELAY=(()=>{ let r="https://fotofold-relay.fotofold.workers.dev"; if(r.ind
 const LIVE_RE=/^[A-HJ-NP-Z2-9]{5}$/;
 let LIVE=null; try{ const l=JSON.parse(store.get("ff.live")||"null"); if(l&&Date.now()-l.at<7*24*3600e3) LIVE=l; }catch(e){}
 function cls(){ return (LIVE&&LIVE.ok&&LIVE.label)||S.classCode }
-const asked=()=>S.set?S.set.steps.filter(st=>st.ask):[];
+const asked=()=>S.set?S.set.steps.filter(st=>st.ask||st.plot):[];
 function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new AbortController():null; const t=c?setTimeout(()=>c.abort(),ms||10000):null;
   return fetch(url,Object.assign({},opt||{},c?{signal:c.signal}:{})).finally(()=>{ if(t) clearTimeout(t) }); }
 const OUT={q:[],busy:false,timer:null,fails:0,delivered:{}};

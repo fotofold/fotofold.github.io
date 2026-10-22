@@ -318,7 +318,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
         <div class="seg" id="orderSeg" role="group" aria-label="Order of steps"><button type="button" data-o="missed" aria-pressed="true">Most missed first</button><button type="button" data-o="plan" aria-pressed="false">In plan order</button></div>
       </div>
       <p class="muted" id="storyNote" style="font-size:14.5px"></p>
-      <p class="muted" id="kindsFS" hidden style="font-size:14.5px">In FotoSet the phone checks the coins before it asks the question; in FotoLine the question comes after the drawing is done, or after the phone sees where the coin landed. Either way, every miss here is the number.</p>
+      <p class="muted" id="kindsFS" hidden style="font-size:14.5px">In FotoSet the phone checks the coins before it asks the question; in FotoLine the question comes after the drawing is done, after the phone sees where the coin landed, or, for a point, the dot itself. Either way, every miss here is the number.</p>
       <div class="kinds" id="kinds">
         <span><i class="kb-hands"></i><span><b>Hands</b>: the color was wrong, the number right.</span></span>
         <span><i class="kb-steps"></i><span><b>Steps</b>: the right length, but not one unit per swipe (Set 4).</span></span>
@@ -491,7 +491,7 @@ function build(){
   for(const T of sets.values()){
     T.wholes=[]; for(const s of T.steps){ s.whole=wholeKeyOf(s.id); let W=T.wholes.find(w=>w.key===s.whole);
       if(!W){ W={key:s.whole,n:nOf[T.key+"."+s.whole]||null,steps:[]}; T.wholes.push(W) } W.steps.push(s) }
-    T.wholes.forEach(W=>{ const m=/^([wbs])(\d+)$/.exec(W.key), c=/^n(\d+)$/.exec(W.key); W.tag = appOf(T)==="FotoLine"?(T.key==="l1"?"the axes":T.key==="l3"?"the game on y":"the game on x"):W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]+(m[1]==="s"?", again":""):c?c[1]+" coins":(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins; s12 = a whole of 12 again; n6 = 6 coins, no whole
+    T.wholes.forEach(W=>{ const m=/^([wbs])(\d+)$/.exec(W.key), c=/^n(\d+)$/.exec(W.key); W.tag = appOf(T)==="FotoLine"?(T.key==="l1"?"the axes":T.key==="l3"?"the game on y":T.key==="l4"?"the points":"the game on x"):W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]+(m[1]==="s"?", again":""):c?c[1]+" coins":(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins; s12 = a whole of 12 again; n6 = 6 coins, no whole
     T.steps=T.wholes.flatMap(W=>W.steps); T.steps.forEach((s,i)=>{ s.i=i; s.g0 = T.wholes.find(W=>W.key===s.whole).steps[0]===s });
   }
   // cells
@@ -622,7 +622,7 @@ function renderHeadline(T,rows,stats){
    '<div class="tile"><b>'+(scores.length?fmtNum(median(scores)):"—")+' <small style="font-size:15px;font-weight:600">of '+T.steps.length+'</small></b><span>median steps right on the first try</span></div>'+
    '<div class="tile"><b>'+again.length+'</b><span>did the set again</span></div></div>';
 }
-const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)"};
+const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)",plot:"Graph a point (FotoLine)",side:"Side length (FotoLine)"};
 function renderPct(){ const by={set:new Map(),kind:new Map(),std:new Map()}, tot=[0,0];
   const add=(m,k,ok,n)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[0]+=ok; e[1]+=n; };
   for(const T of [...M.sets.values()].sort((a,b)=>ord(a)-ord(b))){ const stats=stepStats(T,rowsFor(T.key));
