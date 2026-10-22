@@ -324,7 +324,7 @@ function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
     if(x.kind==="join"){ s.joined=s.joined||x.at; continue }
     if(!b.set) continue; s.joined=s.joined||x.at;
     const round=whole(b.round,1,99)||1, of=whole(b.of,0,60), key=b.set+"|"+round;
-    if(!s.sets.has(key)) s.sets.set(key,{key,set:String(b.set),no:whole(b.no,0,9),app:b.app==="FotoSet"?"FotoSet":"",iter:0,round,of,steps:new Map(),done:null,at:x.at});
+    if(!s.sets.has(key)) s.sets.set(key,{key,set:String(b.set),no:whole(b.no,0,9),app:b.app==="FotoSet"||b.app==="FotoLine"?b.app:"",iter:0,round,of,steps:new Map(),done:null,at:x.at});
     const R=s.sets.get(key); R.at=x.at; if(of) R.of=of; s.cur=key; if(b.iter) R.iter=whole(b.iter,0,999);
     if(x.kind==="done"){ R.done=b; continue }
     if(b.type==="answer"||b.type==="moved_on"){ if(!R.steps.has(b.step)) R.steps.set(b.step,{i:whole(b.i,0,60),label:String(b.label||b.step||""),mode:String(b.mode||""),std:String(b.std||""),runs:[],moved:false}); const P=R.steps.get(b.step);
@@ -336,7 +336,7 @@ function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
 function stepState(P){ if(!P) return ""; const rs=P.runs; if(rs.length&&rs[0].correct) return "a"; if(rs.some(r=>r.correct)) return "b"; if(P.moved) return "m"; if(rs.length) return "x"; return ""; }
 function looksStuck(R){ const arr=[...R.steps.values()].sort((a,b)=>a.i-b.i); const P=arr[arr.length-1]; return !R.done && P && !P.moved && P.runs.length>=2 && !P.runs.some(r=>r.correct); }
 const plural=(k,w)=>k+" "+w+(k===1?"":"s");
-const setName=R=>(R.app==="FotoSet"?"FotoSet ":"Set ")+(R.no||"?");   // FotoFold's sets are "Set 1"…, FotoSet's are "FotoSet 1"…
+const setName=R=>(R.app?R.app+" ":"Set ")+(R.no||"?");   // FotoFold's sets are "Set 1"…, FotoSet's "FotoSet 1"…, FotoLine's "FotoLine 1"…
 
 function render(){ try{ draw() }catch(e){ $("runToast").textContent="Something in the notes couldn't be shown. The rest is fine."; } }
 function draw(){ if(!T) return; const S=model();
@@ -357,7 +357,7 @@ function draw(){ if(!T) return; const S=model();
   $("stat").innerHTML='<span>'+joined+' joined</span><span class="ok">'+done+' done</span>'+(look?'<span class="bad">'+look+' maybe stuck</span>':'')+'<span>'+left()+'</span>';
   if(!nums.length) $("tiles").innerHTML='<p class="sub">Waiting for students. Each one shows up here, by number, as they join.</p>';
   detail(S); missed(S); stats(S); }
-const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)"};
+const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)"};
 function stats(S){ const by={set:new Map(),kind:new Map(),std:new Map()}; let tot=[0,0];
   const add=(m,k,ok)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[1]++; if(ok) e[0]++; };
   for(const s of S.values()) for(const R of s.sets.values()) for(const P of R.steps.values()){ if(!P.runs.length) continue; const ok=P.runs[0].correct===true;
@@ -365,7 +365,7 @@ function stats(S){ const by={set:new Map(),kind:new Map(),std:new Map()}; let to
   $("statsCard").hidden=!tot[1]; if(!tot[1]) return;
   const row=(label,[a,n],cls)=>{ const pc=Math.round(100*a/n); return '<div class="srow'+(cls?" "+cls:"")+'"><span>'+esc(label)+'</span><span class="bar"><i style="width:'+pc+'%"></i></span><span class="n"><b>'+pc+'%</b> · '+a+' of '+n+'</span></div>'; };
   const block=(title,m,lab,sort)=>'<div><h3>'+title+'</h3>'+[...m].sort(sort||((x,y)=>String(x[0]).localeCompare(String(y[0]),undefined,{numeric:true}))).map(([k,v])=>row(lab(k),v)).join("")+'</div>';
-  $("stats").innerHTML=block("By set",by.set,k=>k,(x,y)=>{ const o=k=>(/^FotoSet/.test(k)?100:0)+(parseInt(k.replace(/\D/g,""),10)||0); return o(x[0])-o(y[0]); })+block("By kind of step",by.kind,k=>k,(x,y)=>(x[1][0]/x[1][1])-(y[1][0]/y[1][1]))+(by.std.size?block("By standard",by.std,k=>k):"")+row("All answers",tot,"total"); }
+  $("stats").innerHTML=block("By set",by.set,k=>k,(x,y)=>{ const o=k=>(/^FotoSet/.test(k)?100:/^FotoLine/.test(k)?200:0)+(parseInt(k.replace(/\D/g,""),10)||0); return o(x[0])-o(y[0]); })+block("By kind of step",by.kind,k=>k,(x,y)=>(x[1][0]/x[1][1])-(y[1][0]/y[1][1]))+(by.std.size?block("By standard",by.std,k=>k):"")+row("All answers",tot,"total"); }
 function left(){ const ms=Math.max(0,(T.ends||0)-Date.now()), d=Math.floor(ms/864e5), h=Math.floor(ms%864e5/3600e3), m=Math.floor(ms%3600e3/60e3);
   return "deleted in "+(d?d+(d===1?" day ":" days ")+h+" h":(h?h+" h ":"")+m+" min"); }
 setInterval(()=>{ if(T&&!$("runView").hidden){ const el=$("stat").lastElementChild; if(el) el.textContent=left(); } },30000);
@@ -384,7 +384,7 @@ function detail(S){ if(!sel){ return } const s=S.get(sel);
     const sum=R.done&&R.done.summary?'<div class="summary">'+esc(R.done.summary)+'</div>':'';
     const save=R.done&&R.done.record?'<div class="row"><button class="btn small ghost" type="button" data-save="'+esc(R.key)+'">Save this record</button></div>':'';
     return '<div style="display:grid;gap:8px">'+head+'<ol class="steps">'+li+'</ol>'+sum+save+'</div>'; }).join("");
-  $("dBody").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{ const R=s.sets.get(b.dataset.save); download((R.app==="FotoSet"?"fotoset-":"fotofold-")+fileTag()+"-"+sel+"-set"+(R.no||"")+".json",JSON.stringify(R.done.record,null,1)); }); }
+  $("dBody").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{ const R=s.sets.get(b.dataset.save); download((R.app?R.app.toLowerCase()+"-":"fotofold-")+fileTag()+"-"+sel+"-set"+(R.no||"")+".json",JSON.stringify(R.done.record,null,1)); }); }
 
 function missed(S){ const by=new Map();
   for(const s of S.values()) for(const R of s.sets.values()) for(const [id,P] of R.steps){ const k=R.set+"|"+id; if(!by.has(k)) by.set(k,{label:P.label,name:setName(R),i:P.i,n:0,miss:0}); const e=by.get(k); if(P.runs.length){ e.n++; if(!P.runs[0].correct) e.miss++; } }

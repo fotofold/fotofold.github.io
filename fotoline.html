@@ -1,0 +1,955 @@
+<!doctype html>
+<!--
+  FotoLine: the number line and the coordinate plane, made by folding. A sibling of FotoFold and FotoSet.
+  Copyright (c) 2026 G.Coppola. All rights reserved.
+  No names, and the photo is never kept: the phone looks for the lines and the dot and forgets the picture.
+  Nothing is sent anywhere, except in a live class: then the student's number and answers go to the teacher's screen.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>FotoLine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* FotoLine: the number line and the coordinate plane, made by folding. Same look and moves as FotoFold and FotoSet:
+   one step per screen, the instruction, the learner's own photo (the axes they drew, marked), one thing to set, one button. */
+:root{
+  --bg:#edf1ee; --surface:#f8faf8; --fg:#17201c; --muted:#56635c; --line:#c9d3cd;
+  --mat:#2c473f; --mat-grid:#3d5c53; --mat-ink:#d6e4dc; --paper:#fbfbf7;
+  --ink:#1f4f8a; --ink-soft:#dbe6f3; --good:#1d7a45; --good-soft:#dcf0e3; --warn:#9a5b00; --warn-soft:#f8ead2;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-grid:#28423a; --mat-ink:#b8cdc2; --paper:#f4f4ee;
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-grid:#28423a; --mat-ink:#b8cdc2; --paper:#f4f4ee;
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+button,label.file,.setcard,a{touch-action:manipulation}
+body{font-family:var(--f-body);font-size:17px;line-height:1.45;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
+main{max-width:640px;margin:0 auto;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+main>*,section>*{min-width:0}
+h1,h2{font-family:var(--f-display);margin:0;line-height:1.08;text-wrap:balance}
+.top{display:grid;gap:8px}
+.livebadge{justify-self:start;font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--good-soft);color:var(--good);overflow-wrap:anywhere}
+.livebadge.wait{background:var(--warn-soft);color:var(--warn)}
+.liveline{font-size:15px;border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--muted)}
+.liveline.on{background:var(--good-soft);color:var(--good)} .liveline.off{background:var(--warn-soft);color:var(--warn)}
+.brand{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 72;font-size:20px;background:none;border:0;padding:0;color:var(--fg);text-align:left;cursor:pointer}
+.brand small{font-weight:600;color:var(--muted);font-size:14px}
+.wholes{display:flex;gap:6px;flex-wrap:wrap}
+.wholes span{font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted)}
+.wholes span.now{border-color:var(--ink);color:var(--ink);background:var(--ink-soft)} .wholes span.done{background:var(--good-soft);border-color:var(--good-soft);color:var(--good)}
+.where{font-family:var(--f-mono);font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.where b{color:var(--fg)} .okmark{color:var(--good);font-weight:700}
+.prompt{font-size:clamp(28px,7.4vw,40px);font-weight:800;font-variation-settings:"wdth" 78;letter-spacing:-.01em;overflow-wrap:break-word}
+.sub{color:var(--muted);font-size:16px;margin:0;max-width:60ch}
+.sub a{color:var(--ink);font-weight:700}
+.head{display:flex;gap:14px;align-items:flex-start}
+.stepno{flex:none;width:46px;height:46px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:26px;margin-top:2px}
+@keyframes enter{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+.head.enter{animation:enter .28s ease-out}
+.stage{background:var(--mat);border-radius:var(--r);overflow:hidden}
+.stage canvas{display:block;width:100%}
+.seen{font-size:15px;color:var(--muted);margin-top:-8px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:inherit;font-weight:700;font-size:17px;border-radius:999px;padding:12px 20px;border:1.5px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;display:inline-flex;align-items:center;gap:8px;line-height:1.2}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.go{background:var(--good);border-color:var(--good);color:var(--bg);box-shadow:0 0 0 4px var(--good-soft);font-size:19px;padding:13px 24px}
+.btn.go.next::after{content:" →"}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 4px var(--good-soft)}50%{box-shadow:0 0 0 11px var(--good-soft)}}
+.btn.go.next{animation:breathe 1.6s ease-in-out infinite}
+.btn.link{border:0;background:none;color:var(--ink);padding:8px 4px;text-decoration:underline;font-weight:700;font-size:15px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:focus-visible,label.file:focus-within,.arrows button:focus-visible,.setcard:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.btn.go.next,.head.enter{animation:none}}
+label.file{position:relative;overflow:hidden}
+label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.eq{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-family:var(--f-display);font-weight:800;font-size:clamp(28px,10vw,40px);line-height:1}
+.eq .say{font-family:var(--f-body);font-weight:700;font-size:18px;flex-basis:100%;color:var(--fg)}
+.countbox{min-width:1.4em;padding:.12em .2em;border:3px solid var(--ink);border-radius:10px;color:var(--ink);text-align:center}
+.frac{display:inline-grid;justify-items:center;line-height:1}
+.frac .bar{width:1.25em;height:4px;background:currentColor;margin:6px 0;border-radius:2px}
+.frac.ask{color:var(--ink)} .frac.ask span{min-width:1.1em;text-align:center}
+.nowrap{display:inline-flex;align-items:center;gap:12px;white-space:nowrap}
+.eqn{white-space:nowrap}
+#photoRow,#camRow{position:sticky;bottom:0;z-index:5;background:var(--bg);padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px));margin:-10px 0 0}
+.whererow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.btn.link.back{padding:4px 0;font-size:15px}
+.arrows{display:grid;gap:6px;justify-items:center}
+.arrows button{font:inherit;font-size:20px;width:52px;height:46px;border-radius:10px;border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.feedback{border-radius:var(--r);padding:12px 14px;font-size:17px;display:grid;gap:6px}
+.feedback.good{background:var(--good-soft);color:var(--good)} .feedback.warn{background:var(--warn-soft);color:var(--warn)}
+.feedback b{font-family:var(--f-display);font-size:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;min-width:0}
+.ids{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end}
+.ids label{display:grid;gap:4px;font-size:14px;font-weight:700;color:var(--muted)}
+.ids input{font:inherit;font-family:var(--f-mono);width:8em;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.sets{display:grid;gap:10px}
+.setcard{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;text-align:left;font:inherit;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:14px;cursor:pointer}
+.setcard .no{grid-row:1/3;width:46px;height:46px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:24px}
+.setcard b{font-family:var(--f-display);font-size:21px;font-variation-settings:"wdth" 85}
+.setcard span.what{color:var(--muted);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+#endCard .peq{font-weight:700;font-size:1.1em}
+#endCard .endq{font-size:1.15em;font-weight:700}
+.chip{font-family:var(--f-mono);font-size:13px;font-weight:600;padding:3px 8px;border-radius:999px}
+.chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)} .chip.skip{background:var(--line);color:var(--muted)}
+.summary{font-family:var(--f-mono);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-wrap:anywhere}
+.toast{min-height:1.3em;font-size:14px;color:var(--muted)}
+.camview{display:grid;gap:10px}
+.camview video{width:100%;max-height:62vh;object-fit:contain;background:#000;border-radius:var(--r);display:block}
+details summary{cursor:pointer;font-weight:700;color:var(--muted)}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<main>
+  <div class="top">
+    <button class="brand" id="home" type="button" aria-label="FotoLine, back to the start">FotoLine <small id="brandSet"></small></button>
+    <span class="livebadge" id="liveBadge" hidden></span>
+    <div class="wholes" id="wholes" aria-label="Words you have made"></div>
+  </div>
+
+  <section id="homeView" style="display:grid;gap:16px">
+    <a class="btn link back" href="index.html" id="allLink">← All activities</a>
+    <h1 class="prompt">Fold it, draw it, name it.</h1>
+    <p class="sub">You need a FotoLine sheet and a pencil. <a href="fotoline_sheet.pdf" id="sheetLink">Print the sheet</a> at 100% (Actual size); the grid should measure 7 inches across.</p>
+    <div class="card">
+      <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
+      <div class="ids">
+        <label for="classCode">Class code<input id="classCode" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
+        <label for="studentNo">Your number<input id="studentNo" maxlength="3" inputmode="numeric" pattern="[0-9]*" autocomplete="off"></label>
+      </div>
+      <div class="liveline" id="liveLine" role="status" hidden></div>
+    </div>
+    <div class="card" id="newCard" hidden><b id="newWhat"></b><div class="row"><button class="btn" id="newYes" type="button">Yes, start fresh</button><button class="btn ghost" id="newNo" type="button">No, same student</button></div></div>
+    <div class="card" id="resumeCard" hidden><b id="resumeWhat"></b><div class="row"><button class="btn" id="resumeBtn" type="button">Keep going</button><button class="btn ghost" id="freshBtn" type="button">Start fresh</button></div></div>
+    <div class="sets" id="sets"></div>
+  </section>
+
+  <section id="stepView" hidden style="display:grid;gap:16px">
+    <div class="whererow"><button class="btn link back" id="leaveSet" type="button">← Sets</button><div class="where" id="where"></div></div>
+    <div class="head" id="head"><span class="stepno" id="stepno" aria-hidden="true">1</span><h1 class="prompt" id="prompt"></h1></div>
+    <p class="sub" id="sub"></p>
+    <div class="stage" id="stageBox"><canvas id="stage" aria-label="Your sheet, as the phone saw it"></canvas></div>
+    <div class="seen" id="seen" aria-live="polite"></div>
+    <div class="camview" id="camBox" hidden>
+      <video id="camVideo" playsinline muted autoplay aria-label="What the camera sees"></video>
+      <p class="sub" id="camTip">Hold the phone over the paper. Get the whole sheet in.</p>
+      <div class="row" id="camRow"><button class="btn go" id="snap" type="button" disabled>Take the photo</button><button class="btn ghost" id="camCancel" type="button">Cancel</button></div>
+    </div>
+    <div class="row" id="photoRow">
+      <label class="btn file" for="cam">Take a photo<input id="cam" type="file" accept="image/*" capture="environment"></label>
+    </div>
+    <div id="answerRow" hidden style="display:grid;gap:14px">
+      <div class="eq" id="eq" aria-live="polite"></div>
+      <div class="row"><button class="btn" id="submit" type="button">Submit</button></div>
+    </div>
+    <div class="feedback" id="feedback" hidden aria-live="polite"></div>
+    <div class="row" id="didRow" hidden><button class="btn go" id="did" type="button">Done</button></div>
+    <div class="row" id="nextRow" hidden><button class="btn" id="next" type="button">Next</button></div>
+    <div class="row">
+      <button class="btn link" id="sampleBtn" type="button">No sheet handy? Use a sample sheet</button>
+      <button class="btn link" id="anyway" type="button" hidden>The phone got it wrong. Keep going</button>
+    </div>
+  </section>
+
+  <section id="doneView" hidden style="display:grid;gap:14px">
+    <h1 class="prompt">My answers</h1>
+    <div class="card"><div class="chips" id="answers"></div></div>
+    <div class="card" id="endCard" hidden></div>
+    <div class="card">
+      <div class="sub">For your teacher, in one line:</div>
+      <div class="summary" id="summaryLine"></div>
+      <div class="row">
+        <button class="btn" id="saveRec" type="button">Save my work</button>
+        <button class="btn ghost" id="copyRec" type="button">Copy</button>
+        <button class="btn ghost" id="redo" type="button">Do it again</button>
+      </div>
+      <div class="toast" id="recToast" role="status"></div>
+      <div class="liveline" id="doneLive" role="status" hidden></div>
+    </div>
+    <div class="row"><button class="btn ghost" id="toStart" type="button">Back to the start</button></div>
+  </section>
+
+  <details>
+    <summary>Settings</summary>
+    <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoLine never keeps the photo you take: it looks for your lines and your dot and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
+      <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
+  </details>
+  <footer>FotoLine, iteration <span id="footIter"></span>. Fold a sheet to make two axes and an origin, then count along them. The photo is never kept.</footer>
+</main>
+
+<script>
+/* FotoLine sheet reader.
+ * window.readSheet(source, w, h) -> what the phone sees on a FotoLine sheet:
+ *   the paper's corners, the printed 8 x 8 grid, a pencil line drawn on the middle grid line each way (the axes),
+ *   and a dot colored in where they cross (the origin).
+ * window.drawSheetSample(spec) -> canvas: a synthetic photo of a FotoLine sheet on a desk (spec says what is drawn).
+ *
+ * How it reads:
+ *  1. The paper is the large bright, colorless region. Its four corners map it flat (a homography).
+ *  2. The flat sheet is sampled at PPI pixels per inch. The printed grid is found near where the sheet puts it
+ *     (centered on the page); its four border lines are fitted and the map is redone from the grid's own corners.
+ *  3. A drawn line is told from a printed one by its ink: darkness summed across the line. Blur keeps that sum,
+ *     so a pencil line (about 0.6 mm wide) carries two to five times the ink of a printed line (0.26 mm).
+ *  4. The origin is what is left near the crossing after erasing everything thinner than about 1.5 mm.
+ */
+(function () {
+  'use strict';
+  var MAXS = 1600, PPI = 120, GRID_IN = 7, N = 8, CELL = PPI * GRID_IN / N, MARGIN = Math.round(0.3 * PPI);
+
+  function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function median(a) { if (!a.length) return 0; var b = a.slice().sort(function (p, q) { return p - q; }); var m = b.length >> 1; return b.length % 2 ? b[m] : 0.5 * (b[m - 1] + b[m]); }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+
+  /* ---------- homography ---------- */
+  function solve(A, b) { var n = b.length, M = A.map(function (r, i) { return r.concat([b[i]]); });
+    for (var c = 0; c < n; c++) { var p = c; for (var r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      var t = M[c]; M[c] = M[p]; M[p] = t; if (Math.abs(M[c][c]) < 1e-12) return null;
+      for (r = 0; r < n; r++) if (r !== c) { var f = M[r][c] / M[c][c]; for (var k = c; k <= n; k++) M[r][k] -= f * M[c][k]; } }
+    return M.map(function (r, i) { return r[n] / r[i]; }); }
+  function homography(src, dst) { var A = [], b = [];
+    for (var i = 0; i < 4; i++) { var x = src[i][0], y = src[i][1], X = dst[i][0], Y = dst[i][1];
+      A.push([x, y, 1, 0, 0, 0, -X * x, -X * y]); b.push(X); A.push([0, 0, 0, x, y, 1, -Y * x, -Y * y]); b.push(Y); }
+    var h = solve(A, b); return h ? h.concat([1]) : null; }
+  function applyH(H, x, y) { var w = H[6] * x + H[7] * y + H[8]; return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w]; }
+  function lineX(a, b) { // intersect lines given as [point, direction]
+    var p = a[0], r = a[1], q = b[0], s = b[1], den = r[0] * s[1] - r[1] * s[0]; if (Math.abs(den) < 1e-9) return null;
+    var t = ((q[0] - p[0]) * s[1] - (q[1] - p[1]) * s[0]) / den; return [p[0] + t * r[0], p[1] + t * r[1]]; }
+  function tlsFit(pts) { var n = pts.length, mx = 0, my = 0; pts.forEach(function (p) { mx += p[0]; my += p[1]; }); mx /= n; my /= n;
+    var sxx = 0, syy = 0, sxy = 0; pts.forEach(function (p) { var dx = p[0] - mx, dy = p[1] - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
+    var th = 0.5 * Math.atan2(2 * sxy, sxx - syy); return [[mx, my], [Math.cos(th), Math.sin(th)]]; }
+  // y = a + b x, robust: least squares, then again without the worst quarter
+  function fitLine(xs, ys) { function ls(ix) { var n = ix.length, sx = 0, sy = 0, sxx = 0, sxy = 0; ix.forEach(function (i) { sx += xs[i]; sy += ys[i]; sxx += xs[i] * xs[i]; sxy += xs[i] * ys[i]; });
+      var d = n * sxx - sx * sx; var b = Math.abs(d) < 1e-9 ? 0 : (n * sxy - sx * sy) / d; return [(sy - b * sx) / n, b]; }
+    var ix = xs.map(function (_, i) { return i; }); if (ix.length < 2) return [ys[0] || 0, 0]; var f = ls(ix);
+    var res = ix.map(function (i) { return Math.abs(ys[i] - f[0] - f[1] * xs[i]); }), cut = median(res) * 2.5 + 0.5;
+    var keep = ix.filter(function (i) { return res[i] <= cut; }); return keep.length >= 2 ? ls(keep) : f; }
+
+  /* ---------- image helpers ---------- */
+  function boxBlur(src, W, H, r, tmp, dst) { // separable box blur, edges clamped
+    var x, y, s, i, n = 2 * r + 1;
+    for (y = 0; y < H; y++) { var o = y * W; s = 0; for (i = -r; i <= r; i++) s += src[o + clamp(i, 0, W - 1)];
+      for (x = 0; x < W; x++) { tmp[o + x] = s / n; s += src[o + clamp(x + r + 1, 0, W - 1)] - src[o + clamp(x - r, 0, W - 1)]; } }
+    for (x = 0; x < W; x++) { s = 0; for (i = -r; i <= r; i++) s += tmp[clamp(i, 0, H - 1) * W + x];
+      for (y = 0; y < H; y++) { dst[y * W + x] = s / n; s += tmp[clamp(y + r + 1, 0, H - 1) * W + x] - tmp[clamp(y - r, 0, H - 1) * W + x]; } }
+    return dst; }
+  function maxFilter(src, W, H, r, tmp, dst) { var x, y, i, m;
+    for (y = 0; y < H; y++) { var o = y * W; for (x = 0; x < W; x++) { m = -1e9; for (i = Math.max(0, x - r); i <= Math.min(W - 1, x + r); i++) if (src[o + i] > m) m = src[o + i]; tmp[o + x] = m; } }
+    for (x = 0; x < W; x++) for (y = 0; y < H; y++) { m = -1e9; for (i = Math.max(0, y - r); i <= Math.min(H - 1, y + r); i++) if (tmp[i * W + x] > m) m = tmp[i * W + x]; dst[y * W + x] = m; }
+    return dst; }
+
+  /* ---------- 1. the paper ---------- */
+  function findPaper(L, Sat, W, H) {
+    var bs = 4, sw = Math.ceil(W / bs), sh = Math.ceil(H / bs), bl = new Float32Array(sw * sh), bsat = new Float32Array(sw * sh), x, y, i;
+    for (y = 0; y < sh; y++) for (x = 0; x < sw; x++) { var s = 0, ss = 0, n = 0;
+      for (var yy = y * bs; yy < Math.min(H, y * bs + bs); yy++) for (var xx = x * bs; xx < Math.min(W, x * bs + bs); xx++) { s += L[yy * W + xx]; ss += Sat[yy * W + xx]; n++; }
+      bl[y * sw + x] = s / n; bsat[y * sw + x] = ss / n; }
+    // Otsu on the block brightness
+    var hist = new Float64Array(256); for (i = 0; i < bl.length; i++) hist[clamp(Math.round(bl[i]), 0, 255)]++;
+    var tot = bl.length, sum = 0; for (i = 0; i < 256; i++) sum += i * hist[i];
+    var wB = 0, sB = 0, best = -1, t = 160; for (i = 0; i < 256; i++) { wB += hist[i]; if (!wB) continue; var wF = tot - wB; if (!wF) break; sB += i * hist[i];
+      var mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF); if (v > best) { best = v; t = i; } }
+    t = Math.max(t, 110);
+    var M = new Uint8Array(sw * sh); for (i = 0; i < M.length; i++) M[i] = bl[i] > t && bsat[i] < 70 ? 1 : (bl[i] > Math.max(100, 0.68 * t) && bsat[i] < 32 ? 2 : 0);
+    // the largest bright region
+    var lab = new Int32Array(sw * sh), st = new Int32Array(sw * sh), nl = 0, bestL = 0, bestN = 0;
+    for (i = 0; i < M.length; i++) if (M[i] === 1 && !lab[i]) { nl++; var sp = 0, cnt = 0; st[sp++] = i; lab[i] = nl;
+      while (sp) { var p = st[--sp]; cnt++; var px = p % sw, py = (p / sw) | 0;
+        if (px > 0 && M[p - 1] && !lab[p - 1]) { lab[p - 1] = nl; st[sp++] = p - 1; } if (px < sw - 1 && M[p + 1] && !lab[p + 1]) { lab[p + 1] = nl; st[sp++] = p + 1; }
+        if (py > 0 && M[p - sw] && !lab[p - sw]) { lab[p - sw] = nl; st[sp++] = p - sw; } if (py < sh - 1 && M[p + sw] && !lab[p + sw]) { lab[p + sw] = nl; st[sp++] = p + sw; } }
+      if (cnt > bestN) { bestN = cnt; bestL = nl; } }
+    if (bestN < 0.10 * sw * sh) return { ok: false, reason: 'nopaper' };
+    // outside = not paper, reachable from the image border (so marks inside the paper are not edges)
+    var out = new Uint8Array(sw * sh), sp2 = 0;
+    function seed(q) { if (lab[q] !== bestL && !out[q]) { out[q] = 1; st[sp2++] = q; } }
+    for (x = 0; x < sw; x++) { seed(x); seed((sh - 1) * sw + x); } for (y = 0; y < sh; y++) { seed(y * sw); seed(y * sw + sw - 1); }
+    while (sp2) { var q = st[--sp2], qx = q % sw, qy = (q / sw) | 0; if (qx > 0) seed(q - 1); if (qx < sw - 1) seed(q + 1); if (qy > 0) seed(q - sw); if (qy < sh - 1) seed(q + sw); }
+    var edge = [], mx = 0, my = 0, cnt2 = 0, touch = { l: 0, r: 0, t: 0, b: 0 };
+    for (y = 0; y < sh; y++) for (x = 0; x < sw; x++) { var k = y * sw + x; if (lab[k] !== bestL) continue; mx += x; my += y; cnt2++;
+      if (x === 0) touch.l++; if (x === sw - 1) touch.r++; if (y === 0) touch.t++; if (y === sh - 1) touch.b++;
+      var nb = (x > 0 && out[k - 1]) || (x < sw - 1 && out[k + 1]) || (y > 0 && out[k - sw]) || (y < sh - 1 && out[k + sw]) || x === 0 || y === 0 || x === sw - 1 || y === sh - 1;
+      if (nb) edge.push([x, y]); }
+    mx /= cnt2; my /= cnt2;
+    var cut = touch.l > 0.08 * sh || touch.r > 0.08 * sh || touch.t > 0.08 * sw || touch.b > 0.08 * sw;
+    // orientation from the edge points, corners at the extremes of the four diagonal directions
+    // (a square sheet has no main direction, so try them all: the corners are the extremes that make the largest quadrilateral)
+    var C = null, bestA = -1;
+    for (var deg = 0; deg < 90; deg += 3) { var th = deg * Math.PI / 180, Q = [];
+      for (k = 0; k < 4; k++) { var a = th + Math.PI / 4 + k * Math.PI / 2, dx = Math.cos(a), dy = Math.sin(a), bv = -1e9, bp = null;
+        edge.forEach(function (p) { var v = (p[0] - mx) * dx + (p[1] - my) * dy; if (v > bv) { bv = v; bp = p; } }); Q.push(bp); }
+      var ar = 0; for (k = 0; k < 4; k++) { var p1 = Q[k], p2 = Q[(k + 1) % 4]; ar += p1[0] * p2[1] - p2[0] * p1[1]; } ar = Math.abs(ar) / 2;
+      if (ar > bestA) { bestA = ar; C = Q; } }
+    // straighten each side with the edge points along it, and intersect
+    var lines = [];
+    for (k = 0; k < 4; k++) { var A = C[k], B = C[(k + 1) % 4], ex = B[0] - A[0], ey = B[1] - A[1], len = Math.hypot(ex, ey) || 1, pts = [];
+      edge.forEach(function (p) { var tt = ((p[0] - A[0]) * ex + (p[1] - A[1]) * ey) / (len * len), d = Math.abs((p[0] - A[0]) * ey - (p[1] - A[1]) * ex) / len;
+        if (tt > 0.12 && tt < 0.88 && d < 3) pts.push(p); });
+      lines.push(pts.length >= 6 ? tlsFit(pts) : [A, [ex / len, ey / len]]); }
+    var corners = [];
+    for (k = 0; k < 4; k++) { var X = lineX(lines[(k + 3) % 4], lines[k]); corners.push(X || C[k]); }
+    corners = corners.map(function (p) { return [(p[0] + 0.5) * bs, (p[1] + 0.5) * bs]; });
+    // order: top-left first, then clockwise on the screen
+    var cx = 0, cy = 0; corners.forEach(function (p) { cx += p[0]; cy += p[1]; }); cx /= 4; cy /= 4;
+    corners.sort(function (p, q) { return Math.atan2(p[1] - cy, p[0] - cx) - Math.atan2(q[1] - cy, q[0] - cx); });
+    var s0 = 0; for (k = 1; k < 4; k++) if (corners[k][0] + corners[k][1] < corners[s0][0] + corners[s0][1]) s0 = k;
+    corners = corners.slice(s0).concat(corners.slice(0, s0));
+    return { ok: true, corners: corners, cut: cut, area: bestN / (sw * sh) };
+  }
+
+  /* ---------- 2. the flat sheet ---------- */
+  function warp(L, W, H, Hc2i, ox, oy, R) { // sample the region [ox, ox+R) x [oy, oy+R) of the flat page
+    var C = new Float32Array(R * R);
+    for (var j = 0; j < R; j++) for (var i = 0; i < R; i++) { var p = applyH(Hc2i, ox + i + 0.5, oy + j + 0.5), x = p[0] - 0.5, y = p[1] - 0.5;
+      if (x < 0 || y < 0 || x >= W - 1 || y >= H - 1) { C[j * R + i] = 255; continue; }
+      var x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, o = y0 * W + x0;
+      C[j * R + i] = (L[o] * (1 - fx) + L[o + 1] * fx) * (1 - fy) + (L[o + W] * (1 - fx) + L[o + W + 1] * fx) * fy; }
+    return C; }
+  function darkness(C, R) { // how much darker than the paper around it, 0..1
+    var a = new Float32Array(R * R), b = new Float32Array(R * R), bg = new Float32Array(R * R);
+    maxFilter(C, R, R, 4, a, b); boxBlur(b, R, R, 14, a, bg);
+    var D = new Float32Array(R * R); for (var i = 0; i < D.length; i++) D[i] = clamp((bg[i] - C[i]) / Math.max(bg[i], 40), 0, 1);
+    return D; }
+  function profile(D, R, alongX, from, to) { // sum over the other direction, per column (alongX) or per row
+    var P = new Float32Array(R), i, j;
+    if (alongX) for (j = from; j < to; j++) for (i = 0; i < R; i++) P[i] += D[j * R + i];
+    else for (j = 0; j < R; j++) { var s = 0; for (i = from; i < to; i++) s += D[j * R + i]; P[j] = s; }
+    var Q = new Float32Array(R); for (i = 1; i < R - 1; i++) Q[i] = 0.25 * P[i - 1] + 0.5 * P[i] + 0.25 * P[i + 1]; return Q; }
+  function at(P, x) { var i = Math.floor(x), f = x - i; if (i < 0 || i >= P.length - 1) return 0; return P[i] * (1 - f) + P[i + 1] * f; }
+  // where the 9 lines of one direction are: one shift and spacing for all, then each line on its own peak
+  function fitFamily(P, start, sw, kw) { var best = -1, bs = 0, bk = 1;
+    for (var s = -sw; s <= sw; s += 1) for (var k = 1 - kw; k <= 1 + kw + 1e-9; k += 0.0025) { var sc = 0; for (var i = 0; i <= N; i++) sc += at(P, start + s + i * CELL * k); if (sc > best) { best = sc; bs = s; bk = k; } }
+    var pos = []; for (i = 0; i <= N; i++) { var e = start + bs + i * CELL * bk, bp = e, bv = -1; for (var d = -4; d <= 4; d++) { var v = at(P, e + d); if (v > bv) { bv = v; bp = e + d; } } pos.push(bp); }
+    // grid present: the lines stand well above the paper between them
+    var between = []; for (i = 0; i < N; i++) for (var t = 0.25; t <= 0.75; t += 0.05) between.push(at(P, pos[i] + t * (pos[i + 1] - pos[i])));
+    var peaks = pos.map(function (x) { return at(P, x); }), base = median(between) + 1e-6;
+    return { pos: pos, shift: bs, k: bk, q: median(peaks) / base, peak: median(peaks) }; }
+  // one line of the grid followed along its length: its position in segments, fitted straight
+  function traceLine(D, R, horiz, guess, a0, a1, win) { var xs = [], ys = [], seg = 12, len = (a1 - a0) / seg;
+    for (var s = 0; s < seg; s++) { var m0 = Math.round(a0 + s * len), m1 = Math.round(a0 + (s + 1) * len), bv = -1, bp = null;
+      for (var d = -win; d <= win; d++) { var c = Math.round(guess + d), v = 0; if (c < 1 || c >= R - 1) continue;
+        for (var m = m0; m < m1; m++) v += horiz ? D[c * R + m] : D[m * R + c]; if (v > bv) { bv = v; bp = c; } }
+      if (bp !== null) { xs.push((m0 + m1) / 2); ys.push(bp); } }
+    var f = fitLine(xs, ys); return f; } // horiz: y = f0 + f1 x ; vertical: x = f0 + f1 y
+
+  /* ---------- 3. a drawn line on a grid line ---------- */
+  // ink across a line at each point along it: sum of darkness over +-HW around the darkest spot within the band
+  var HW = 6;
+  var CFG = { cover: 0.65, peak: 0.21, width: 11, ends: 0.3, dotDark: 0.25, dotFill: 0, dotRound: 2.2, dotMm: 4.2, blur: 11, soft: 6.8 };   // see readSheet.cfg
+  function inkAlong(D, R, horiz, center, band, a0, a1, skip) { var out = [];
+    for (var m = Math.round(a0) + 2; m < a1 - 2; m += 2) { var near = false; for (var q = 0; q < skip.length; q++) if (Math.abs(m - skip[q]) < 8) { near = true; break; } if (near) continue;
+      var bv = -1, bp = 0; for (var d = -band; d <= band; d++) { var c = Math.round(center + d); if (c < 1 || c >= R - 1) continue;
+        var v = horiz ? D[c * R + m] + 0.5 * (D[(c - 1) * R + m] + D[(c + 1) * R + m]) : D[m * R + c] + 0.5 * (D[m * R + c - 1] + D[m * R + c + 1]); if (v > bv) { bv = v; bp = c; } }
+      var ink = 0; for (d = -HW; d <= HW; d++) { var cc = bp + d; if (cc < 0 || cc >= R) continue; ink += horiz ? D[cc * R + m] : D[m * R + cc]; }
+      var pk = horiz ? D[bp * R + m] : D[m * R + bp]; out.push({ m: m, p: bp, ink: ink, pk: pk }); }
+    return out; }
+
+  /* ---------- 4. the dot ---------- */
+  function findDot(D, R, x0, y0, rad, lineW) { var r = Math.round(rad * 1.8), w = 2 * r + 1, ox = Math.round(x0) - r, oy = Math.round(y0) - r, i, j;
+    var P = new Float32Array(w * w); for (j = 0; j < w; j++) for (i = 0; i < w; i++) { var x = ox + i, y = oy + j; P[j * w + i] = x >= 0 && y >= 0 && x < R && y < R ? D[y * R + x] : 0; }
+    var a = new Float32Array(w * w), b = new Float32Array(w * w); boxBlur(P, w, w, 1, a, b);
+    var Mk = new Float32Array(w * w); for (i = 0; i < Mk.length; i++) Mk[i] = b[i] > 0.2 ? 1 : 0;
+    // erase what is thinner than 7 px (about 1.5 mm): a square erosion, as a min filter
+    // how thick the axes are in this mask, a little away from the crossing: the eraser is just wider than that
+    var th = []; for (var side = -1; side <= 1; side += 2) for (var dd = Math.round(r * 0.6); dd <= r - 1; dd += 2) {
+      var tc = 0, tr = 0; for (var k = -10; k <= 10; k++) { var yy = r + k, xx = r + side * dd; if (yy >= 0 && yy < w && xx >= 0 && xx < w) { tc += Mk[yy * w + xx]; tr += Mk[xx * w + yy]; } }
+      if (tc) th.push(tc); if (tr) th.push(tr); }
+    var thick = th.length ? median(th) : 3;
+    var e = Math.max(2, Math.min(Math.ceil(lineW / 2) + 2, Math.ceil(thick / 2) + 1)); for (i = 0; i < Mk.length; i++) Mk[i] = -Mk[i]; maxFilter(Mk, w, w, e, a, b); for (i = 0; i < Mk.length; i++) b[i] = -b[i];
+    // what survived, as one piece: a dot is one blob; marks crossing the axes (an O, an X) leave small separate bits
+    var lab = new Int32Array(w * w), stk = [], best = [], q;
+    for (j = 0; j < w; j++) for (i = 0; i < w; i++) { var k0 = j * w + i; if (b[k0] <= 0.5 || lab[k0] || Math.hypot(i - r, j - r) > rad) continue;
+      var comp = []; lab[k0] = 1; stk.push(k0); while (stk.length) { q = stk.pop(); comp.push(q); var qx = q % w, qy = (q / w) | 0;
+        for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var nx = qx + dx, ny = qy + dy, k1 = ny * w + nx; if (nx < 0 || ny < 0 || nx >= w || ny >= w || lab[k1] || b[k1] <= 0.5) continue; lab[k1] = 1; stk.push(k1); } }
+      if (comp.length > best.length) best = comp; }
+    var n = best.length, sx = 0, sy = 0; best.forEach(function (k2) { sx += k2 % w; sy += (k2 / w) | 0; });
+    // its size: dark pixels within reach of what survived
+    var ext = 0, dk = []; if (n) { var cx = sx / n, cy = sy / n; for (j = 0; j < w; j++) for (i = 0; i < w; i++) if (P[j * w + i] > 0.2 && Math.hypot(i - cx, j - cy) <= rad * 1.6) { ext++; if (b[j * w + i] > 0.5 || Math.hypot(i - cx, j - cy) <= 3) dk.push(P[j * w + i]); }
+      // its darkness away from the axes (an eraser smudge is gray there; a colored-in dot is dark)
+      // (the dot's own shape: what survived the eraser, grown back by the eraser's width)
+      var O = new Float32Array(w * w), band = Math.ceil(thick / 2) + 1, od = []; maxFilter(b, w, w, e, a, O);
+      for (j = 0; j < w; j++) for (i = 0; i < w; i++) if (O[j * w + i] > 0.5 && Math.abs(i - r) > band && Math.abs(j - r) > band) od.push(P[j * w + i]);
+      // filled in, not a ring: near its middle, away from the axes, most of it is dark (an O written over the crossing is hollow)
+      var R0 = 2.4 / 25.4 * PPI, inn = 0, tot = 0; for (j = 0; j < w; j++) for (i = 0; i < w; i++) if (Math.hypot(i - cx, j - cy) <= R0 && Math.abs(i - r) > band && Math.abs(j - r) > band) { tot++; if (P[j * w + i] > 0.2) inn++; }
+      var on = 0, mxo = 0, myo = 0, sxx = 0, syy = 0, sxy = 0; for (j = 0; j < w; j++) for (i = 0; i < w; i++) if (O[j * w + i] > 0.5) { on++; mxo += i; myo += j; }
+      if (on) { mxo /= on; myo /= on; for (j = 0; j < w; j++) for (i = 0; i < w; i++) if (O[j * w + i] > 0.5) { var ddx = i - mxo, ddy = j - myo; sxx += ddx * ddx; syy += ddy * ddy; sxy += ddx * ddy; } }
+      // dark between the axes too, on the diagonals (a plus traced over the crossing is not)
+      var Rd = on ? Math.sqrt(on / Math.PI) : 0, diag = 0; for (var qd = 0; qd < 4; qd++) { var ang = Math.PI / 4 + qd * Math.PI / 2, px0 = Math.round(mxo + 0.7 * Rd * Math.cos(ang)), py0 = Math.round(myo + 0.7 * Rd * Math.sin(ang)), sm = 0, nm = 0;
+        for (var yy2 = py0 - 2; yy2 <= py0 + 2; yy2++) for (var xx2 = px0 - 2; xx2 <= px0 + 2; xx2++) if (xx2 >= 0 && yy2 >= 0 && xx2 < w && yy2 < w) { sm += P[yy2 * w + xx2]; nm++; }
+        if (nm && sm / nm > 0.2) diag++; }
+      var tr2 = (sxx + syy) / 2, det = Math.sqrt(Math.max(0, (sxx - syy) * (sxx - syy) / 4 + sxy * sxy)), l1 = tr2 + det, l2 = Math.max(tr2 - det, 1e-6);
+      return { n: n, x: ox + cx, y: oy + cy, area: on, dark: od.length >= 8 ? median(od) : median(dk), fill: tot >= 8 ? inn / tot : 0, round: +Math.sqrt(l1 / l2).toFixed(2), diag: diag, e: e, thick: thick }; }
+    return { n: 0 }; }
+
+  /* ---------- the whole read ---------- */
+  function readSheet(source, w, h) { var t0 = nowMs();
+    try {
+      var s = Math.min(1, MAXS / Math.max(w, h)), W = Math.max(1, Math.round(w * s)), H = Math.max(1, Math.round(h * s));
+      var cv = makeCanvas(W, H), g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(source, 0, 0, W, H);
+      var data = g.getImageData(0, 0, W, H).data, L = new Float32Array(W * H), Sat = new Float32Array(W * H);
+      for (var i = 0, o = 0; i < W * H; i++, o += 4) { var r = data[o], gg = data[o + 1], b = data[o + 2]; L[i] = 0.299 * r + 0.587 * gg + 0.114 * b; Sat[i] = Math.max(r, gg, b) - Math.min(r, gg, b); }
+      var base = { size: { w: W, h: H }, scale: s, ms: 0 };
+      var P = findPaper(L, Sat, W, H);
+      if (!P.ok) return Object.assign(base, { ok: false, reason: 'nopaper', message: "I can't find the sheet. Put it on a darker table and get the whole sheet in the photo." });
+      var c = P.corners, side = function (a, b) { return Math.hypot(c[b][0] - c[a][0], c[b][1] - c[a][1]); };
+      var hor = (side(0, 1) + side(3, 2)) / 2, ver = (side(0, 3) + side(1, 2)) / 2, asp = Math.max(hor, ver) / Math.min(hor, ver);
+      var paper = { x0: Math.min(c[0][0], c[3][0]), y0: Math.min(c[0][1], c[1][1]), x1: Math.max(c[1][0], c[2][0]), y1: Math.max(c[2][1], c[3][1]), corners: c };
+      base.paper = paper;
+      var pw, ph, kind;
+      if (asp <= 1.15) { pw = ph = 7.75; kind = 'square'; }
+      else if (asp <= 1.47) { kind = 'letter'; if (hor > ver) { pw = 11; ph = 8.5; } else { pw = 8.5; ph = 11; } }
+      else return Object.assign(base, { ok: false, reason: 'shape', message: "Get the whole sheet in the photo, with some table around it." });
+      if (P.cut) return Object.assign(base, { ok: false, reason: 'edge', message: "Get the whole sheet in the photo, with some table around it. On a white table, put the sheet on something darker." });
+      var Hc2i = homography([[0, 0], [pw * PPI, 0], [pw * PPI, ph * PPI], [0, ph * PPI]], c);
+      var gx0 = (pw - GRID_IN) / 2 * PPI, gy0 = (ph - GRID_IN) / 2 * PPI, Rn = Math.round(GRID_IN * PPI + 2 * MARGIN);
+      // first look: find the grid near where the sheet puts it
+      var C = warp(L, W, H, Hc2i, gx0 - MARGIN, gy0 - MARGIN, Rn), D = darkness(C, Rn);
+      var colP = profile(D, Rn, true, MARGIN, Rn - MARGIN), rowP = profile(D, Rn, false, MARGIN, Rn - MARGIN);
+      var fv = fitFamily(colP, MARGIN, 30, 0.05), fh = fitFamily(rowP, MARGIN, 30, 0.05);
+      if (fv.q < 1.6 || fh.q < 1.6) return Object.assign(base, { ok: false, reason: 'nogrid', kind: kind, message: "I can't find the grid. Use the FotoLine sheet, and get all of it in the photo." });
+      // the grid's border lines, fitted, give its corners: map again from them
+      var top = traceLine(D, Rn, true, fh.pos[0], fv.pos[0], fv.pos[N], 6), bot = traceLine(D, Rn, true, fh.pos[N], fv.pos[0], fv.pos[N], 6);
+      var lef = traceLine(D, Rn, false, fv.pos[0], fh.pos[0], fh.pos[N], 6), rig = traceLine(D, Rn, false, fv.pos[N], fh.pos[0], fh.pos[N], 6);
+      function cross(hl, vl) { // y = h0 + h1 x, x = v0 + v1 y
+        var y = (hl[0] + hl[1] * vl[0]) / (1 - hl[1] * vl[1]), x = vl[0] + vl[1] * y; return [x, y]; }
+      var gc = [cross(top, lef), cross(top, rig), cross(bot, rig), cross(bot, lef)].map(function (p) { return applyH(Hc2i, gx0 - MARGIN + p[0], gy0 - MARGIN + p[1]); });
+      var G = GRID_IN * PPI, Hg = homography([[MARGIN, MARGIN], [MARGIN + G, MARGIN], [MARGIN + G, MARGIN + G], [MARGIN, MARGIN + G]], gc);
+      if (!Hg) return Object.assign(base, { ok: false, reason: 'nogrid', message: "I can't find the grid. Use the FotoLine sheet, and get all of it in the photo." });
+      C = warp(L, W, H, Hg, 0, 0, Rn); D = darkness(C, Rn);
+      colP = profile(D, Rn, true, MARGIN, Rn - MARGIN); rowP = profile(D, Rn, false, MARGIN, Rn - MARGIN);
+      fv = fitFamily(colP, MARGIN, 4, 0.01); fh = fitFamily(rowP, MARGIN, 4, 0.01);
+      if (fv.q < 1.6 || fh.q < 1.6) return Object.assign(base, { ok: false, reason: 'nogrid', message: "I can't find the grid. Use the FotoLine sheet, and get all of it in the photo." });
+      var xs = fv.pos, ys = fh.pos, band = Math.round(0.75 * CELL);
+      // the printed line's ink, from the lines nobody draws on
+      var pwl = [];
+      function lineInk(horiz, j) { var A = inkAlong(D, Rn, horiz, horiz ? ys[j] : xs[j], 3, horiz ? xs[0] : ys[0], horiz ? xs[N] : ys[N], horiz ? xs : ys);
+        pwl.push(median(A.map(function (q) { return q.ink / Math.max(q.pk, 1e-3); }))); return median(A.map(function (q) { return q.ink; })); }
+      var printed = []; for (var j = 1; j < N; j++) if (j !== 4) { printed.push(lineInk(true, j)); printed.push(lineInk(false, j)); }
+      var pInk = median(printed), pWidth = median(pwl), T = Math.max(1.8 * pInk, pInk + 0.5);
+      // a printed line is a quarter of a millimeter: seen much wider, the photo is out of focus or shaken
+      if (pWidth > CFG.blur) return Object.assign(base, { ok: false, reason: 'blur', printedWidth: +pWidth.toFixed(1), message: "The photo is blurry. Hold the phone still over the sheet, let it focus, and take it again." });
+      function axis(horiz) { var pos = horiz ? ys : xs, other = horiz ? xs : ys;
+        // a pencil stroke: more ink than a printed line, dark at its middle, and narrow (a fold's shading is wide and pale)
+        // (blur spreads a line and lowers its middle: in a softer photo the darkness asked for drops with the printed line's width)
+        var WMAX = Math.max(CFG.width, 1.8 * pWidth + 4), PMIN = CFG.peak * Math.min(1, 4.2 / Math.max(pWidth, 1e-3));
+        var isPencil = function (q) { return q.ink > T && q.pk >= PMIN && q.ink / Math.max(q.pk, 1e-3) <= WMAX; };
+        var A = inkAlong(D, Rn, horiz, pos[4], band, other[0], other[N], other), hit = A.filter(isPencil);
+        var cov = A.length ? hit.length / A.length : 0, res = { drawn: false, coverage: +cov.toFixed(2), ink: +(median(A.map(function (q) { return q.ink; })) / (pInk || 1)).toFixed(2) };
+        if (hit.length) { res.peak = +median(hit.map(function (q) { return q.pk; })).toFixed(2); res.width = +median(hit.map(function (q) { return q.ink / Math.max(q.pk, 1e-3); })).toFixed(1); }
+        if (cov >= CFG.cover) { var f = fitLine(hit.map(function (q) { return q.m; }), hit.map(function (q) { return q.p; }));
+          var at = function (m) { return (f[0] + f[1] * m - pos[4]) / CELL; };
+          res.drawn = true; res.fit = f; res.offset = +at((other[0] + other[N]) / 2).toFixed(2);
+          res.ends = [+at(other[0]).toFixed(2), +at(other[N]).toFixed(2)];   // how far off the middle line each end of the grid is
+          res.straight = Math.max(Math.abs(res.ends[0] - res.offset), Math.abs(res.ends[1] - res.offset)) <= CFG.ends; }
+        else { var faint = A.filter(function (q) { return q.ink > 0.7 * T && q.pk >= 0.7 * PMIN && q.ink / Math.max(q.pk, 1e-3) <= WMAX; }).length / (A.length || 1);
+          if (faint >= CFG.cover) res.faint = true;   // there, all the way across, but too light to be sure
+          else if (cov >= 0.3) res.short = true;      // a line, but not across the grid
+          // drawn somewhere else? another grid line with a line on it
+          for (var j = 1; j < N; j++) if (j !== 4) { var B = inkAlong(D, Rn, horiz, pos[j], 3, other[0], other[N], other), cb = B.filter(isPencil).length / (B.length || 1);
+            if (cb >= CFG.cover) { res.elsewhere = j; break; } } }
+        return res; }
+      var hA = axis(true), vA = axis(false);
+      // the crossing, and the dot on it
+      var ox = xs[4], oy = ys[4];
+      if (hA.drawn && vA.drawn) { var hl = hA.fit, vl = vA.fit, yy = (hl[0] + hl[1] * vl[0]) / (1 - hl[1] * vl[1]); ox = vl[0] + vl[1] * yy; oy = yy; }
+      else if (hA.drawn) oy = hA.fit[0] + hA.fit[1] * ox; else if (vA.drawn) ox = vA.fit[0] + vA.fit[1] * oy;
+      var lineW = Math.max(hA.drawn ? hA.width || 4 : 4, vA.drawn ? vA.width || 4 : 4);
+      var dot = findDot(D, Rn, ox, oy, 0.17 * CELL, lineW), origin = { found: false, n: dot.n };
+      if (dot.n) { origin.mm = +(2 * Math.sqrt(dot.area / Math.PI) / PPI * 25.4).toFixed(1); origin.dark = +dot.dark.toFixed(2); }
+      origin.found = dot.n >= 25 && origin.mm >= CFG.dotMm && origin.dark >= CFG.dotDark && dot.fill >= CFG.dotFill && dot.round <= CFG.dotRound && dot.diag >= 3; if (dot.n) { origin.fill = +dot.fill.toFixed(2); origin.round = dot.round; origin.diag = dot.diag; }
+      if (origin.found) { origin.cx = dot.x; origin.cy = dot.y; }
+      // back to the photo, for drawing
+      var toImg = function (u, v) { var p = applyH(Hg, u, v); return [+p[0].toFixed(1), +p[1].toFixed(1)]; };
+      var seg = function (A, horiz) { if (!A.drawn) return null; var a = xs[0], b = xs[N]; if (!horiz) { a = ys[0]; b = ys[N]; }
+        return horiz ? [toImg(a, A.fit[0] + A.fit[1] * a), toImg(b, A.fit[0] + A.fit[1] * b)] : [toImg(A.fit[0] + A.fit[1] * a, a), toImg(A.fit[0] + A.fit[1] * b, b)]; };
+      var gridQuad = [toImg(xs[0], ys[0]), toImg(xs[N], ys[0]), toImg(xs[N], ys[N]), toImg(xs[0], ys[N])];
+      var mid = { h: [toImg(xs[0], ys[4]), toImg(xs[N], ys[4])], v: [toImg(xs[4], ys[0]), toImg(xs[4], ys[N])] };
+      var soft = pWidth > CFG.soft;   // soft focus: a missing or faint line may be the photo, not the pencil
+      var out = Object.assign(base, { ok: true, kind: kind, soft: soft, grid: { quad: gridQuad, mid: mid, q: +Math.min(fv.q, fh.q).toFixed(1) }, printedInk: +pInk.toFixed(2), printedWidth: +pWidth.toFixed(1),
+        h: Object.assign({}, hA, { seg: seg(hA, true), fit: undefined }), v: Object.assign({}, vA, { seg: seg(vA, false), fit: undefined }),
+        origin: Object.assign(origin, origin.found ? { pt: toImg(origin.cx, origin.cy), r: +(Math.sqrt(dot.area / Math.PI) * (Hg ? 1 : 1)).toFixed(1) } : {}, { cx: undefined, cy: undefined }) });
+      // the dot's radius in photo pixels, for the circle on the stage
+      if (out.origin.found) { var e1 = toImg(origin.cx + out.origin.r, origin.cy); out.origin.rpx = +Math.hypot(e1[0] - out.origin.pt[0], e1[1] - out.origin.pt[1]).toFixed(1); }
+      out.ms = Math.round(nowMs() - t0);
+      if (readSheet.debug) out._debug = { D: D, R: Rn, xs: xs, ys: ys, T: T, pInk: pInk };
+      return out;
+    } catch (err) { return { ok: false, reason: 'error', message: "I can't read this photo. Take it again.", error: String(err && err.message || err) }; }
+  }
+
+  /* ======================= a synthetic photo of the sheet ======================= */
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  /* spec: { h, v: true | false | {off: cells off the middle line, line: grid line 0..8, len: share drawn},
+             dot: true | false | {mm: diameter, dx, dy: mm off the crossing}, labels: bool, cut: bool, seed,
+             width, height, rotate (deg), tilt (0..1), gridGray (0..1, printed line), pencil (0..1, darkness), penWidth (mm),
+             light (0..1), shadow: bool, blur (px), crease: bool } */
+  function drawSheetSample(spec) {
+    spec = spec || {}; var rnd = mulberry32(((spec.seed === undefined ? 7 : spec.seed) >>> 0) * 2654435761 + 3);
+    var OW = spec.width || 1200, OH = spec.height || 1600, F = 100;   // the flat sheet at F px per inch
+    var cut = !!spec.cut, pw = cut ? 7.75 : 8.5, ph = cut ? 7.75 : 11, FW = Math.round(pw * F), FH = Math.round(ph * F);
+    var flat = makeCanvas(FW, FH), g = flat.getContext('2d');
+    g.fillStyle = '#fbfbf6'; g.fillRect(0, 0, FW, FH);
+    var gx = (pw - 7) / 2 * F, gy = (ph - 7) / 2 * F, cell = 0.875 * F, gray = spec.gridGray === undefined ? 0.55 : spec.gridGray;
+    var gv = Math.round(gray * 255); g.strokeStyle = 'rgb(' + gv + ',' + gv + ',' + gv + ')'; g.lineWidth = 0.26 / 25.4 * F;
+    for (var i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(gx + i * cell, gy); g.lineTo(gx + i * cell, gy + 7 * F); g.stroke(); g.beginPath(); g.moveTo(gx, gy + i * cell); g.lineTo(gx + 7 * F, gy + i * cell); g.stroke(); }
+    if (!cut) { g.setLineDash([8, 5]); g.strokeStyle = '#5a5a5a'; g.lineWidth = 1; var cs = 0.375 * F; g.strokeRect(gx - cs, gy - cs, 7 * F + 2 * cs, 7 * F + 2 * cs); g.setLineDash([]);
+      g.fillStyle = '#5a5a5a'; g.font = '12px sans-serif'; g.fillText('cut on the dashed line (or don\'t: the grid is in the center of the page)', gx - cs, gy - cs - 6);
+      g.fillText('FotoLine sheet.  8 x 8 squares, each 7/8 inch.', gx - cs, gy + 7 * F + cs + 22); g.fillText('Print at 100% (Actual size). The grid should measure 7 inches across.', gx - cs, gy + 7 * F + cs + 38); }
+    var ox = FW / 2, oy = FH / 2;   // the folds: the middle of the sheet
+    // folds: a soft shading step on each crease
+    if (spec.crease !== false) { var sh = 0.03 + 0.04 * rnd();
+      var gr = g.createLinearGradient(0, oy - 6, 0, oy + 6); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, 'rgba(0,0,0,' + sh + ')'); gr.addColorStop(0.55, 'rgba(255,255,255,0.05)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, oy - 6, FW, 12);
+      gr = g.createLinearGradient(ox - 6, 0, ox + 6, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, 'rgba(0,0,0,' + sh + ')'); gr.addColorStop(0.55, 'rgba(255,255,255,0.05)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(ox - 6, 0, 12, FH); }
+    var dark = spec.pencil === undefined ? 0.55 + 0.25 * rnd() : spec.pencil, pwid = (spec.penWidth || 0.5 + 0.25 * rnd()) / 25.4 * F;
+    function pencilLine(x0, y0, x1, y1) { // a hand-drawn line: some wobble, graphite grain, two passes
+      for (var pass = 0; pass < 2; pass++) { var n = 60, ph1 = rnd() * 6, ph2 = rnd() * 6, amp = 0.35 + 0.5 * rnd(), len = Math.hypot(x1 - x0, y1 - y0), nx = -(y1 - y0) / len, ny = (x1 - x0) / len;
+        g.strokeStyle = 'rgba(55,57,64,' + (dark * (pass ? 0.55 : 0.8)) + ')'; g.lineWidth = pwid * (pass ? 0.7 : 1); g.lineCap = 'round'; g.beginPath();
+        for (var k = 0; k <= n; k++) { var t = k / n, wob = amp * (Math.sin(t * 7 + ph1) + 0.6 * Math.sin(t * 19 + ph2)), x = x0 + (x1 - x0) * t + nx * wob, y = y0 + (y1 - y0) * t + ny * wob; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
+        g.stroke(); }
+      // grain: small light gaps
+      for (var k2 = 0; k2 < 140; k2++) { var t2 = rnd(), x2 = x0 + (x1 - x0) * t2, y2 = y0 + (y1 - y0) * t2; g.fillStyle = 'rgba(251,251,246,' + (0.25 + 0.3 * rnd()) + ')'; g.fillRect(x2 - 0.6, y2 - 0.6, 1.2, 1.2); } }
+    function axisSpec(a) { if (!a) return null; var o = a === true ? {} : a; return { off: (o.off || 0) + ((o.line === undefined ? 4 : o.line) - 4), len: o.len || 1, tilt: o.tilt || 0 }; }
+    var H_ = axisSpec(spec.h), V_ = axisSpec(spec.v), ext = 0.15 * F + 0.3 * F * rnd();
+    if (H_) { var y = oy + H_.off * cell, half = (3.5 * F + ext) * H_.len; pencilLine(ox - half, y - H_.tilt * half, ox + half, y + H_.tilt * half); }
+    if (V_) { var x = ox + V_.off * cell, half2 = (3.5 * F + ext) * V_.len; pencilLine(x + V_.tilt * half2, oy - half2, x - V_.tilt * half2, oy + half2); }
+    if (spec.dot) { var d = spec.dot === true ? {} : spec.dot, mm = d.mm || 4.8 + 2 * rnd(), rr = mm / 2 / 25.4 * F, dx = (d.dx || 0) / 25.4 * F, dy = (d.dy || 0) / 25.4 * F;
+      // an O, then colored in with short strokes (some paper shows through)
+      g.strokeStyle = 'rgba(50,52,58,' + dark + ')'; g.lineWidth = pwid; g.beginPath(); g.arc(ox + dx, oy + dy, rr, 0, 2 * Math.PI); g.stroke();
+      for (var k3 = 0; k3 < 26 + rr * 3; k3++) { var a1 = rnd() * 2 * Math.PI, r1 = rr * Math.sqrt(rnd()), a2 = a1 + Math.PI + (rnd() - 0.5); g.beginPath();
+        g.moveTo(ox + dx + r1 * Math.cos(a1), oy + dy + r1 * Math.sin(a1)); g.lineTo(ox + dx + rr * 0.9 * Math.cos(a2) * rnd(), oy + dy + rr * 0.9 * Math.sin(a2) * rnd());
+        g.strokeStyle = 'rgba(50,52,58,' + (dark * (0.5 + 0.4 * rnd())) + ')'; g.lineWidth = pwid * 1.2; g.stroke(); } }
+    if (spec.labels) { g.fillStyle = 'rgba(55,57,64,' + dark + ')'; g.font = Math.round(0.22 * F) + 'px "Comic Sans MS", cursive, sans-serif';
+      g.fillText('0', ox + 4, oy + 0.28 * F); for (i = 1; i <= 4; i++) g.fillText(String(i), ox + i * cell + 4, oy + 0.28 * F);
+      g.fillText('x', ox + 3.5 * F + 0.12 * F, oy - 0.06 * F); g.fillText('y', ox + 0.08 * F, oy - 3.5 * F - 0.1 * F); }
+    // the photo: a desk, the sheet in perspective
+    var out = makeCanvas(OW, OH), og = out.getContext('2d');
+    var wh = 26 + rnd() * 10; og.fillStyle = 'hsl(' + wh + ',35%,' + (40 + rnd() * 12) + '%)'; og.fillRect(0, 0, OW, OH);
+    for (i = 0; i < 120; i++) { og.strokeStyle = 'hsla(' + (wh + (rnd() - 0.5) * 8) + ',35%,' + (30 + rnd() * 25) + '%,0.18)'; og.lineWidth = 1 + rnd() * 5; var yy = rnd() * OH; og.beginPath(); og.moveTo(0, yy); og.bezierCurveTo(OW / 3, yy + (rnd() - 0.5) * 40, 2 * OW / 3, yy + (rnd() - 0.5) * 40, OW, yy + (rnd() - 0.5) * 30); og.stroke(); }
+    var desk = og.getImageData(0, 0, OW, OH), dd = desk.data, fl = g.getImageData(0, 0, FW, FH).data;
+    var rot = ((spec.rotate === undefined ? (rnd() - 0.5) * 10 : spec.rotate)) * Math.PI / 180, tilt = spec.tilt === undefined ? 0.06 * rnd() : spec.tilt;
+    var rw = Math.abs(pw * Math.cos(rot)) + Math.abs(ph * Math.sin(rot)), rh = Math.abs(pw * Math.sin(rot)) + Math.abs(ph * Math.cos(rot));
+    var fill = (0.80 + 0.08 * rnd()) / (1 + tilt), sc = Math.min(OW / rw, OH / rh) * fill, cx = OW / 2 + (rnd() - 0.5) * OW * 0.05, cy = OH / 2 + (rnd() - 0.5) * OH * 0.05;
+    var quad = [[-pw / 2, -ph / 2], [pw / 2, -ph / 2], [pw / 2, ph / 2], [-pw / 2, ph / 2]].map(function (p, k) {
+      var tx = p[0] * Math.cos(rot) - p[1] * Math.sin(rot), ty = p[0] * Math.sin(rot) + p[1] * Math.cos(rot);
+      var persp = 1 + tilt * (k < 2 ? -1 : 1) * (0.6 + 0.4 * rnd());   // the far edge a little smaller
+      return [cx + tx * sc * persp, cy + ty * sc * (1 + tilt * 0.3 * (k < 2 ? -1 : 1))]; });
+    var Hf = homography(quad, [[0, 0], [FW, 0], [FW, FH], [0, FH]]);
+    var light = spec.light === undefined ? 0.85 + 0.15 * rnd() : spec.light, lgx = (rnd() - 0.5), lgy = (rnd() - 0.5);
+    var shadow = spec.shadow ? { a: rnd() * Math.PI, d: (rnd() - 0.3) * OW * 0.3, w: 60 + rnd() * 120 } : null;
+    for (var Y = 0; Y < OH; Y++) for (var X = 0; X < OW; X++) { var q = applyH(Hf, X + 0.5, Y + 0.5), u = q[0] - 0.5, v = q[1] - 0.5, o = (Y * OW + X) * 4;
+      var lit = light * (1 + 0.12 * ((X / OW - 0.5) * lgx + (Y / OH - 0.5) * lgy));
+      if (shadow) { var sd = (X - OW / 2) * Math.cos(shadow.a) + (Y - OH / 2) * Math.sin(shadow.a) - shadow.d; if (sd > 0) lit *= 1 - 0.28 * Math.min(1, sd / shadow.w); }
+      if (u >= 0 && v >= 0 && u < FW - 1 && v < FH - 1) { var u0 = u | 0, v0 = v | 0, fu = u - u0, fv = v - v0, p0 = (v0 * FW + u0) * 4;
+        for (var ch = 0; ch < 3; ch++) { var val = (fl[p0 + ch] * (1 - fu) + fl[p0 + 4 + ch] * fu) * (1 - fv) + (fl[p0 + FW * 4 + ch] * (1 - fu) + fl[p0 + FW * 4 + 4 + ch] * fu) * fv;
+          dd[o + ch] = clamp(val * lit + (rnd() - 0.5) * 9, 0, 255); } }
+      else for (ch = 0; ch < 3; ch++) dd[o + ch] = clamp(dd[o + ch] * lit + (rnd() - 0.5) * 9, 0, 255); }
+    og.putImageData(desk, 0, 0);
+    var bl = spec.blur === undefined ? 0.8 + rnd() * 0.8 : spec.blur; if (bl > 0) { var t2 = makeCanvas(OW, OH), tg = t2.getContext('2d'); tg.filter = 'blur(' + bl + 'px)'; tg.drawImage(out, 0, 0); out = t2; }
+    out.truth = { h: !!H_ && Math.abs(H_.off) < 0.5 && H_.len >= 0.6, v: !!V_ && Math.abs(V_.off) < 0.5 && V_.len >= 0.6, hOff: H_ ? H_.off : null, vOff: V_ ? V_.off : null, dot: !!spec.dot, quad: quad, cut: cut };
+    return out;
+  }
+
+  readSheet.cfg = CFG;
+  if (typeof window !== 'undefined') { window.readSheet = readSheet; window.drawSheetSample = drawSheetSample; }
+})();
+
+</script>
+<script>
+"use strict";
+(function(){
+const VERSION="0.1.0", ITERATION=1, RECORD_SCHEMA="fotofold.record/1";
+const $=id=>document.getElementById(id);
+document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||"" }catch(e){ return "" } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} } };
+const plural=(k,w)=>k+" "+w+(k===1?"":"s");
+// an equation such as "1 ÷ 2/3 = 1½" is kept on one line
+const TERM="(?:\\d+(?:/\\d+)?[½⅓¼]?|[½⅓¼])", EQN=new RegExp(TERM+"(?:\\s?[÷×=−+]\\s?"+TERM+")+","g");
+const escEq=t=>esc(t).replace(EQN,m=>'<span class="eqn">'+m+'</span>');
+const fr=(a,b)=>'<span class="frac"><span>'+a+'</span><span class="bar"></span><span>'+b+'</span></span>';
+
+/* ======================= THE SET =======================
+   Every step is one thing to do with the sheet and a pencil. Some end with a photo the phone checks; some are done when the
+   student says so (writing a 0 needs no check). A name comes after the thing it names is made.
+   need (photo steps): what the photo should show: h = a line on the fold across the middle, v = a line on the fold up the
+   middle, o = a dot colored in where they cross. do: no photo. ask: {kind:"count", target}. words: the names this step gives. */
+const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Fold the sheet twice, draw on the folds, and name what you made.",std:"4.G.A.1, 5.G.A.1, 2.MD.B.6",
+ end:{lines:[],q:"You made a coordinate system: two perpendicular number lines, called axes, that intersect at the origin."},
+ steps:[
+  {id:"l1.f1", label:"fold across", do:true, prompt:"Fold your sheet in half, top edge to bottom edge.", sub:"Match the corners, press the fold flat, and open the sheet.",
+   say:"A fold across the middle of the sheet."},
+  {id:"l1.h", label:"line on the fold", prompt:"Draw a pencil line along the fold.", sub:"Go from one edge of the grid to the other. The edge of a card or a ruler helps.",
+   need:{h:true}, say:"This line is an axis.", words:["axis"]},
+  {id:"l1.f2", label:"fold up and down", do:true, prompt:"Fold your sheet in half the other way, side edge to side edge.", sub:"Match the corners again, press, and open the sheet.",
+   say:"A fold up the middle of the sheet."},
+  {id:"l1.v", label:"line on the new fold", prompt:"Draw a pencil line along the new fold.", sub:"Go from one edge of the grid to the other.",
+   need:{h:true,v:true}, say:"Two lines: two axes. They cross square, like the corner of the sheet: they are perpendicular.", words:["axes","perpendicular"]},
+  {id:"l1.o", label:"dot where they cross", prompt:"Color in a dot where your axes cross.", sub:"Make it about as big as a pencil eraser.",
+   need:{h:true,v:true,o:true}, say:"The axes cross, or intersect, at one point. That point is the origin.", words:["intersect","origin"]},
+  {id:"l1.z", label:"0 at the origin", do:true, prompt:"Write 0 next to the origin.", sub:"Just below the dot, on the right.",
+   say:"0 is where counting starts."},
+  {id:"l1.x", label:"x on the axis across", do:true, prompt:"Write x at the right end of the axis that goes side to side.", sub:"",
+   say:"This axis goes side to side: it is the horizontal axis. We call it x.", words:["horizontal axis"]},
+  {id:"l1.y", label:"y on the axis up", do:true, prompt:"Write y at the top end of the axis that goes up and down.", sub:"",
+   say:"This axis goes up and down: it is the vertical axis. We call it y.", words:["vertical axis"]},
+  {id:"l1.n", label:"count along x", do:true, mode:"along", prompt:"Write 1, 2, 3, 4 along x, to the right of 0.", sub:"One number on each grid line, starting with the line next to 0.",
+   ask:{kind:"count",target:4,q:"How many squares from the origin to the right edge of the grid?",hint:"Count the squares along x, from 0 to the edge."},
+   say:"4. Numbers on a line, evenly spaced: a number line.", words:["number line"]},
+ ]}];
+/* the standard each step works on (Arizona and Common Core) */
+const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","l1.y":"5.G.A.1","l1.n":"2.MD.B.6"};
+SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=0; st.mode=st.mode||(st.ask?st.ask.kind:st.do?"do":"draw"); st.target=st.ask?String(st.ask.target):st.need?["h","v","o"].filter(k=>st.need[k]).join("+"):"done"; }));
+
+/* ======================= STATE ======================= */
+const S={set:null,round:1,s:0,results:[],photos:[],events:[],started:new Date().toISOString(),seen:null,img:null,source:null,photoOk:false,stepOk:false,num:0,tries:0,photoTries:0,stepAt:0,firstWhole:null,classCode:store.get("ff.class"),student:store.get("ff.student").replace(/[^0-9]/g,"")};
+const t0=performance.now();
+function log(type,data){ S.events.push(Object.assign({t:+((performance.now()-t0)/1000).toFixed(2),set:S.set&&S.set.key,round:S.round,type},data)); persist(); }
+const PKEY="fl.progress.v1";
+function persist(){ if(!S.set) return; try{ localStorage.setItem(PKEY,JSON.stringify({at:Date.now(),set:S.set.key,round:S.round,s:S.s,stepOk:!!S.stepOk,done:!!S.loggedDone,seen:slim(S.seen),source:S.source||null,results:S.results,photos:S.photos,events:S.events,started:S.started})) }catch(e){} }
+const slim=R=>R&&R.ok?{ok:true,h:!!(R.h&&R.h.drawn),v:!!(R.v&&R.v.drawn),o:!!(R.origin&&R.origin.found)}:null;
+function loadProgress(){ try{ const p=JSON.parse(localStorage.getItem(PKEY)||"null"); if(p&&Date.now()-p.at<24*3600e3&&SETS.find(x=>x.key===p.set)) return p }catch(e){} return null }
+function forget(){ try{ localStorage.removeItem(PKEY) }catch(e){} }
+const ST=()=>S.set.steps[S.s];
+function view(v){ for(const x of ["homeView","stepView","doneView"]) $(x).hidden=x!==v; }
+
+/* ======================= HOME ======================= */
+$("classCode").value=S.classCode; $("studentNo").value=S.student;
+$("classCode").oninput=e=>{ S.classCode=e.target.value.trim().slice(0,12); store.set("ff.class",S.classCode); codeChanged(); };
+$("studentNo").oninput=e=>{ const v=e.target.value.replace(/[^0-9]/g,"").slice(0,3); if(v!==e.target.value) e.target.value=v; S.student=v; store.set("ff.student",v); liveUI(); };
+$("studentNo").onchange=()=>numberSettled();
+function renderHome(){ view("homeView"); $("wholes").innerHTML=""; $("brandSet").textContent="iteration "+ITERATION;
+  $("sets").innerHTML=SETS.map(x=>'<button class="setcard" type="button" data-set="'+x.key+'"><span class="no">'+x.no+'</span><b>'+esc(x.name)+'</b><span class="what">'+esc(x.what)+'</span></button>').join("");
+  const p=loadProgress(); $("resumeCard").hidden=!p;
+  $("sets").querySelectorAll("[data-set]").forEach(b=>b.onclick=()=>{ if(askNew()) return; if(p&&p.set===b.dataset.set&&!p.done) return resume(p); startSet(SETS.find(z=>z.key===b.dataset.set)); });
+  if(p){ const X=SETS.find(x=>x.key===p.set), fin=p.done||(p.stepOk&&p.s>=X.steps.length-1);   // the last step done: what's left is My answers
+    $("resumeWhat").textContent=p.done?"Your answers to FotoLine "+X.no+" are still on this phone.":fin?"FotoLine "+X.no+" is finished. Your answers are on this phone.":"Pick up where you left off: FotoLine "+X.no+", step "+(Math.min(p.s+(p.stepOk?2:1),X.steps.length))+".";
+    $("resumeBtn").textContent=fin?"See my answers":"Keep going";
+    $("resumeBtn").onclick=()=>{ if(!askNew()) resume(p); };
+    $("freshBtn").onclick=()=>{ forget(); S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); $("resumeCard").hidden=true; renderHome(); }; } }
+function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.photos=p.photos||[]; S.events=p.events||[]; S.started=p.started||S.started;
+  S.seen=p.seen||null; S.img=null; S.source=p.source||null; S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
+  view("stepView"); log("resume",{step:S.s}); showStep(); }
+function startSet(X){ S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(X.key)); bumpRound(X.key,S.round); setOwner(S.student); S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); sendJoin(); note("step",{type:"start",set:X.key,no:X.no,round:S.round,of:asked().length}); showStep(); }
+$("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.dataset.armed){ delete b.dataset.armed; closeCam(); renderHome(); return } b.dataset.armed="1"; const t=b.textContent; b.textContent="tap again to leave this set"; setTimeout(()=>{ if(b.dataset.armed){ delete b.dataset.armed; b.textContent=t } },3500); } else renderHome(); };
+
+/* ======================= A STEP ======================= */
+/* the names the student has earned so far, in the order they came */
+function renderWords(all){ const out=[]; S.set.steps.forEach((x,i)=>{ if(!x.words) return; const got=all||i<S.s||(i===S.s&&S.stepOk); if(got) x.words.forEach(w=>out.push([w,!all&&i===S.s])); });
+  $("wholes").innerHTML=out.map(([w,now])=>'<span class="'+(now?"now":"done")+'">'+esc(w)+'</span>').join(""); }
+function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; f.innerHTML=""; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html; }
+function showStep(){ const st=ST(); closeCam();
+  if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
+  $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
+  $("where").innerHTML=esc(S.set.name)+' · <b>step '+(S.s+1)+' of '+S.set.steps.length+'</b>';
+  renderWords();
+  $("stepno").textContent=S.s+1; const h=$("head"); h.classList.remove("enter"); void h.offsetWidth; h.classList.add("enter");
+  $("prompt").textContent=st.prompt; $("sub").textContent=st.sub; $("sub").hidden=!st.sub;
+  $("photoRow").hidden=false; $("sampleBtn").hidden=false; $("anyway").hidden=true; $("answerRow").hidden=true; $("nextRow").hidden=true; $("didRow").hidden=true; setFeedback("","");
+  $("stageBox").hidden=!!st.do; $("seen").hidden=!!st.do; $("seen").textContent=""; drawStage(); persist();
+  if(st.do){ S.photoOk=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;   // no photo: done when the student says so, or when they answer
+    if(st.ask){ $("answerRow").hidden=false; renderEq(); } else $("didRow").hidden=false; }
+  requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} }); }
+
+/* ---- the stage: the photo, cropped to the sheet, with what the phone found drawn on it ---- */
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let VH=0, VW=0;   // the tallest the screen has been at this width: Safari's bar coming and going doesn't move the buttons
+function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRatio||1), W=cv.clientWidth||cv.parentElement.clientWidth||360;
+  const R=S.seen, img=S.img; let H=Math.round(W*0.9), C=null;
+  if(R&&R.size&&img){ C={x0:0,y0:0,x1:R.size.w,y1:R.size.h};
+    if(R.paper){ const pad=0.03*Math.max(R.size.w,R.size.h); C={x0:Math.max(0,R.paper.x0-pad),y0:Math.max(0,R.paper.y0-pad),x1:Math.min(R.size.w,R.paper.x1+pad),y1:Math.min(R.size.h,R.paper.y1+pad)}; }
+    H=Math.round(W*(C.y1-C.y0)/(C.x1-C.x0)); }
+  if(window.innerWidth!==VW){ VW=window.innerWidth; VH=0 } VH=Math.max(VH,window.innerHeight||0); const vh=VH||800, maxH=Math.round(Math.max(vh<500?150:240,vh*0.55));
+  if(H>maxH) H=maxH;
+  cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.height=H+"px";
+  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle=css("--mat"); g.fillRect(0,0,W,H);
+  if(!R||!img||!R.size){ // a blank sheet: the grid, and where the folds will go
+    const s=Math.min(W,H)*0.86, x0=(W-s)/2, y0=(H-s)/2, c=s/8; g.fillStyle=css("--paper"); g.fillRect(x0-c*0.4,y0-c*0.4,s+c*0.8,s+c*0.8);
+    g.strokeStyle="rgba(0,0,0,.28)"; g.lineWidth=1; for(let i=0;i<=8;i++){ g.beginPath(); g.moveTo(x0+i*c,y0); g.lineTo(x0+i*c,y0+s); g.stroke(); g.beginPath(); g.moveTo(x0,y0+i*c); g.lineTo(x0+s,y0+i*c); g.stroke(); }
+    return }
+  const cw=C.x1-C.x0, ch=C.y1-C.y0, k=Math.min(W/cw,H/ch), ox=(W-cw*k)/2, oy=(H-ch*k)/2, sc=R.scale||(R.size.w/(img.width||img.naturalWidth||R.size.w));
+  g.drawImage(img,C.x0/sc,C.y0/sc,cw/sc,ch/sc,ox,oy,cw*k,ch*k);
+  const X=x=>ox+(x-C.x0)*k, Y=y=>oy+(y-C.y0)*k, seg=(a,col,w,dash)=>{ g.save(); if(dash) g.setLineDash(dash); g.strokeStyle=col; g.lineWidth=w; g.lineCap="round"; g.beginPath(); g.moveTo(X(a[0][0]),Y(a[0][1])); g.lineTo(X(a[1][0]),Y(a[1][1])); g.stroke(); g.restore(); };
+  if(!R.ok||!R.grid) return;
+  const q=R.grid.quad; g.save(); g.strokeStyle="rgba(31,79,138,.55)"; g.lineWidth=2; g.beginPath(); q.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]))); g.closePath(); g.stroke(); g.restore();
+  const need=(ST()&&ST().need)||{};
+  const good=A=>A&&A.seg&&Math.abs(A.offset||0)<=OFF&&A.straight!==false;   // green: a line that counts; amber dashes: where the phone looked for one
+  const show=(A,mid,needed)=>{ if(good(A)) return seg(A.seg,"rgba(29,122,69,.9)",4); if(needed||(A&&A.seg)) seg(mid,"rgba(154,91,0,.9)",3,[9,7]); };
+  show(R.h,R.grid.mid.h,need.h); show(R.v,R.grid.mid.v,need.v);
+  if(R.origin&&R.origin.found){ g.save(); g.strokeStyle="rgba(29,122,69,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(R.origin.pt[0]),Y(R.origin.pt[1]),Math.max(9,(R.origin.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }
+}
+function seenText(R){ if(!R||!R.ok) return ""; const parts=["the grid"];
+  if(R.h&&R.h.drawn&&Math.abs(R.h.offset||0)<=OFF&&R.h.straight!==false) parts.push("a line across the middle"); if(R.v&&R.v.drawn&&Math.abs(R.v.offset||0)<=OFF&&R.v.straight!==false) parts.push("a line up the middle"); if(R.origin&&R.origin.found) parts.push("a dot where they cross");
+  return "I see "+(parts.length>2?parts.slice(0,-1).join(", ")+", and "+parts[parts.length-1]:parts.join(" and "))+"."; }
+
+/* ---- does the photo show what the step asked for? ----
+   The fold finds the middle of the grid, so a line on the fold lands on the middle grid line. Some slack for hands and paper:
+   up to OFF of a square off the middle line still counts (about 4 mm). */
+const OFF=0.2;
+function check(R,need){ const probs=[];
+  const one=(A,name,other,way)=>{ const fold=name==="side-to-side"?"the fold across the middle":"the fold up the middle";
+    if(A&&A.drawn){ if(Math.abs(A.offset||0)>OFF) probs.push("Your "+name+" line is beside the middle line of the grid, not on it. Erase it, fold again "+way+" matching the corners, and draw on the fold.");
+      else if(A.straight===false) probs.push("Your "+name+" line is slanted: it leaves the fold. Erase it and draw along the fold, with a straight edge."); return }
+    if(A&&A.elsewhere) probs.push("Your "+name+" line is on the wrong grid line. Erase it. The fold finds the middle: fold again "+way+", and draw on the fold.");
+    else if(other&&other.drawn&&!(name==="up-and-down"?need.h:need.v)) probs.push(name==="side-to-side"?"Your line goes up and down. Draw on the fold that goes side to side.":"Your line goes side to side. Draw on the fold that goes up and down.");
+    else if(A&&A.faint) probs.push("Your line on "+fold+" is too light. Go over it again, pressing harder.");
+    else if(A&&A.short) probs.push("Your line on "+fold+" doesn't reach across the grid. Draw it from one edge of the grid to the other.");
+    else probs.push("I can't see a pencil line on "+fold+". Draw it darker, from one edge of the grid to the other."); };
+  if(need.h) one(R.h,"side-to-side",R.v,"top edge to bottom edge");
+  if(need.v) one(R.v,"up-and-down",R.h,"side edge to side edge");
+  if(probs.length&&R.soft&&!(R.h&&R.h.drawn&&R.v&&R.v.drawn)&&probs.every(t=>/too light|can't see a pencil line|doesn't reach/.test(t)))
+    return ["The photo is a little blurry, so I can't be sure of your lines. Hold the phone still over the sheet, let it focus, and take it again."];
+  if(need.o&&!probs.length&&!(R.origin&&R.origin.found)) probs.push(R.origin&&R.origin.n>=8?"Make the dot bigger and darker: about as big as a pencil eraser, colored in.":"I can't see a dot where the axes cross. Color in a dot right where they cross.");
+  return probs; }
+
+function analyse(img,w,h,source){ const st=ST(); let R;
+  try{ R=window.readSheet(img,w,h); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
+  S.seen=R; S.img=img; S.source=source; S.photoTries++;
+  const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found}:null;
+  log("photo",{step:st.id,source,w,h,ok:!!R.ok,reason:R.reason||null,seen:brief,ms:R.ms});
+  drawStage();
+  if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put the sheet on a table, get all of it in the picture, and take it again.")); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); showResult(); return }
+  $("seen").textContent=seenText(R);
+  const probs=check(R,st.need), ok=!probs.length;
+  S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:brief});
+  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); persist(); showResult(); return }
+  photoGood(); }
+function showResult(order){ requestAnimationFrame(()=>{ const t=(order||["answerRow","nextRow","feedback"]).map(id=>$(id)).find(e=>!e.hidden); try{ const r=t&&t.getBoundingClientRect(); if(r&&(r.bottom>innerHeight||r.top<0)) t.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(e){} }); }   // only when it's out of view
+function photoGood(){ const st=ST(); S.photoOk=true; $("anyway").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
+  if(st.ask){ setFeedback("",""); $("answerRow").hidden=false; renderEq(); }
+  else { S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); } persist(); showResult(); }
+$("anyway").onclick=()=>{ const st=ST(); log("phone_miscounted",{step:st.id,seen:slim(S.seen)});
+  const r=S.photos.filter(x=>x.set===S.set.key&&x.round===S.round&&x.step===st.id).slice(-1)[0]; if(r) r.phone_miscounted=true; photoGood(); };
+/* a step done by hand, with nothing for the phone to check */
+$("did").onclick=()=>{ const st=ST(); if(S.stepOk||!st.do) return; S.stepOk=true; $("didRow").hidden=true;
+  S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,did:true,correct:true,try:1,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)}); log("did",{step:st.id});
+  setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); persist(); showResult(["nextRow","feedback"]); };
+
+/* ---- the one number to set ---- */
+function renderEq(){ const a=ST().ask; let h='<span class="say">'+escEq(a.q)+'</span>';
+  const arrows='<span class="arrows"><button type="button" id="up" aria-label="Up">▲</button><button type="button" id="down" aria-label="Down">▼</button></span>';
+  if(a.kind==="frac") h+='<span class="nowrap"><span class="frac ask"><span id="num">'+S.num+'</span><span class="bar"></span><span>'+a.den+'</span></span>'+arrows+'</span>';
+  else h+='<span class="nowrap"><span class="countbox" id="num">'+S.num+'</span>'+arrows+'</span>';
+  $("eq").innerHTML=h; $("submit").disabled=false;
+  const max=a.max||(a.kind==="frac"?a.den:15);
+  $("up").onclick=()=>{ if(S.stepOk) return; S.num=Math.min(max,S.num+1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; };
+  $("down").onclick=()=>{ if(S.stepOk) return; S.num=Math.max(0,S.num-1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; }; }
+$("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("submit").disabled=true;
+  S.tries++; const ok=S.num===a.target, wrote=a.kind==="frac"?S.num+"/"+a.den:String(S.num);
+  S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,symbol_ok:ok,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source});
+  log("answer",{step:st.id,correct:ok,try:S.tries});
+  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.mode,std:st.std,i:asked().indexOf(st)+1,of:asked().length,correct:ok,try:S.tries,wrote,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)});
+  if(ok){ S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); }
+  else { setFeedback("warn","<b>"+(a.kind==="frac"?wrote+" isn't it.":S.num+" isn't it.")+"</b>"+hint(st)+" Change it and Submit again, or go on."); showNext(); }
+  persist(); showResult(["nextRow","feedback"]); };
+function hint(st){ return st.ask.hint||"Count again." }
+function showNext(){ $("nextRow").hidden=false; const last=S.s===S.set.steps.length-1; $("next").textContent=last?"See my answers":"Next"; $("next").className=S.stepOk?"btn go next":"btn ghost"; }
+$("next").onclick=()=>{ if(!S.stepOk){ // moving on without the right answer: the record says so
+    const st=ST(); if(st.ask) S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,correct:false,try:0});
+    else S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,skipped:true,moved_on:true,correct:false,try:0}); log("moved_on",{step:st.id}); if(st.ask) note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,i:asked().indexOf(st)+1,of:asked().length}); }
+  if(S.s<S.set.steps.length-1){ S.s++; showStep() } else showDone(); };
+
+/* ======================= PHOTOS ======================= */
+function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…");
+  const done=(img,w,h)=>analyse(img,w,h,"photo");
+  if(window.createImageBitmap) createImageBitmap(file).then(b=>done(b,b.width,b.height)).catch(viaImg); else viaImg();
+  function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
+$("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
+$("sampleBtn").onclick=()=>{ const n=ST().need||{}, labels=S.set.steps.findIndex(x=>x.id==="l1.z")<S.s;
+  const c=window.drawSheetSample({h:!!n.h,v:!!n.v,dot:!!n.o,labels,seed:S.s+7*S.round,width:900,height:1200}); analyse(c,c.width,c.height,"sample"); };
+/* the camera inside the page, as in FotoFold */
+const CAM={stream:null,failed:false};
+const liveCamOK=()=>false&&!CAM.failed&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)&&window.isSecureContext!==false;
+$("cam").addEventListener("click",e=>{ if(liveCamOK()){ e.preventDefault(); openCam(); } });
+async function openCam(){ $("camBox").hidden=false; $("stageBox").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true; $("snap").disabled=true; $("camTip").textContent="Starting the camera…"; setFeedback("","");
+  try{ const st=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:3840},height:{ideal:2160}}});
+    try{ const tr=st.getVideoTracks()[0], cp=tr.getCapabilities&&tr.getCapabilities(); if(cp&&cp.width&&cp.height&&cp.width.max) await tr.applyConstraints({width:{ideal:Math.min(4096,cp.width.max)},height:{ideal:Math.min(4096,cp.height.max)}}); }catch(e){}   // as many pixels as the camera gives: thin pencil lines need them
+    CAM.stream=st; const v=$("camVideo"); v.srcObject=st; try{ await v.play() }catch(e){}
+    let tries=0; const ready=()=>{ if(v.videoWidth>0){ $("snap").disabled=false; $("camTip").textContent="Hold the phone over the sheet. Get the whole sheet in."; return } if(++tries<50) setTimeout(ready,100); else camFail("nopicture") }; ready();
+  }catch(e){ camFail(e&&e.name) } }
+function stopCam(){ if(CAM.stream) for(const t of CAM.stream.getTracks()) try{ t.stop() }catch(e){} CAM.stream=null; try{ $("camVideo").srcObject=null }catch(e){} }
+function closeCam(){ stopCam(); $("camBox").hidden=true; $("stageBox").hidden=false; if(!S.photoOk){ $("photoRow").hidden=false; $("sampleBtn").hidden=false; } }
+function camFail(why){ CAM.failed=true; closeCam();
+  setFeedback("warn", why==="NotAllowedError" ? "<b>The camera is turned off for this browser.</b>On an iPhone: open Settings, then Apps, then Safari, then Camera, and choose Ask. Then reload this page and tap Allow. Until then, tap <i>Use a sample sheet</i>."
+                                           : "<b>The camera didn't open here.</b>Tap Take a photo again to use the phone's own camera."); }
+$("camCancel").onclick=()=>closeCam();
+$("snap").onclick=()=>{ const v=$("camVideo"), w=v.videoWidth, h=v.videoHeight; if(!w||!h) return; const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(v,0,0,w,h); closeCam(); analyse(c,w,h,"photo"); };
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&CAM.stream) closeCam(); });
+
+/* ======================= MY ANSWERS AND THE RECORD ======================= */
+const runs=id=>S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
+const shots=id=>S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
+function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student&&("#"+S.student)].filter(Boolean).join(" ");
+  const asked=S.set.steps.filter(st=>st.ask); let first=0; const misses=[];
+  for(const st of asked){ const rs=runs(st.id); if(rs.length&&rs[0].correct) first++; const bad=rs.find(r=>!r.correct&&!r.skipped);
+    if(bad){ const right=rs.find(r=>r.correct&&r.try>bad.try); misses.push(st.label+": wrote "+bad.wrote+(right?" → right on try "+right.try:" → moved on")); } }
+  const photos=S.set.steps.filter(st=>st.need).map(st=>shots(st.id).filter(r=>!r.skipped)).filter(a=>a.length), firstPhoto=photos.filter(a=>a[0].correct).length;
+  const miscount=S.set.steps.filter(st=>shots(st.id).some(r=>r.phone_miscounted)).map(st=>st.label);
+  const src=new Set(S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.source).map(r=>r.source));
+  return [(who?who+" · ":"")+"FotoLine "+S.set.no+" · round "+S.round, src.has("sample")?(src.has("photo")?"some sample sheets":"sample sheet"):"own sheet",
+    first+" of "+asked.length+" answers first try"+(misses.length?" ("+misses.join("; ")+")":""), firstPhoto+" of "+photos.length+" steps right first time"+(miscount.length?" · said the phone got it wrong on "+miscount.length+" ("+miscount.join("; ")+")":"")].join(" · "); }
+function showDone(){ if($("doneView").hidden) S.doneAt=performance.now(); view("doneView"); renderWords(true); $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
+  $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
+    const mis=shots(st.id).some(r=>r.phone_miscounted);
+    return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
+  renderEnd();
+  $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); sendDone(); } persist(); doneLiveLine(); }
+/* the set's closing line: the names, put together into the sentence of the standard (5.G.A.1) */
+function renderEnd(){ const e=S.set&&S.set.end, el=$("endCard"); if(!el) return; if(!e){ el.hidden=true; el.innerHTML=""; return }
+  el.hidden=false; el.innerHTML=(e.lines||[]).map(t=>'<div class="peq">'+escEq(t)+'</div>').join("")+'<div class="endq">'+esc(e.q)+'</div>'; }
+function recordObj(){ const done=new Set(S.results.concat(S.photos).map(r=>r.set));
+  return {schema:RECORD_SCHEMA,app:"FotoLine",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
+    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoLine: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
+    started:S.started,saved:new Date().toISOString(),summary:S.set?summaryLine():"",
+    summaries:S.set?[{set:S.set.key,round:S.round,line:summaryLine()}]:[],folds:[],photos:S.photos,results:S.results,events:S.events}; }
+function recordText(){ const r=recordObj(), head=Object.assign({},r), j=x=>JSON.stringify(x); delete head.folds; delete head.photos; delete head.results; delete head.events;
+  const list=(k,a)=>' "'+k+'": [\n'+a.map(x=>"  "+j(x)).join(",\n")+"\n ]";
+  return "{\n"+Object.keys(head).map(k=>" "+j(k)+": "+j(head[k])).join(",\n")+",\n"+list("folds",r.folds)+",\n"+list("photos",r.photos)+",\n"+list("results",r.results)+",\n"+list("events",r.events)+"\n}\n"; }
+const toast=m=>{ $("recToast").textContent=m };
+$("saveRec").onclick=()=>{ if(tooSoon()) return; const who=[S.classCode,S.student].filter(Boolean).join("-").replace(/[^A-Za-z0-9-]/g,""), name="fotoline-"+(who?who+"-":"")+S.started.slice(0,16).replace(/[:T]/g,"-")+".json";
+  try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([recordText()],{type:"application/json"})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove() },1000); toast("Saving "+name+".") }catch(e){ toast("Saving isn't available here. Use Copy instead.") } };
+$("copyRec").onclick=()=>{ try{ navigator.clipboard.writeText(recordText()).then(()=>toast("Copied."),()=>toast("Copy isn't available here.")) }catch(e){ toast("Copy isn't available here.") } };
+$("redo").onclick=()=>{ if(tooSoon()) return; S.loggedDone=false; startSet(S.set); };
+$("toStart").onclick=()=>{ if(tooSoon()) return; renderHome(); };
+$("leaveSet").onclick=()=>{ closeCam(); log("left_set",{step:ST().id}); renderHome(); try{ window.scrollTo(0,0) }catch(e){} };
+/* a second tap on "See my answers" lands on the finish screen's buttons: ignore taps just after it opens */
+function tooSoon(){ return performance.now()-(S.doneAt||0)<800 }
+
+/* ======================= LIVE CLASS =======================
+   The same live class as FotoFold. A student who joined it in FotoFold is already in it here (same phone, same code and
+   number). Notes (each answer, the finished set) wait in an outbox on the phone and are sent again until they get through.
+   Without a live class, nothing is sent anywhere. */
+const RELAY=(()=>{ let r="https://fotofold-relay.fotofold.workers.dev"; if(r.indexOf("/*")===0) r="";
+  try{ const q=new URLSearchParams(location.search).get("relay"); if(q&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(q)) sessionStorage.setItem("ff.relay",q);
+    const t=sessionStorage.getItem("ff.relay"); if(t) r=t; }catch(e){}
+  return r.replace(/\/+$/,""); })();
+const LIVE_RE=/^[A-HJ-NP-Z2-9]{5}$/;
+let LIVE=null; try{ const l=JSON.parse(store.get("ff.live")||"null"); if(l&&Date.now()-l.at<7*24*3600e3) LIVE=l; }catch(e){}
+function cls(){ return (LIVE&&LIVE.ok&&LIVE.label)||S.classCode }
+const asked=()=>S.set?S.set.steps.filter(st=>st.ask):[];
+function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new AbortController():null; const t=c?setTimeout(()=>c.abort(),ms||10000):null;
+  return fetch(url,Object.assign({},opt||{},c?{signal:c.signal}:{})).finally(()=>{ if(t) clearTimeout(t) }); }
+const OUT={q:[],busy:false,timer:null,fails:0,delivered:{}};
+try{ OUT.q=JSON.parse(store.get("fl.outbox.v1")||"[]")||[]; OUT.delivered=JSON.parse(store.get("fl.delivered")||"{}")||{}; }catch(e){ OUT.q=[] }
+const saveOut=()=>{ store.set("fl.outbox.v1",JSON.stringify(OUT.q.slice(-400))); store.set("fl.delivered",JSON.stringify(OUT.delivered)); };
+function devId(){ let d=store.get("ff.dev"); if(!d){ d="d"+Math.random().toString(36).slice(2,10)+Date.now().toString(36); store.set("ff.dev",d) } return d }
+let noteSeq=parseInt(store.get("fl.seq")||"0",10)||0;
+function note(kind,body){ if(!RELAY||!LIVE||!LIVE.ok||!S.student) return;
+  const mid=devId()+"-l"+(++noteSeq)+"-"+Date.now().toString(36); store.set("fl.seq",String(noteSeq));
+  OUT.q.push({code:LIVE.code,mid,n:S.student,kind,body:Object.assign({dev:devId(),iter:ITERATION,app:"FotoLine"},body||{})}); saveOut(); flush(); }
+const dkey=(code,n,set,round)=>code+"|"+n+"|"+set+"|"+round;
+async function flush(){ if(OUT.busy&&Date.now()-OUT.since<25000||!OUT.q.length||!RELAY){ liveUI(); return } const gen=OUT.gen=(OUT.gen||0)+1; OUT.busy=true; OUT.since=Date.now(); clearTimeout(OUT.timer);
+  const done=m=>{ OUT.q=OUT.q.filter(x=>x!==m&&x.mid!==m.mid); };
+  try{ while(OUT.q.length&&gen===OUT.gen){ const m=OUT.q[0]; let r=null; OUT.since=Date.now();
+      try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ r=null }
+      if(r&&r.ok){ if(m.kind==="join"){ let j={}; try{ j=await r.json() }catch(e){} if(LIVE&&LIVE.code===m.code){ LIVE.taken=j.taken?m.n:null; store.set("ff.live",JSON.stringify(LIVE)); } }
+        done(m); OUT.fails=0; if(m.kind==="done") OUT.delivered[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; saveOut(); continue }
+      if(r&&r.status===413&&m.kind==="done"&&m.body&&m.body.record){ m.body.record=null; m.body.too_big=true; saveOut(); continue } // too big: send the summary only
+      if(r&&r.status===404){ OUT.q=OUT.q.filter(x=>x.code!==m.code); saveOut(); if(LIVE&&LIVE.code===m.code) liveEnded(); continue }
+      if(r&&(r.status===400||r.status===413||r.status===429)){ done(m); saveOut(); continue } // can't ever go through
+      OUT.fails++; break } }   // no answer, or a passing problem: keep it and try again
+  finally{ if(gen!==OUT.gen) return; OUT.busy=false; liveUI(); if(OUT.q.length){ const wait=Math.min(30000,1500*Math.pow(2,Math.min(OUT.fails,5))); OUT.due=Date.now()+wait; OUT.timer=setTimeout(flush,wait) } } }
+addEventListener("online",()=>{ flush(); drainOther("ff.outbox.v1","ff.delivered"); drainOther("fs.outbox.v1","fs.delivered"); if(LIVE_RE.test((S.classCode||"").toUpperCase())&&!(LIVE&&LIVE.ok)) codeChanged(); });
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ syncLive(); nudge() } });
+const nudge=()=>{ if(OUT.q.length&&Date.now()>=(OUT.due||0)) flush() };
+addEventListener("pageshow",()=>{ syncLive(); nudge() }); addEventListener("focus",nudge);
+setInterval(()=>{ if(!document.hidden) nudge() },8000);   // in case a retry timer was lost while the phone slept
+/* another tab on this phone (FotoFold, FotoSet or FotoLine) joined a class or changed the number: follow it */
+function syncLive(){ try{ const l=JSON.parse(store.get("ff.live")||"null"), c=store.get("ff.class"), n=store.get("ff.student").replace(/[^0-9]/g,"");
+  const inSet=!$("stepView").hidden;
+  let changed=false; if(c!==S.classCode){ S.classCode=c; $("classCode").value=c; clearTimeout(codeT); codeAsked=""; changed=true; }
+  if(n!==S.student&&!inSet&&document.activeElement!==$("studentNo")){ S.student=n; $("studentNo").value=n; }   // never switch number mid-set
+  const C=(c||"").toUpperCase();
+  if(l&&l.ok&&Date.now()-l.at<7*24*3600e3&&(l.code===C||l.label===C)) LIVE=l;
+  else if((LIVE&&LIVE.code!==C&&LIVE.label!==C)||(changed&&!(LIVE&&LIVE.ok))) codeChanged();   // look for the new class here too
+  liveUI(); }catch(e){} }
+addEventListener("storage",e=>{ if(e.key==="ff.live"||e.key==="ff.class"||e.key==="ff.student") syncLive(); });
+/* whose work is on this phone: a different number with work here asks "new student?", as in FotoFold */
+let lastNum=store.get("fl.owner")||S.student;
+function setOwner(v){ lastNum=v||""; store.set("fl.owner",lastNum); }
+const hasWork=()=>!!(S.results.length||S.photos.length||loadProgress());
+function askNew(){ if(S.student&&lastNum&&S.student!==lastNum&&hasWork()){ $("newCard").hidden=false; $("newWhat").textContent="Number "+S.student+" now. Is this a new student on this phone?"; try{ $("newCard").scrollIntoView({block:"center"}) }catch(e){} return true } return false }
+function numberSettled(){ const v=S.student; if(!v||v===lastNum){ sendJoin(); return }
+  if(LIVE&&LIVE.taken&&LIVE.taken===lastNum){ setOwner(v); LIVE.taken=null; sendJoin(); return } // fixing a number another phone had: same student
+  if(lastNum&&hasWork()){ askNew(); return }
+  setOwner(v); sendJoin(); }
+$("newYes").onclick=()=>{ forget(); S.set=null; S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false;
+  $("newCard").hidden=true; setOwner(S.student); if(LIVE) LIVE.joined=null; sendJoin(); renderHome(); };
+$("newNo").onclick=()=>{ $("newCard").hidden=true; setOwner(S.student); sendJoin(); };
+/* rounds go on counting in a class even after Start fresh, so the teacher never sees two tries mixed as one */
+function roundKey(k){ return (LIVE&&LIVE.ok?LIVE.code:"")+"|"+(S.student||"")+"|"+k }
+function nextRound(k){ try{ const m=JSON.parse(store.get("ff.rounds")||"{}"); return (m[roundKey(k)]||0)+1 }catch(e){ return 1 } }
+function bumpRound(k,r){ try{ const m=JSON.parse(store.get("ff.rounds")||"{}"); m[roundKey(k)]=Math.max(m[roundKey(k)]||0,r); store.set("ff.rounds",JSON.stringify(m)) }catch(e){} }
+/* notes FotoFold or FotoSet left waiting on this phone (say, the student tapped over to FotoLine before they went): send them too */
+const draining={}, drainT={};   // one queue at a time each, with its own retry
+async function drainOther(qk,dk){ if(!RELAY||draining[qk]) return; draining[qk]=true; clearTimeout(drainT[qk]);
+  try{ if(await drainOnce(qk,dk)===false) drainT[qk]=setTimeout(()=>drainOther(qk,dk),20000); } finally { draining[qk]=false } }
+async function drainOnce(qk,dk){ let q=[]; try{ q=JSON.parse(store.get(qk)||"[]")||[] }catch(e){ return }
+  for(const m of q){ let r=null;
+    try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ r=null }
+    if(!r||r.status>=500) return false;   // no connection: leave the rest for later
+    if(r.status===413&&m.kind==="done"&&m.body&&m.body.record){ m.body.record=null; m.body.too_big=true;   // too big: the summary only
+      try{ r=await tfetch(RELAY+"/session/"+m.code+"/note",{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({mid:m.mid,n:m.n,kind:m.kind,body:m.body})},10000) }catch(e){ return false } if(!r||r.status>=500) return false; }
+    try{ const now=JSON.parse(store.get(qk)||"[]")||[]; store.set(qk,JSON.stringify(now.filter(x=>x.mid!==m.mid)));
+      if(r.ok&&m.kind==="done"){ const d=JSON.parse(store.get(dk)||"{}")||{}; d[dkey(m.code,m.n,m.body.set,m.body.round)]=m.body.record?"full":"short"; store.set(dk,JSON.stringify(d)); } }catch(e){} } }
+function sendJoin(){ if(LIVE&&LIVE.ok&&S.student&&LIVE.joined!==S.student){ LIVE.joined=S.student; store.set("ff.live",JSON.stringify(LIVE)); note("join",{version:VERSION}); } liveUI(); }
+function recordFor(k,rd){ const r=recordObj(), keep=x=>x&&x.set===k&&x.round===rd;
+  r.results=r.results.filter(keep); r.photos=r.photos.filter(keep); r.events=r.events.filter(keep);
+  r.sets=r.sets.filter(x=>x.set===k); r.summaries=r.summaries.filter(keep); return r; }
+function sendDone(){ if(!LIVE||!LIVE.ok) return; note("done",{set:S.set.key,no:S.set.no,round:S.round,of:asked().length,summary:summaryLine(),record:recordFor(S.set.key,S.round)}); }
+function liveEnded(){ LIVE.ok=false; store.set("ff.live",JSON.stringify(LIVE)); liveUI("ended"); }
+// work on this phone from an earlier class doesn't follow the student into a new one
+function newClass(c){ const prev=store.get("fl.lastLive"); store.set("fl.lastLive",c);
+  if(prev&&prev!==c&&$("stepView").hidden&&(S.results.length||S.photos.length||loadProgress())){ forget(); S.set=null; S.results=[]; S.photos=[]; S.events=[]; S.started=new Date().toISOString(); S.loggedDone=false; $("resumeCard").hidden=true; renderHome(); } }
+let codeT=null, codeAsked="", codeTries=0;
+function codeChanged(){ clearTimeout(codeT); const c=(S.classCode||"").toUpperCase();
+  if(LIVE&&LIVE.code!==c&&LIVE.label!==c){ LIVE=null; store.set("ff.live",""); }
+  if(LIVE&&LIVE.ok){ newClass(LIVE.code); liveUI(); flush(); return }
+  if(!RELAY||!LIVE_RE.test(c)){ codeAsked=""; liveUI(); return }
+  codeTries=0; codeT=setTimeout(()=>checkCode(c),350); }
+async function checkCode(c){ codeAsked=c; liveUI("checking");
+  let r=null; try{ r=await tfetch(RELAY+"/session/"+c,{},10000) }catch(e){}
+  if(codeAsked!==c) return;
+  if(r&&r.ok){ let j={}; try{ j=await r.json() }catch(e){}
+    LIVE={code:c,label:j.label||null,ok:true,at:Date.now()}; store.set("ff.live",JSON.stringify(LIVE)); newClass(c);
+    sendJoin(); flush(); liveUI(); return }
+  if(r&&r.status===404){ liveUI("notlive"); return }
+  codeTries++; liveUI("noreach"); codeT=setTimeout(()=>{ if(codeAsked===c) checkCode(c) },Math.min(30000,3000*codeTries)); } // keep looking
+function liveUI(state){ const line=$("liveLine"), badge=$("liveBadge"), on=LIVE&&LIVE.ok, waiting=OUT.q.length>0;
+  const name=on?"class "+LIVE.code+(LIVE.label&&LIVE.label!==LIVE.code?" ("+LIVE.label+")":""):"";
+  const dup=on&&LIVE.taken&&LIVE.taken===S.student;
+  badge.hidden=!on; if(on){ badge.textContent=dup?"⚠ #"+S.student+" is on another phone too":(waiting&&OUT.fails?"○ Live · waiting for wifi":"● Live · "+name+(S.student?" · #"+S.student:"")); badge.className="livebadge"+((waiting&&OUT.fails)||dup?" wait":""); }
+  let t="", k="";
+  if(state==="checking"){ t="Looking for the live class…" }
+  else if(state==="notlive"){ t="No live class with this code right now. That's fine for homework: your work stays on this phone." }
+  else if(state==="noreach"){ t="Looking for the live class… (no connection yet). You can start: your answers wait on this phone."; k="off" }
+  else if(LIVE&&!LIVE.ok){ t="The live class has ended. Your work is still on this phone. Save or Copy it at the end."; k="off" }
+  else if(on&&!S.student){ t="Joined "+name+". Now type your number."; k="on" }
+  else if(dup){ t="Another phone already joined as #"+S.student+". Check your number with your teacher, then fix it here."; k="off" }
+  else if(on){ t="You're in "+name+" as #"+S.student+". Your teacher sees your answers as you go."; k="on" }
+  line.hidden=!t; line.textContent=t; line.className="liveline"+(k?" "+k:"");
+  doneLiveLine(); }
+function doneLiveLine(){ const el=$("doneLive"); if(!el) return; if(!LIVE||!S.set||$("doneView").hidden){ el.hidden=true; return }
+  const got=OUT.delivered[dkey(LIVE.code,S.student,S.set.key,S.round)];
+  el.hidden=false;
+  if(got==="full"){ el.textContent="Your teacher has your answers."; el.className="liveline on" }
+  else if(got){ el.textContent="Your teacher has your one-line summary. Tap Save my work or Copy to give your teacher the rest."; el.className="liveline off" }
+  else if(!LIVE.ok){ el.textContent="The live class ended before your answers were sent. Save or Copy them for your teacher."; el.className="liveline off" }
+  else if(OUT.fails){ el.textContent="Can't reach your teacher yet. The phone keeps trying. You can also Save or Copy."; el.className="liveline off" }
+  else { el.textContent="Sending your answers to your teacher…"; el.className="liveline" } }
+(function(){ let j=""; try{ j=(new URLSearchParams(location.search).get("join")||"").toUpperCase().replace(/[^A-Z0-9]/g,"") }catch(e){}
+  if(j){ $("classCode").value=S.classCode=j; store.set("ff.class",j); codeChanged(); try{ history.replaceState(null,"",location.pathname+location.hash) }catch(e){} }
+  else if(LIVE&&LIVE.ok){ newClass(LIVE.code); sendJoin(); flush(); }
+  else codeChanged();
+  setTimeout(()=>drainOther("ff.outbox.v1","ff.delivered"),800); setTimeout(()=>drainOther("fs.outbox.v1","fs.delivered"),1200); })();
+
+let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(!$("stepView").hidden) drawStage(); },150) });
+renderHome(); liveUI();
+window.__fl={S,SETS,recordText,recordObj,summaryLine,analyse,check,showDone,OUT,live:()=>LIVE};
+})();
+</script>
+</body></html>

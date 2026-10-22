@@ -318,7 +318,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
         <div class="seg" id="orderSeg" role="group" aria-label="Order of steps"><button type="button" data-o="missed" aria-pressed="true">Most missed first</button><button type="button" data-o="plan" aria-pressed="false">In plan order</button></div>
       </div>
       <p class="muted" id="storyNote" style="font-size:14.5px"></p>
-      <p class="muted" id="kindsFS" hidden style="font-size:14.5px">In FotoSet the phone checks the coins before it asks the question, so every miss here is the number.</p>
+      <p class="muted" id="kindsFS" hidden style="font-size:14.5px">In FotoSet the phone checks the coins before it asks the question; in FotoLine the question comes after the drawing is done. Either way, every miss here is the number.</p>
       <div class="kinds" id="kinds">
         <span><i class="kb-hands"></i><span><b>Hands</b>: the color was wrong, the number right.</span></span>
         <span><i class="kb-steps"></i><span><b>Steps</b>: the right length, but not one unit per swipe (Set 4).</span></span>
@@ -413,10 +413,11 @@ async function takeFiles(files){
 
 /* ======================= THE MODEL ======================= */
 function wholeKeyOf(id){ const p=String(id).split("."); return p.length>=3?p[1]:"?" }
-// FotoSet's sets ("FotoSet 1", …) sit after FotoFold's ("Set 1", …) and are named apart from them
-const isFS=T=>/^FotoSet/.test(T&&T.name||"")||/^c\d/.test(T&&T.key||"");
-const sl=T=>(isFS(T)?"FotoSet ":"Set ")+T.no, ord=T=>(isFS(T)?100:0)+(+T.no||0), nmOf=T=>String(T.name||"").replace(/^FotoSet: /,"");
-const smpW=T=>isFS(T)?"sample coins":"sample strip";
+// FotoSet's sets ("FotoSet 1", …) and FotoLine's ("FotoLine 1", …) sit after FotoFold's ("Set 1", …) and are named apart from them
+const appOf=T=>/^FotoLine/.test(T&&T.name||"")||/^l\d/.test(T&&T.key||"")?"FotoLine":/^FotoSet/.test(T&&T.name||"")||/^c\d/.test(T&&T.key||"")?"FotoSet":"";
+const isFS=T=>!!appOf(T);   // not FotoFold: the phone checks the coins or the drawing before it asks, so a miss is the number
+const sl=T=>(appOf(T)?appOf(T)+" ":"Set ")+T.no, ord=T=>({FotoSet:100,FotoLine:200}[appOf(T)]||0)+(+T.no||0), nmOf=T=>String(T.name||"").replace(/^Foto(Set|Line): /,"");
+const smpW=T=>appOf(T)==="FotoLine"?"sample sheet":isFS(T)?"sample coins":"sample strip";
 const swipesTxt=r=>{ const ls=r.live_swipes||(r.swipe_parts||[]).filter(d=>d>0); return "colored "+r.colored+" in "+ls.length+" swipe"+(ls.length===1?"":"s")+(ls.length?" ("+ls.join("+")+")":"") };
 function missText(r){
   if(!r) return "";
@@ -490,7 +491,7 @@ function build(){
   for(const T of sets.values()){
     T.wholes=[]; for(const s of T.steps){ s.whole=wholeKeyOf(s.id); let W=T.wholes.find(w=>w.key===s.whole);
       if(!W){ W={key:s.whole,n:nOf[T.key+"."+s.whole]||null,steps:[]}; T.wholes.push(W) } W.steps.push(s) }
-    T.wholes.forEach(W=>{ const m=/^([wbs])(\d+)$/.exec(W.key), c=/^n(\d+)$/.exec(W.key); W.tag = W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]+(m[1]==="s"?", again":""):c?c[1]+" coins":(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins; s12 = a whole of 12 again; n6 = 6 coins, no whole
+    T.wholes.forEach(W=>{ const m=/^([wbs])(\d+)$/.exec(W.key), c=/^n(\d+)$/.exec(W.key); W.tag = appOf(T)==="FotoLine"?"the axes":W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]+(m[1]==="s"?", again":""):c?c[1]+" coins":(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins; s12 = a whole of 12 again; n6 = 6 coins, no whole
     T.steps=T.wholes.flatMap(W=>W.steps); T.steps.forEach((s,i)=>{ s.i=i; s.g0 = T.wholes.find(W=>W.key===s.whole).steps[0]===s });
   }
   // cells
@@ -621,7 +622,7 @@ function renderHeadline(T,rows,stats){
    '<div class="tile"><b>'+(scores.length?fmtNum(median(scores)):"—")+' <small style="font-size:15px;font-weight:600">of '+T.steps.length+'</small></b><span>median steps right on the first try</span></div>'+
    '<div class="tile"><b>'+again.length+'</b><span>did the set again</span></div></div>';
 }
-const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)"};
+const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)"};
 function renderPct(){ const by={set:new Map(),kind:new Map(),std:new Map()}, tot=[0,0];
   const add=(m,k,ok,n)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[0]+=ok; e[1]+=n; };
   for(const T of [...M.sets.values()].sort((a,b)=>ord(a)-ord(b))){ const stats=stepStats(T,rowsFor(T.key));
@@ -638,7 +639,7 @@ function cellHTML(c,extra){
   const cls="m "+c.s+(c.sample?" smp":"")+(c.uneven&&c.s!=="nr"?" unev":"");
   let t=stepName(c.step)+": "+WORD[c.s];
   if(c.rs&&c.rs.length){ t+=" ("+c.rs.map(tryText).join("; ")+")"; if(c.secs!=null) t+=", first try at "+fmtSecs(c.secs); }
-  if(c.uneven) t+=". Uneven fold on this whole"; if(c.sample) t+=". "+(isFS(CUR_T)?"Sample coins":"Sample strip");
+  if(c.uneven) t+=". Uneven fold on this whole"; if(c.sample) t+=". "+smpW(CUR_T).replace(/^s/,"S");
   return '<td class="c'+(c.step.g0?" g0":"")+'" title="'+esc(t)+'"'+(extra||"")+'><span class="'+cls+'" aria-label="'+esc(t)+'">'+MARK[c.s]+'</span></td>';
 }
 function renderGrid(T,rows,stats){ CUR_T=T; $("legUnev").hidden=isFS(T);
@@ -721,7 +722,7 @@ function openStudent(key){
   if(lines.length) h+='<div style="display:grid;gap:6px"><span class="muted" style="font-size:14px">The teacher\'s one line, as each file has it (it covers the round the student was on when they saved):</span>'+lines.map(f=>'<div class="oneline"><b>'+esc(fmtWhen(f.rec.saved))+'</b> · '+esc(f.rec.summary)+'</div>').join("")+'</div>';
   for(const T of sets) for(const a of S.bySet[T.key]){
     const T_=M.sets.get(a.set);
-    h+='<div class="att"><h3>'+esc(sl(T_))+' · round '+a.n+' <small>· '+esc(fmtWhen(a.started))+' · '+(isFS(T_)?(a.sample==="all"?"sample coins":a.sample?"some sample coins":"own coins"):(a.sample==="all"?"sample strip":a.sample?"some sample strip":"own strips"))+' · '+a.first+'/'+a.total+' first try'+(a.reached<a.total?' · reached '+a.reached:'')+(a.fileRound!==a.n?' · the file calls it round '+a.fileRound:'')+'</small></h3>';
+    h+='<div class="att"><h3>'+esc(sl(T_))+' · round '+a.n+' <small>· '+esc(fmtWhen(a.started))+' · '+(isFS(T_)?(a.sample==="all"?smpW(T_):a.sample?"some "+smpW(T_):appOf(T_)==="FotoLine"?"own sheet":"own coins"):(a.sample==="all"?"sample strip":a.sample?"some sample strip":"own strips"))+' · '+a.first+'/'+a.total+' first try'+(a.reached<a.total?' · reached '+a.reached:'')+(a.fileRound!==a.n?' · the file calls it round '+a.fileRound:'')+'</small></h3>';
     if(!isFS(T_)) h+='<div class="foldlist">'+T_.wholes.filter(W=>W.key!=="bridge").map(W=>{ const f=a.folds.find(z=>z.whole===W.key); return f?'<span class="chip '+(f.equal?'ok':'no')+'">'+esc(W.tag)+': '+(f.equal?'equal':'uneven')+', worst '+Math.abs(f.worst_off_in).toFixed(2)+' in'+(f.edited?', fold line fixed by hand':'')+(f.source==="sample"?', sample':'')+'</span>':'<span class="chip smp">'+esc(W.tag)+': no photo</span>' }).join("")+'</div>';
     h+='<div class="steplist">'+T_.steps.map(s=>{ const c=a.cells[s.id];
       const tries=(c.rs||[]).map(tryText).join(" · ");
@@ -744,7 +745,7 @@ function makeCsv(T,rows){
     lines.push([S.code||"", S.num||S.label, sl(T), a.n, a.started, a.files.map(f=>f.split("/").pop()).join(" "), a.sample==="all"?"sample":a.sample?"some sample":"own", a.uneven.map(z=>z.whole).join(" "), a.first, a.reached, a.total]
       .concat(T.steps.map(s=>CODE[a.cells[s.id].s])).map(csvCell).join(",")) }
   const cls=st.cls==="all"?"all-classes":(st.cls||"no-code");
-  lastCsv={name:(isFS(T)?"fotoset-":"fotofold-")+cls.replace(/[^A-Za-z0-9-]/g,"")+"-set"+T.no+".csv", text:lines.join("\r\n")+"\r\n", rows:n};
+  lastCsv={name:(isFS(T)?appOf(T).toLowerCase()+"-":"fotofold-")+cls.replace(/[^A-Za-z0-9-]/g,"")+"-set"+T.no+".csv", text:lines.join("\r\n")+"\r\n", rows:n};
   $("csvText").value=lastCsv.text;
 }
 function csvMsg(m){ $("csvToast").textContent=m }
