@@ -104,6 +104,8 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .nl svg{display:block;width:100%;height:auto;overflow:visible}
 .nl .readout{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,11vw,46px);color:var(--ink);text-align:center;min-height:1.1em}
 .nlrow{display:flex;gap:10px;align-items:center;flex-basis:100%} .nlrow .nl{flex:1}
+.nlcol{display:flex;gap:18px;align-items:center;flex-basis:100%} .nlside .readout{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,11vw,46px);color:var(--ink);min-width:2.2em;text-align:center} .nl.nly{flex:none;padding:0} .nl.nly svg{height:min(300px,36vh);width:auto}   /* short screens: the upright line shrinks so Submit stays in view */ .nlside{display:grid;gap:8px;justify-items:center}
+.nlside button{font:inherit;font-size:20px;width:52px;height:46px;border-radius:10px;border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
 .nlrow button{font:inherit;font-size:20px;width:46px;height:46px;border-radius:10px;border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer;flex:none}
 #endCard .peq{font-weight:700;font-size:1.1em}
 #endCard .endq{font-size:1.15em;font-weight:700}
@@ -834,6 +836,12 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       });
       return best;
     }
+    // a lone coin's outline: the farthest point of its blob along 48 rays from its middle (FotoLine maps it flat to tell a disc from a square)
+    function edgeOf(b) { var cx = b.cx - b.ox, cy = b.cy - b.oy, out = [], k, t, last;
+      for (k = 0; k < 48; k++) { var a = k * PI / 24, dx = Math.cos(a), dy = Math.sin(a); last = 0;
+        for (t = 0; t < b.bw + b.bh; t += 0.5) { var xi = Math.round(cx + t * dx), yi = Math.round(cy + t * dy); if (xi < 0 || yi < 0 || xi >= b.bw || yi >= b.bh) break; if (b.m[yi * b.bw + xi]) last = t; }
+        out.push([Math.round((b.cx + (last + 0.5) * dx) * 10) / 10, Math.round((b.cy + (last + 0.5) * dy) * 10) / 10]); }
+      return out; }
     var coins = [], multiInfo = [];
     var rPaper = 0.037 * Math.max(px1 - px0, py1 - py0), lone = false;
     if (coinR > 0 && singles.length < 2) {   // no loose coins to measure: the coin-sized peaks inside the clumps
@@ -866,9 +874,9 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
           else if (big && b.fillArea < 19 * PI * coinR * coinR) acc2 = refitBlock(b, acc2, rb);   // FotoSet uses 15 coins: a bigger blob keeps its peaks
         }
         if (acc2.length === 1 && b.round < 1.7) {
-          coins.push({ x: b.cx, y: b.cy, r: Math.sqrt(b.fillArea / PI), blob: b.id });
+          coins.push({ x: b.cx, y: b.cy, r: Math.sqrt(b.fillArea / PI), blob: b.id, round: b.round, peaks: 1, edge: edgeOf(b) });
         } else {
-          acc2.forEach(function (p) { coins.push({ x: b.ox + p[1], y: b.oy + p[2], r: p[0] + 0.5, blob: b.id }); });
+          acc2.forEach(function (p) { coins.push({ x: b.ox + p[1], y: b.oy + p[2], r: p[0] + 0.5, blob: b.id, round: b.round, peaks: acc2.length }); });
           multiInfo.push({ n: acc2.length, est: b.fillArea / (PI * coinR * coinR) });
         }
       });
@@ -1039,7 +1047,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     }
     conf = Math.round(clamp(conf, 0, 1) * 100) / 100;
 
-    var outCoins = coins.map(function (c) { return { x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, r: Math.round(c.r * 10) / 10, half: c.half, pile: c.pile }; });
+    var outCoins = coins.map(function (c) { return { x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, r: Math.round(c.r * 10) / 10, half: c.half, pile: c.pile, round: Math.round((c.round || 0) * 100) / 100, peaks: c.peaks || 0, edge: c.edge }; });   // round, peaks: the coin's blob (1 = a lone disc), for FotoLine
     var res = {
       ok: coins.length > 0, size: { w: W, h: H }, coins: outCoins, coinR: Math.round(coinR * 10) / 10,
       fold: foldRes, paper: paper, top: top, bottom: bottom, confidence: coins.length ? conf : 0
@@ -1470,7 +1478,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   /* ---------- 3. a drawn line on a grid line ---------- */
   // ink across a line at each point along it: sum of darkness over +-HW around the darkest spot within the band
   var HW = 6;
-  var CFG = { cover: 0.65, peak: 0.21, width: 11, ends: 0.3, dotDark: 0.25, dotFill: 0, dotRound: 2.2, dotMm: 4.2, blur: 11, soft: 6.8, coinL: 0.84, coinMin: 16, coinMax: 28, coinSnap: 0.3 };   // see readSheet.cfg
+  var CFG = { cover: 0.65, peak: 0.21, width: 11, ends: 0.3, dotDark: 0.25, dotFill: 0, dotRound: 2.2, dotMm: 4.2, blur: 11, soft: 6.8, coinL: 0.84, coinMin: 16, coinMax: 28, coinSnap: 0.3, coinSquare: 0.09, hueMin: 10, hueMax: 65, sheetSquare: 0.085 };   // see readSheet.cfg
   function inkAlong(D, R, horiz, center, band, a0, a1, skip) { var out = [];
     for (var m = Math.round(a0) + 2; m < a1 - 2; m += 2) { var near = false; for (var q = 0; q < skip.length; q++) if (Math.abs(m - skip[q]) < 8) { near = true; break; } if (near) continue;
       var bv = -1, bp = 0; for (var d = -band; d <= band; d++) { var c = Math.round(center + d); if (c < 1 || c >= R - 1) continue;
@@ -1519,6 +1527,18 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   /* ---------- 5. the coin (the game piece) ---------- */
   // A coin is 15–25 mm across: far bigger than any pencil mark. On the flat sheet, blur away the lines; what stays darker
   // than the paper, in a round patch of coin size, is the coin.
+  // the color of a coin's face: the mean of the pixels within r of (cx, cy), glare left out; hue in degrees (copper ~15-35, brass ~35-50, pink and red ~340-10)
+  function colorAt(data, W, H, cx, cy, r) { var sr = 0, sg = 0, sb = 0, n = 0, x, y, r2 = r * r;
+    for (y = Math.max(0, Math.floor(cy - r)); y <= Math.min(H - 1, Math.ceil(cy + r)); y++) for (x = Math.max(0, Math.floor(cx - r)); x <= Math.min(W - 1, Math.ceil(cx + r)); x++) {
+      if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > r2) continue; var o = (y * W + x) * 4, R0 = data[o], G0 = data[o + 1], B0 = data[o + 2];
+      if (R0 > 235 && G0 > 235 && B0 > 235) continue; sr += R0; sg += G0; sb += B0; n++; }
+    if (!n) return { hue: -1, sat: 0 }; sr /= n; sg /= n; sb /= n; var mx = Math.max(sr, sg, sb), mn = Math.min(sr, sg, sb), d = mx - mn, hue;
+    if (d < 1e-6) hue = 0; else if (mx === sr) hue = 60 * (((sg - sb) / d + 6) % 6); else if (mx === sg) hue = 60 * ((sb - sr) / d + 2); else hue = 60 * ((sr - sg) / d + 4);
+    return { hue: +hue.toFixed(1), sat: +(mx ? d / mx : 0).toFixed(2), rgb: [Math.round(sr), Math.round(sg), Math.round(sb)] }; }
+  // corners: the outline's radius from the middle, the long ones against the typical one (a disc ~1.0, a square ~1.2 at any turn)
+  // rs: radii at even turns all the way round. A square has four corners: a strong four-fold wave in its outline; a coin's ragged edge (glare, a cut photo) does not repeat
+  function corners(rs) { var n = rs.length, re = 0, im = 0, m = 0, k; if (n < 16) return 9; for (k = 0; k < n; k++) { var t = 8 * Math.PI * k / n; re += rs[k] * Math.cos(t); im += rs[k] * Math.sin(t); m += rs[k]; }
+    m /= n; return m > 0 ? +(2 * Math.hypot(re, im) / n / m).toFixed(3) : 9; }
   function findCoin(C, R, x0, x1, y0, y1, axisY) { var cands = []; var K = 4, r4 = Math.floor(R / K), n4 = r4 * r4, i, j, k, x, y;
     // a quarter of the size: a coin is still 15-25 px across, a pencil line is gone
     var C4 = new Float32Array(n4); for (y = 0; y < r4; y++) for (x = 0; x < r4; x++) { var s0 = 0; for (j = 0; j < K; j++) for (i = 0; i < K; i++) s0 += C[(y * K + j) * R + x * K + i]; C4[y * r4 + x] = s0 / (K * K); }
@@ -1535,25 +1555,30 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     var lab = new Int32Array(n4), mm = function (px) { return px * K / PPI * 25.4; };
     var vals = []; for (y = Math.round(y0 / K); y < y1 / K; y += 2) for (x = Math.round(x0 / K); x < x1 / K; x += 2) vals.push(bg[y * r4 + x]); var paper = median(vals) || 230;
     for (y = 1; y < r4 - 1; y++) for (x = 1; x < r4 - 1; x++) { k = y * r4 + x; if (F[k] < 0.5 || lab[k]) continue;
-      var pts = 0, sx = 0, sy = 0, minx = x, maxx = x, miny = y, maxy = y, dk = 0; lab[k] = 1; st.push(k);
-      while (st.length) { q = st.pop(); qx = q % r4; qy = (q / r4) | 0; pts++; sx += qx; sy += qy; dk += (bg[q] - C4[q]) / bg[q];
+      var pts = 0, sx = 0, sy = 0, minx = x, maxx = x, miny = y, maxy = y, dk = 0, PL = []; lab[k] = 1; st.push(k);
+      while (st.length) { q = st.pop(); qx = q % r4; qy = (q / r4) | 0; pts++; PL.push(q); sx += qx; sy += qy; dk += (bg[q] - C4[q]) / bg[q];
         if (qx < minx) minx = qx; if (qx > maxx) maxx = qx; if (qy < miny) miny = qy; if (qy > maxy) maxy = qy;
         var nb = [q - 1, q + 1, q - r4, q + r4]; for (var t = 0; t < 4; t++) { var n2 = nb[t]; if (n2 > 0 && n2 < n4 && F[n2] > 0.5 && !lab[n2]) { lab[n2] = 1; st.push(n2); } } }
       var wv = maxx - minx + 1, hv = maxy - miny + 1, dia = mm(2 * Math.sqrt(pts / Math.PI)), fill = pts / (wv * hv), cx4 = sx / pts, cy4 = sy / pts;
-      if (findCoin.log) findCoin.log.push({ dia: +dia.toFixed(1), asp: +(Math.max(wv, hv) / Math.min(wv, hv)).toFixed(2), fill: +fill.toFixed(2), pts: pts });
+      // round: the farthest point from the middle, against a disc of the same area (a disc ~1.0-1.1; a square 1.25, even turned)
+      var rmax = 0; PL.forEach(function (p) { var ddx = p % r4 - cx4, ddy = ((p / r4) | 0) - cy4, dd = ddx * ddx + ddy * ddy; if (dd > rmax) rmax = dd; });
+      var rnd = (Math.sqrt(rmax) + 0.5) / Math.sqrt(pts / Math.PI), bins = []; for (var bi = 0; bi < 36; bi++) bins.push(0);
+      PL.forEach(function (p) { var ddx = p % r4 - cx4, ddy = ((p / r4) | 0) - cy4, bn = Math.floor((Math.atan2(ddy, ddx) + Math.PI) / (2 * Math.PI) * 36) % 36, dd = Math.hypot(ddx, ddy) + 0.5; if (dd > bins[bn]) bins[bn] = dd; });
+      var sq = corners(bins);
+      if (findCoin.log) findCoin.log.push({ dia: +dia.toFixed(1), asp: +(Math.max(wv, hv) / Math.min(wv, hv)).toFixed(2), fill: +fill.toFixed(2), pts: pts, rnd: +rnd.toFixed(2), sq: sq });
       // coin size, round (its box filled about pi/4), on the sheet
       // coin size, and round: a disc fills about 0.79 of its box (a die, an eraser or a sticky note fills all of it)
-      if (dia < CFG.coinMin || dia > CFG.coinMax || Math.max(wv, hv) / Math.min(wv, hv) > 1.3 || fill < 0.66 || fill > 0.9) continue;
+      if (dia < CFG.coinMin || dia > CFG.coinMax || Math.max(wv, hv) / Math.min(wv, hv) > 1.3 || fill < 0.66 || fill > 0.9 || sq > CFG.sheetSquare) continue;
       var X = (cx4 + 0.5) * K, Y = (cy4 + 0.5) * K; if (X < x0 || X > x1 || Y < y0 || Y > y1) continue;
-      cands.push({ pts: pts, x: X, y: Y, mm: dia, dark: dk / pts }); }
+      cands.push({ pts: pts, x: X, y: Y, mm: dia, dark: dk / pts, rnd: +rnd.toFixed(2), sq: sq }); }
     if (!cands.length) return null;
     // more than one: the one nearest the x axis is the game piece, and the student is told there are more
     cands.sort(function (p, q) { return Math.abs(p.y - axisY) - Math.abs(q.y - axisY); });
-    var best = cands[0]; best.count = cands.length; return best; }
+    var best = cands[0]; best.count = cands.length; best.all = cands; return best; }
 
   readSheet_findCoin = findCoin;
   /* ---------- the whole read ---------- */
-  function readSheet(source, w, h) { var t0 = nowMs();
+  function readSheet(source, w, h, opts) { var t0 = nowMs(); opts = opts || {};   // opts.coin false: no coin on this step (skip the search); opts.axis 'y': the game is on y
     try {
       var s = Math.min(1, MAXS / Math.max(w, h)), W = Math.max(1, Math.round(w * s)), H = Math.max(1, Math.round(h * s));
       var cv = makeCanvas(W, H), g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(source, 0, 0, W, H);
@@ -1633,15 +1658,27 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       var toImg = function (u, v) { var p = applyH(Hg, u, v); return [+p[0].toFixed(1), +p[1].toFixed(1)]; };
       // the coin, and where it is: in squares from the origin, along x and along y (up is +)
       // FotoSet's coin reader first (tuned on real pennies); this sheet's own finder for what it misses (silver)
-      var cf = null, Hi2g = homography(gc, [[MARGIN, MARGIN], [MARGIN + G, MARGIN], [MARGIN + G, MARGIN + G], [MARGIN, MARGIN + G]]);
-      if (typeof window !== 'undefined' && window.readCoins && Hi2g) { try {
+      var cf = null, seenC = [], cands = [], Hi2g = homography(gc, [[MARGIN, MARGIN], [MARGIN + G, MARGIN], [MARGIN + G, MARGIN + G], [MARGIN, MARGIN + G]]);
+      if (opts.coin !== false) { if (typeof window !== 'undefined' && window.readCoins && Hi2g) { try {
         var Rc = window.readCoins(source, w, h), list = [];
         if (Rc && Rc.ok && Rc.coins) Rc.coins.forEach(function (k) { var ox0 = k.x / Rc.scale * s, oy0 = k.y / Rc.scale * s, rr = (k.r || Rc.coinR) / Rc.scale * s;
           var p0 = applyH(Hi2g, ox0, oy0), p1 = applyH(Hi2g, ox0 + rr, oy0), p2 = applyH(Hi2g, ox0, oy0 + rr), dia = (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) + Math.hypot(p2[0] - p0[0], p2[1] - p0[1])) / PPI * 25.4;
-          if (p0[0] > xs[0] - 0.6 * CELL && p0[0] < xs[N] + 0.6 * CELL && p0[1] > ys[0] - 0.6 * CELL && p0[1] < ys[N] + 0.6 * CELL && dia >= 13 && dia <= 32) list.push({ x: p0[0], y: p0[1], mm: dia, dark: 0.5, by: 'coins' }); });
-        if (list.length) { list.sort(function (p, q) { return Math.abs(p.y - ys[4]) - Math.abs(q.y - ys[4]); }); cf = list[0]; cf.count = list.length; }
-      } catch (e) { cf = null; } }
-      if (!cf) cf = findCoin(C, Rn, xs[0] - 0.4 * CELL, xs[N] + 0.4 * CELL, ys[0] - 0.4 * CELL, ys[N] + 0.4 * CELL, ys[4]);
+          if (!(p0[0] > xs[0] - 0.6 * CELL && p0[0] < xs[N] + 0.6 * CELL && p0[1] > ys[0] - 0.6 * CELL && p0[1] < ys[N] + 0.6 * CELL && dia >= 13 && dia <= 32)) return;
+          var col = colorAt(data, W, H, ox0, oy0, 0.6 * rr), sq = 9;
+          if (k.edge && k.edge.length) sq = corners(k.edge.map(function (e) { var q = applyH(Hi2g, e[0] / Rc.scale * s, e[1] / Rc.scale * s); return Math.hypot(q[0] - p0[0], q[1] - p0[1]); }));
+          var cand = { x: p0[0], y: p0[1], mm: dia, dark: 0.5, by: 'coins', round: k.round, peaks: k.peaks, hue: col.hue, sat: col.sat, sq: sq };
+          seenC.push(cand);
+          // a coin is a lone disc (a die, a sticker or an eraser is square; a finger is several "coins" in one blob), copper or brass colored (not pink or red)
+          if (k.peaks === 1 && sq <= CFG.coinSquare && (col.sat < 0.15 || (col.hue >= CFG.hueMin && col.hue <= CFG.hueMax))) list.push(cand); });
+        list.forEach(function (c) { cands.push(c); });
+      } catch (e) { } }
+      // and this sheet's own finder (it sees silver coins, which FotoSet's reader misses): the same coin seen twice counts once
+      var sh = findCoin(C, Rn, xs[0] - 0.4 * CELL, xs[N] + 0.4 * CELL, ys[0] - 0.4 * CELL, ys[N] + 0.4 * CELL, ys[4]);
+      if (sh) sh.all.forEach(function (c) { if (!cands.some(function (q) { return Math.hypot(q.x - c.x, q.y - c.y) < 0.6 * CELL; })) { c.by = 'sheet'; cands.push(c); } });
+      if (cands.length) { var onY = opts.axis === 'y';   // more than one: the one nearest the game's axis is the game piece, and the student is told there are more
+        cands.sort(function (p, q) { return onY ? Math.abs(p.x - xs[4]) - Math.abs(q.x - xs[4]) : Math.abs(p.y - ys[4]) - Math.abs(q.y - ys[4]); });
+        cf = Object.assign({}, cands[0], { count: cands.length, all: undefined }); }
+      }
       var coin = { found: false };
       if (cf) { var gx = (cf.x - xs[4]) / CELL, gy = (ys[4] - cf.y) / CELL;
         coin = { found: true, count: cf.count, by: cf.by || 'sheet', x: +gx.toFixed(2), y: +gy.toFixed(2), mm: +cf.mm.toFixed(1), dark: +cf.dark.toFixed(2), pt: toImg(cf.x, cf.y) };
@@ -1658,6 +1695,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       // the dot's radius in photo pixels, for the circle on the stage
       if (out.origin.found) { var e1 = toImg(origin.cx + out.origin.r, origin.cy); out.origin.rpx = +Math.hypot(e1[0] - out.origin.pt[0], e1[1] - out.origin.pt[1]).toFixed(1); }
       out.ms = Math.round(nowMs() - t0);
+      if (readSheet.coinLog) out.coinSeen = { coins: seenC, sheet: sh ? sh.all : [] };
       if (readSheet.debug) out._debug = { D: D, R: Rn, xs: xs, ys: ys, T: T, pInk: pInk };
       return out;
     } catch (err) { return { ok: false, reason: 'error', message: "I can't read this photo. Take it again.", error: String(err && err.message || err) }; }
@@ -1752,7 +1790,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.5.0", ITERATION=5, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.6.0", ITERATION=6, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1822,17 +1860,50 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
   {id:"l2.d", label:"from −3 to 3", do:true, mode:"distance", prompt:"Look at −3 and 3 again.", sub:"Count the squares from −3 to 3, across 0.",
    ask:{kind:"count",target:6,max:9,q:"How many squares from −3 to 3?",hint:"Count from −3 to 0, then keep counting from 0 to 3."},
    say:"6: 3 squares from −3 to 0, and 3 more from 0 to 3."},
+ ]},
+ /* Set 3: the same game, one thing changed: the vertical axis, y (Arizona's words: "the vertical axis"; 6.NS.C.6c and 7.NS.A.1:
+    "a horizontal or vertical number line"). + means move this way ↑, − means move this way ↓. The slider slides up and down. */
+ {key:"l3",no:3,name:"Hop along y",axis:"y",what:"The same game on the vertical axis: hop up and down, and past 0.",std:"5.G.A.1, 6.NS.C.6c, 7.NS.A.1",
+ end:{lines:[],q:"The vertical axis goes on forever both ways too. ↑ is the positive direction on y, ↓ is the negative direction, and the numbers below 0 are negative numbers."},
+ steps:[
+  {id:"l3.w", label:"write 1 to 4 on y", do:true, prompt:"Write 1, 2, 3, 4 along y, above 0.", sub:"One number on each grid line, starting with the line just above 0.",
+   say:"Numbers on y, evenly spaced: the vertical axis is a number line too.", words:["vertical axis"]},
+  {id:"l3.c0", label:"coin on the origin", prompt:"Put a coin on the origin.", sub:"Put the middle of the coin right where the axes cross.",
+   need:{coin:[0,0]}, say:"The coin starts at the origin, 0."},
+  {id:"l3.r1", label:"rule + on y", do:true, rule:"+", prompt:"Game rule on y: + means move this way ↑.", sub:"Hop one square for each number you count.",
+   say:"Spin, read the sign, and hop."},
+  {id:"l3.p1", label:"0 + 2 on y", game:{start:0,sign:"+",count:2}},
+  {id:"l3.p2", label:"1 + 3 on y", game:{start:1,sign:"+",count:3}},
+  {id:"l3.p3", label:"2 + 1 on y", game:{start:2,sign:"+",count:1}},
+  {id:"l3.r2", label:"rule − on y", do:true, rule:"−", prompt:"New rule on y: − means move this way ↓.", sub:"Hop one square for each number you count.",
+   say:"Now the game goes up and down."},
+  {id:"l3.p4", label:"4 − 1 on y", game:{start:4,sign:"−",count:1}},
+  {id:"l3.p5", label:"3 − 2 on y", game:{start:3,sign:"−",count:2}},
+  {id:"l3.p6", label:"2 − 4 on y", game:{start:2,sign:"−",count:4}, hint:"Your coin is past 0, below it. Slide down past 0 to where your coin is.",
+   more:"The vertical axis goes on past 0 too, down: −1, −2, −3, −4."},
+  {id:"l3.n", label:"write −1 to −4 on y", do:true, prompt:"Write −1, −2, −3, −4 along y, below 0.", sub:"One number on each grid line, starting with the line just below 0.",
+   say:"↑ is the positive direction on y. ↓ is the negative direction. Numbers below 0 on y are negative numbers.", words:["positive direction","negative direction","negative numbers"]},
+  {id:"l3.p7", label:"1 − 4 on y", game:{start:1,sign:"−",count:4}},
+  {id:"l3.p8", label:"−3 + 4 on y", game:{start:-3,sign:"+",count:4}},
+  {id:"l3.o", label:"how far is −3 on y", do:true, mode:"distance", prompt:"Look at −3 and 3 on y.", sub:"Count the squares from 0 to each one.",
+   ask:{kind:"count",target:3,max:8,q:"How many squares is −3 from 0?",hint:"Count the squares from 0 down to −3, one at a time."},
+   say:"3, and 3 is 3 squares from 0 too. −3 and 3 are the same distance from 0, on opposite sides: they are opposites.", words:["opposites"]},
+  {id:"l3.d", label:"from −3 to 3 on y", do:true, mode:"distance", prompt:"Look at −3 and 3 on y again.", sub:"Count the squares from −3 up to 3, across 0.",
+   ask:{kind:"count",target:6,max:9,q:"How many squares from −3 to 3?",hint:"Count from −3 up to 0, then keep counting from 0 to 3."},
+   say:"6: 3 squares from −3 to 0, and 3 more from 0 to 3."},
  ]}];
 /* the standard each step works on (Arizona and Common Core) */
 const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","l1.y":"5.G.A.1","l1.n":"2.MD.B.6",
-  "l2.c0":"5.G.A.1","l2.p1":"2.MD.B.6","l2.p2":"2.MD.B.6","l2.p3":"2.MD.B.6","l2.p4":"2.MD.B.6","l2.p5":"2.MD.B.6","l2.p6":"7.NS.A.1b","l2.n":"6.NS.C.5","l2.p7":"7.NS.A.1b","l2.p8":"7.NS.A.1b","l2.o":"6.NS.C.7c","l2.d":"7.NS.A.1c"};
+  "l2.c0":"5.G.A.1","l2.p1":"2.MD.B.6","l2.p2":"2.MD.B.6","l2.p3":"2.MD.B.6","l2.p4":"2.MD.B.6","l2.p5":"2.MD.B.6","l2.p6":"7.NS.A.1b","l2.n":"6.NS.C.5","l2.p7":"7.NS.A.1b","l2.p8":"7.NS.A.1b","l2.o":"6.NS.C.7c","l2.d":"7.NS.A.1c",
+  "l3.c0":"5.G.A.1","l3.p1":"7.NS.A.1","l3.p2":"7.NS.A.1","l3.p3":"7.NS.A.1","l3.p4":"7.NS.A.1","l3.p5":"7.NS.A.1","l3.p6":"7.NS.A.1b","l3.n":"6.NS.C.6c","l3.p7":"7.NS.A.1b","l3.p8":"7.NS.A.1b","l3.o":"6.NS.C.7c","l3.d":"7.NS.A.1c"};
 /* a game step: the reels give a start, a sign and a count; the coin's landing is checked, then the student shows where it landed on the slider */
 const minus=v=>v<0?"−"+(-v):String(v), landOf=g=>g.start+(g.sign==="+"?1:-1)*g.count;
-SETS.forEach(X=>X.steps.forEach(st=>{ if(!st.game) return; const g=st.game, L=landOf(g);
+const arrow=(sign,axis)=>axis==="y"?(sign==="+"?"↑":"↓"):(sign==="+"?"→":"←"), axisOf=()=>(S.set&&S.set.axis)||"x";
+SETS.forEach(X=>X.steps.forEach(st=>{ if(!st.game) return; const g=st.game, L=landOf(g), ax=X.axis||"x";
   st.prompt="Spin the reels."; st.sub="They give you a start, a sign and a count.";
-  st.need={coin:[L,0]}; st.mode="hop";
-  st.ask={kind:"line",axis:"x",target:L,min:-4,max:4,q:"Where did you land?",hint:st.hint||"Look at where your coin is, and slide there."};
-  st.say=minus(g.start)+" "+g.sign+" "+g.count+" = "+minus(L)+". You started on "+minus(g.start)+", hopped "+g.count+" this way "+(g.sign==="+"?"→":"←")+", and landed on "+minus(L)+"."+(st.more?" "+st.more:""); }));
+  st.need={coin:ax==="y"?[0,L]:[L,0]}; st.mode="hop";
+  st.ask={kind:"line",axis:ax,target:L,min:-4,max:4,q:"Where did you land?",hint:st.hint||"Look at where your coin is, and slide there."};
+  st.say=minus(g.start)+" "+g.sign+" "+g.count+" = "+minus(L)+". You started on "+minus(g.start)+", hopped "+g.count+" this way "+arrow(g.sign,ax)+", and landed on "+minus(L)+"."+(st.more?" "+st.more:""); }));
 SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=0; st.mode=st.mode||(st.ask?st.ask.kind:st.do?"do":"draw"); st.target=st.ask?String(st.ask.target):st.need?(st.need.coin?"coin "+st.need.coin.join(","):["h","v","o"].filter(k=>st.need[k]).join("+")):"done"; }));
 
 /* ======================= STATE ======================= */
@@ -1865,7 +1936,7 @@ function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.result
   S.seen=p.seen||null; S.img=null; S.source=p.source||null; S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
   view("stepView"); log("resume",{step:S.s}); showStep();
   const st=ST(); if(st.game&&(p.spun||p.coinOk)){ S.spun=true; afterSpin(st); $("photoRow").hidden=!!p.coinOk; $("sampleBtn").hidden=!!p.coinOk;
-    if(p.coinOk){ S.photoOk=true; S.seen=p.seen||null; $("seen").textContent="Your coin photo was checked: it's "+where(st.need.coin[0])+"."; $("answerRow").hidden=false; renderEq(); } } }
+    if(p.coinOk){ S.photoOk=true; S.seen=p.seen||null; $("seen").textContent="Your coin photo was checked."; $("answerRow").hidden=false; renderEq(); } } }
 function startSet(X){ S.prev=null; S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(X.key)); bumpRound(X.key,S.round); setOwner(S.student); S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); sendJoin(); note("step",{type:"start",set:X.key,no:X.no,round:S.round,of:asked().length}); showStep(); }
 $("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.dataset.armed){ delete b.dataset.armed; closeCam(); renderHome(); return } b.dataset.armed="1"; const t=b.textContent; b.textContent="tap again to leave this set"; setTimeout(()=>{ if(b.dataset.armed){ delete b.dataset.armed; b.textContent=t } },3500); } else renderHome(); };
 
@@ -1873,7 +1944,7 @@ $("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.d
 /* the game: the rules so far in this set, and the three reels (spun by the student, stopping on the step's start, sign and count) */
 function renderGame(st){ const box=$("gameBox"), g=st.game, rules=S.set.steps.filter((x,i)=>x.rule&&i<=S.s);
   box.hidden=!(g||st.rule); if(box.hidden) return; S.spun=false;
-  $("rules").innerHTML=rules.map((x,i)=>'<div class="'+(x===st?"new":"")+'">'+esc(x.rule)+' means move this way '+(x.rule==="+"?"→":"←")+'</div>').join("");
+  $("rules").innerHTML=rules.map((x,i)=>'<div class="'+(x===st?"new":"")+'">'+esc(x.rule)+' means move this way '+arrow(x.rule,axisOf())+'</div>').join("");
   box.querySelector(".reels").hidden=!g; $("spin").hidden=!g; ["reel0","reel1","reel2"].forEach(id=>$(id).textContent="?"); }
 $("spin").onclick=()=>{ const st=ST(), g=st.game; if(!g||S.spun) return; $("spin").disabled=true; const reels=[...document.querySelectorAll(".reel")];
   const rnd=a=>a[Math.floor(Math.random()*a.length)], starts=["−4","−3","−2","−1","0","1","2","3","4"], signs=S.set.steps.some((x,i)=>x.rule==="−"&&i<S.s)?["+","−"]:["+"];
@@ -1885,14 +1956,14 @@ $("spin").onclick=()=>{ const st=ST(), g=st.game; if(!g||S.spun) return; $("spin
 /* after the spin: the reels show the turn, and the instruction says what to do with it */
 function afterSpin(st){ const g=st.game; $("reel0").textContent=minus(g.start); $("reel1").textContent=g.sign; $("reel2").textContent=String(g.count); $("spin").hidden=true;
   document.querySelectorAll(".reel").forEach(r=>r.classList.remove("spinning"));
-  $("prompt").textContent="Hop from "+minus(g.start)+"."; $("sub").hidden=false;
-  $("sub").textContent="Put the coin on "+minus(g.start)+". Read the sign: "+g.sign+" means move this way "+(g.sign==="+"?"→":"←")+". Hop "+g.count+", one square at a time. Leave the coin where you land, and take a photo."; }
+  $("prompt").textContent="Hop from "+minus(g.start)+"."; $("sub").hidden=false; const ax=axisOf();
+  $("sub").textContent="Put the coin on "+(g.start===0?"the origin":minus(g.start)+(ax==="y"?" on y":""))+". Read the sign: "+g.sign+" means move this way "+arrow(g.sign,ax)+". Hop "+g.count+", one square at a time. Leave the coin where you land, and take a photo."; }
 /* the names the student has earned so far, in the order they came */
 function renderWords(all){ const out=[]; S.set.steps.forEach((x,i)=>{ if(!x.words) return; const got=all||i<S.s||(i===S.s&&S.stepOk); if(got) x.words.forEach(w=>out.push([w,!all&&i===S.s])); });
   $("wholes").innerHTML=out.map(([w,now])=>'<span class="'+(now?"now":"done")+'">'+esc(w)+'</span>').join(""); }
 function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; f.innerHTML=""; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html; }
 function showStep(){ const st=ST(); closeCam();
-  if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
+  if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.moved=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
   $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
   $("where").innerHTML=esc(S.set.name)+' · <b>step '+(S.s+1)+' of '+S.set.steps.length+'</b>';
   renderWords();
@@ -1936,7 +2007,7 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(R.origin&&R.origin.found){ g.save(); g.strokeStyle="rgba(29,122,69,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(R.origin.pt[0]),Y(R.origin.pt[1]),Math.max(9,(R.origin.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }
 }
 function seenText(R){ if(!R||!R.ok) return ""; const parts=["the grid"];
-  if(ST()&&ST().need&&ST().need.coin) return R.coin&&R.coin.found?"I see your coin"+(R.coin.at&&R.coin.at[1]===0?", "+where(R.coin.at[0]):"")+".":"I see the grid, but no coin.";
+  if(ST()&&ST().need&&ST().need.coin){ return R.coin&&R.coin.found?"I see your coin.":"I see the grid, but no coin."; }   // not where it is: that's the question that comes next
   if(R.h&&R.h.drawn&&Math.abs(R.h.offset||0)<=OFF&&R.h.straight!==false) parts.push("a line across the middle"); if(R.v&&R.v.drawn&&Math.abs(R.v.offset||0)<=OFF&&R.v.straight!==false) parts.push("a line up the middle"); if(R.origin&&R.origin.found) parts.push("a dot where they cross");
   return "I see "+(parts.length>2?parts.slice(0,-1).join(", ")+", and "+parts[parts.length-1]:parts.join(" and "))+"."; }
 
@@ -1944,15 +2015,17 @@ function seenText(R){ if(!R||!R.ok) return ""; const parts=["the grid"];
    The fold finds the middle of the grid, so a line on the fold lands on the middle grid line. Some slack for hands and paper:
    up to OFF of a square off the middle line still counts (about 4 mm). */
 const OFF=0.2;
-const where=k=>k===0?"on 0, the origin":k>0?"on "+k:(negNamed()?"on "+minus(k):plural(-k,"square")+" to the left of 0");
-const negNamed=()=>S.set&&S.set.steps.findIndex(x=>x.id==="l2.n")>-1&&S.set.steps.findIndex(x=>x.id==="l2.n")<S.s;
+const where=k=>k===0?"on 0, the origin":k>0?"on "+k+(axisOf()==="y"?" on y":""):(negNamed()?"on "+minus(k)+(axisOf()==="y"?" on y":""):plural(-k,"square")+" to the left of 0");
+const negNamed=()=>!!S.set&&(S.set.key!=="l2"||S.set.steps.findIndex(x=>x.id==="l2.n")<S.s);   // Set 2 names negative numbers; Set 3 comes after it
 function check(R,need){ const probs=[];
   if(need.coin){ const c=R.coin, st=ST(), g=st&&st.game;
     if(!c||!c.found) return ["I can't see your coin. Put it on the sheet, keep your hand and its shadow off the sheet, and tilt the phone a little if the coin shines."];
     if(c.count>1) return ["I see more than one coin. Leave just your game piece on the sheet."];
-    if(!c.at) return ["Put the middle of the coin right on a grid line, on x."];
-    if(c.at[1]!==0) return ["Put the coin on x, the axis that goes side to side."];
-    if(c.at[0]!==need.coin[0]) return [g?"Your coin is "+where(c.at[0])+". Start on "+minus(g.start)+". "+g.sign+" means move this way "+(g.sign==="+"?"→":"←")+": hop "+g.count+", one square for each.":"Your coin is "+where(c.at[0])+". Put it on the origin, where the axes cross."];
+    const ax=axisOf(), on=ax==="y"?c.at&&c.at[1]:c.at&&c.at[0], off=ax==="y"?c.at&&c.at[0]:c.at&&c.at[1], want=ax==="y"?need.coin[1]:need.coin[0];
+    if(need.coin[0]===0&&need.coin[1]===0&&c.at&&(c.at[0]!==0||c.at[1]!==0)) return ["Your coin isn't on the origin. Put the middle of the coin right where the axes cross."];
+    if(!c.at) return ["Put the middle of the coin right on a grid line, on "+ax+"."];
+    if(off!==0) return [ax==="y"?"Put the coin on y, the axis that goes up and down.":"Put the coin on x, the axis that goes side to side."];
+    if(on!==want) return [g?"Your coin is "+where(on)+". Start on "+minus(g.start)+". "+g.sign+" means move this way "+arrow(g.sign,ax)+": hop "+g.count+", one square for each.":"Your coin is "+where(on)+". Put it on the origin, where the axes cross."];
     return []; }
   const one=(A,name,other,way)=>{ const fold=name==="side-to-side"?"the fold across the middle":"the fold up the middle";
     if(A&&A.drawn){ if(Math.abs(A.offset||0)>OFF) probs.push("Your "+name+" line is beside the middle line of the grid, not on it. Erase it, fold again "+way+" matching the corners, and draw on the fold.");
@@ -1970,7 +2043,7 @@ function check(R,need){ const probs=[];
   return probs; }
 
 function analyse(img,w,h,source){ const st=ST(); let R;
-  try{ R=window.readSheet(img,w,h); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
+  try{ R=window.readSheet(img,w,h,{coin:!!(st.need&&st.need.coin),axis:axisOf()}); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
   S.seen=R; S.img=img; S.source=source; S.photoTries++;
   const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found,coin:R.coin&&R.coin.found?{at:R.coin.at,x:R.coin.x,y:R.coin.y}:null}:null;
   log("photo",{step:st.id,source,w,h,ok:!!R.ok,reason:R.reason||null,seen:brief,ms:R.ms});
@@ -2009,20 +2082,36 @@ function renderEq(){ const a=ST().ask; if(a.kind==="line") return renderLine(a);
   $("down").onclick=()=>{ if(S.stepOk) return; S.num=Math.max(0,S.num-1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; }; }
 /* the number line: always starts at 0; slide, tap a mark, or use the arrows. Numbers left of 0 show only once the set has
    named them; before that, the mark is there and the readout shows the number when you get there. */
-function renderLine(a){ const before=S.set.steps.findIndex(x=>x.id==="l2.p6")>S.s, lo=before?0:a.min, hi=a.max, n=hi-lo, W=250, pad=16, step=(W-2*pad)/n, X=v=>pad+(v-lo)*step, named=negNamed();
+function renderLine(a){ if(a.axis==="y") return renderLineY(a); const before=S.set.steps.findIndex(x=>/\.p6$/.test(x.id))>S.s, lo=before?0:a.min, hi=a.max, n=hi-lo, W=250, pad=16, step=(W-2*pad)/n, X=v=>pad+(v-lo)*step, named=negNamed();
   let ticks=""; for(let v=lo;v<=hi;v++){ const big=v===0; ticks+='<line x1="'+X(v)+'" y1="'+(big?14:18)+'" x2="'+X(v)+'" y2="'+(big?46:42)+'" stroke="currentColor" stroke-width="'+(big?3:2)+'"/>';
     if(v>=0||named) ticks+='<text x="'+X(v)+'" y="66" text-anchor="middle" font-size="19" font-weight="700" fill="currentColor">'+minus(v)+'</text>'; }
   $("eq").innerHTML='<span class="say">'+escEq(a.q)+'</span><div class="nlrow"><button type="button" id="nlL" aria-label="Move left">◀</button><div class="nl" id="nl" role="slider" tabindex="0" aria-valuemin="'+lo+'" aria-valuemax="'+hi+'" aria-label="Where you landed, on x">'+
     '<div class="readout" id="num"></div><svg viewBox="0 0 '+W+' 74" aria-hidden="true"><line x1="4" y1="30" x2="'+(W-4)+'" y2="30" stroke="currentColor" stroke-width="2.5"/>'+ticks+
     '<circle id="nlThumb" cx="'+X(0)+'" cy="30" r="12" fill="var(--ink)" stroke="var(--surface)" stroke-width="3"/></svg></div><button type="button" id="nlR" aria-label="Move right">▶</button></div>';
-  const nl=$("nl"), svg=nl.querySelector("svg"), set=v=>{ if(S.stepOk) return; v=Math.max(lo,Math.min(hi,v)); if(v!==S.num){ S.num=v; $("nextRow").hidden=true; } $("submit").disabled=false; show(); },
+  const nl=$("nl"), svg=nl.querySelector("svg"), set=v=>{ if(S.stepOk) return; v=Math.max(lo,Math.min(hi,v)); if(v!==S.num){ S.num=v; $("nextRow").hidden=true; } S.moved=true; $("submit").disabled=false; show(); },
     show=()=>{ $("nlThumb").setAttribute("cx",X(S.num)); $("num").textContent=minus(S.num); nl.setAttribute("aria-valuenow",S.num); nl.setAttribute("aria-valuetext",minus(S.num)); },
     at=e=>{ const r=svg.getBoundingClientRect(); return Math.round(((e.clientX-r.left)/r.width*W-pad)/step)+lo; };
   let drag=false; nl.onpointerdown=e=>{ drag=true; try{ nl.setPointerCapture(e.pointerId) }catch(x){} set(at(e)); };
   nl.onpointermove=e=>{ if(drag) set(at(e)); }; nl.onpointerup=nl.onpointercancel=()=>{ drag=false; };
   nl.onkeydown=e=>{ if(e.key==="ArrowLeft"||e.key==="ArrowDown"){ set(S.num-1); e.preventDefault(); } if(e.key==="ArrowRight"||e.key==="ArrowUp"){ set(S.num+1); e.preventDefault(); } };
   $("nlL").onclick=()=>set(S.num-1); $("nlR").onclick=()=>set(S.num+1);
-  show(); $("submit").disabled=false; }
+  show(); $("submit").disabled=!S.moved; }
+/* the same number line, standing up: ↑ is up the screen, the way the coin moved on y */
+function renderLineY(a){ const before=S.set.steps.findIndex(x=>/\.p6$/.test(x.id))>S.s, lo=before?0:a.min, hi=a.max, n=hi-lo, Hh=n>4?300:180, pad=16, step=(Hh-2*pad)/n, Y=v=>pad+(hi-v)*step;
+  let ticks=""; for(let v=lo;v<=hi;v++){ const big=v===0; ticks+='<line x1="'+(big?14:18)+'" y1="'+Y(v)+'" x2="'+(big?46:42)+'" y2="'+Y(v)+'" stroke="currentColor" stroke-width="'+(big?3:2)+'"/>'+
+    '<text x="56" y="'+(Y(v)+6)+'" font-size="19" font-weight="700" fill="currentColor">'+minus(v)+'</text>'; }
+  $("eq").innerHTML='<span class="say">'+escEq(a.q)+'</span><div class="nlcol"><div class="nl nly" id="nl" role="slider" tabindex="0" aria-orientation="vertical" aria-valuemin="'+lo+'" aria-valuemax="'+hi+'" aria-label="Where you landed, on y">'+
+    '<svg viewBox="0 0 96 '+Hh+'" aria-hidden="true"><line x1="30" y1="4" x2="30" y2="'+(Hh-4)+'" stroke="currentColor" stroke-width="2.5"/>'+ticks+
+    '<circle id="nlThumb" cx="30" cy="'+Y(0)+'" r="12" fill="var(--ink)" stroke="var(--surface)" stroke-width="3"/></svg></div>'+
+    '<div class="nlside"><div class="readout" id="num"></div><button type="button" id="nlU" aria-label="Move up">▲</button><button type="button" id="nlD" aria-label="Move down">▼</button></div></div>';
+  const nl=$("nl"), svg=nl.querySelector("svg"), set=v=>{ if(S.stepOk) return; v=Math.max(lo,Math.min(hi,v)); if(v!==S.num){ S.num=v; $("nextRow").hidden=true; } S.moved=true; $("submit").disabled=false; show(); },
+    show=()=>{ $("nlThumb").setAttribute("cy",Y(S.num)); $("num").textContent=minus(S.num); nl.setAttribute("aria-valuenow",S.num); nl.setAttribute("aria-valuetext",minus(S.num)); },
+    at=e=>{ const r=svg.getBoundingClientRect(); return hi-Math.round(((e.clientY-r.top)/r.height*Hh-pad)/step); };
+  let drag=false; nl.onpointerdown=e=>{ drag=true; try{ nl.setPointerCapture(e.pointerId) }catch(x){} set(at(e)); };
+  nl.onpointermove=e=>{ if(drag) set(at(e)); }; nl.onpointerup=nl.onpointercancel=()=>{ drag=false; };
+  nl.onkeydown=e=>{ if(e.key==="ArrowDown"||e.key==="ArrowLeft"){ set(S.num-1); e.preventDefault(); } if(e.key==="ArrowUp"||e.key==="ArrowRight"){ set(S.num+1); e.preventDefault(); } };
+  $("nlU").onclick=()=>set(S.num+1); $("nlD").onclick=()=>set(S.num-1);
+  show(); $("submit").disabled=!S.moved; }
 $("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("submit").disabled=true;
   S.tries++; const ok=S.num===a.target, wrote=a.kind==="frac"?S.num+"/"+a.den:a.kind==="line"?minus(S.num):String(S.num);
   S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,symbol_ok:ok,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source});
@@ -2044,7 +2133,7 @@ function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…"
   if(window.createImageBitmap) createImageBitmap(file).then(b=>done(b,b.width,b.height)).catch(viaImg); else viaImg();
   function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
 $("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
-$("sampleBtn").onclick=()=>{ const n=ST().need||{}, game=S.set.key==="l2", labels=game||S.set.steps.findIndex(x=>x.id==="l1.z")<S.s;
+$("sampleBtn").onclick=()=>{ const n=ST().need||{}, game=S.set.key!=="l1", labels=game||S.set.steps.findIndex(x=>x.id==="l1.z")<S.s;
   const c=window.drawSheetSample(game?{h:true,v:true,dot:true,labels,negLabels:negNamed(),coin:{x:n.coin[0],y:n.coin[1]},cut:true,seed:S.s+7*S.round,width:900,height:1100}
                                      :{h:!!n.h,v:!!n.v,dot:!!n.o,labels,cut:true,seed:S.s+7*S.round,width:900,height:1100}); analyse(c,c.width,c.height,"sample"); };
 /* the camera inside the page, as in FotoFold */
