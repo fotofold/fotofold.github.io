@@ -179,7 +179,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
   <div class="big" id="big" hidden role="dialog" aria-label="Join code, big"><div class="in"><canvas id="qrBig" aria-label="QR code to join"></canvas><div class="code" id="codeBig"></div><div class="sub">Tap anywhere to go back.</div></div></div>
 
-  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class a week after it starts, or when you tap End and erase. <span id="pageVer">Teacher page: built Oct 22, 2026, 20:28 UTC.</span></footer>
+  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class a week after it starts, or when you tap End and erase. <span id="pageVer">Teacher page: built Oct 22, 2026, 21:15 UTC.</span></footer>
 </main>
 
 <script>
@@ -357,7 +357,7 @@ function draw(){ if(!T) return; const S=model();
   $("stat").innerHTML='<span>'+joined+' joined</span><span class="ok">'+done+' done</span>'+(look?'<span class="bad">'+look+' maybe stuck</span>':'')+'<span>'+left()+'</span>';
   if(!nums.length) $("tiles").innerHTML='<p class="sub">Waiting for students. Each one shows up here, by number, as they join.</p>';
   detail(S); missed(S); stats(S); }
-const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)",plot:"Graph a point (FotoLine)",side:"Side length (FotoLine)",tile:"Fill unit squares and count (FotoLine)",multiply:"Multiply the sides (FotoLine)",area:"Area of a square (FotoLine)",halves:"Area with half squares (FotoLine)",subtract:"Subtract areas (FotoLine)",halfcount:"Count half squares (FotoLine)",shape:"Graph and color a tile (FotoLine)",mirror:"Mirror the tiles (FotoLine)",reflect:"Reflect a point (FotoLine)"};
+const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)",plot:"Graph a point (FotoLine)",side:"Side length (FotoLine)",tile:"Fill unit squares and count (FotoLine)",multiply:"Multiply the sides (FotoLine)",area:"Area of a square (FotoLine)",halves:"Area with half squares (FotoLine)",subtract:"Subtract areas (FotoLine)",halfcount:"Count half squares (FotoLine)",shape:"Graph and color a tile (FotoLine)",mirror:"Mirror the tiles (FotoLine)",reflect:"Reflect a point (FotoLine)",units:"Area of a color, in unit squares (FotoLine)",addarea:"Add the areas (FotoLine)"};
 function stats(S){ const by={set:new Map(),kind:new Map(),std:new Map()}; let tot=[0,0];
   const add=(m,k,ok)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[1]++; if(ok) e[0]++; };
   for(const s of S.values()) for(const R of s.sets.values()) for(const P of R.steps.values()){ if(!P.runs.length) continue; const ok=P.runs[0].correct===true;
@@ -380,7 +380,7 @@ function detail(S){ if(!sel){ return } const s=S.get(sel);
     const head='<h2 style="font-size:18px">'+esc(setName(R))+(R.round>1?", round "+R.round:"")+(R.done?" · done":"")+(R.iter?' <small style="font-weight:600;color:var(--muted)">· iteration '+R.iter+'</small>':'')+'</h2><div class="sub">'+first+' of '+(R.of||arr.length)+' right on the first try'+(R.done?"":" so far")+'. <small>Seconds run from the start of each step, photo tries included: a rough guide.</small></div>';
     const li=arr.map(P=>{ const marks=P.runs.map(r=>r.correct?"✓":"✗").join("→")+(P.moved?" → moved on":""); const ok=P.runs.some(r=>r.correct);
       const lastBad=[...P.runs].reverse().find(r=>!r.correct); const secs=P.runs.reduce((a,r)=>a+(+r.secs||0),0);
-      return '<li><span class="i">'+esc(P.i)+'</span><span class="lab">'+esc(P.label)+(lastBad&&lastBad.wrote?' <small>wrote '+esc(lastBad.wrote)+'</small>':'')+'</span><span class="m '+(ok?"ok":"no")+'">'+esc(marks)+' · '+Math.round(secs)+' s</span></li>'; }).join("");
+      return '<li><span class="i">'+esc(P.i)+'</span><span class="lab">'+esc(P.label)+(lastBad&&lastBad.wrote?' <small>'+(P.mode==="shape"||P.mode==="mirror"?"":"wrote ")+esc(lastBad.wrote)+'</small>':'')+'</span><span class="m '+(ok?"ok":"no")+'">'+esc(marks)+' · '+Math.round(secs)+' s</span></li>'; }).join("");
     const sum=R.done&&R.done.summary?'<div class="summary">'+esc(R.done.summary)+'</div>':'';
     const save=R.done&&R.done.record?'<div class="row"><button class="btn small ghost" type="button" data-save="'+esc(R.key)+'">Save this record</button></div>':'';
     return '<div style="display:grid;gap:8px">'+head+'<ol class="steps">'+li+'</ol>'+sum+save+'</div>'; }).join("");

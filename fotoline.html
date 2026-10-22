@@ -14,7 +14,7 @@
 :root{
   --bg:#edf1ee; --surface:#f8faf8; --fg:#17201c; --muted:#56635c; --line:#c9d3cd;
   --mat:#2c473f; --mat-grid:#3d5c53; --mat-ink:#d6e4dc; --paper:#fbfbf7;
-  --ink:#1f4f8a; --ink-soft:#dbe6f3; --good:#1d7a45; --good-soft:#dcf0e3; --warn:#9a5b00; --warn-soft:#f8ead2;
+  --ink:#1f4f8a; --ink-soft:#dbe6f3; --good:#1d7a45; --good-soft:#dcf0e3; --warn:#9a5b00; --warn-soft:#f8ead2; --axx:#5b3cc4; --axy:#b0256f; --axfg:#ffffff;
   --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
   --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
@@ -22,10 +22,10 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-grid:#28423a; --mat-ink:#b8cdc2; --paper:#f4f4ee;
-  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}}
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; --axx:#b9a6f5; --axy:#f29ac6; --axfg:#111715; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111715; --surface:#18201d; --fg:#e2e9e5; --muted:#9aa8a0; --line:#2f3b36; --mat:#1b2e28; --mat-grid:#28423a; --mat-ink:#b8cdc2; --paper:#f4f4ee;
-  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; color-scheme:dark}
+  --ink:#8fb6ec; --ink-soft:#1d2c40; --good:#5cc98a; --good-soft:#163323; --warn:#e6a94a; --warn-soft:#3a2a10; --axx:#b9a6f5; --axy:#f29ac6; --axfg:#111715; color-scheme:dark}
 html,body{background:var(--bg);color:var(--fg)}
 button,label.file,.setcard,a{touch-action:manipulation}
 body{font-family:var(--f-body);font-size:17px;line-height:1.45;margin:0;
@@ -83,7 +83,7 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .arrows button{font:inherit;font-size:20px;width:52px;height:46px;border-radius:10px;border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
 .feedback{border-radius:var(--r);padding:12px 14px;font-size:17px;display:grid;gap:6px}
 .feedback.good{background:var(--good-soft);color:var(--good)} .feedback.warn{background:var(--warn-soft);color:var(--warn)}
-.feedback b{font-family:var(--f-display);font-size:22px}
+.feedback b:not(.ax){font-family:var(--f-display);font-size:22px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;min-width:0}
 .ids{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end}
 .ids label{display:grid;gap:4px;font-size:14px;font-weight:700;color:var(--muted)}
@@ -101,7 +101,7 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .reel.spinning b{color:var(--muted)}
 .hints{margin:0;padding:12px 14px 12px 34px;background:var(--bg);border:2px dashed var(--line);border-radius:10px;display:grid;gap:6px;font-weight:600}
 .arrows button,.nlrow button,.nlside button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.nw{white-space:nowrap} .ax{background:var(--ink);color:var(--surface);padding:0 .28em;border-radius:6px;white-space:nowrap;font-weight:800}
+.nw{white-space:nowrap} .ax{color:var(--axfg);padding:0 .3em;border-radius:6px;white-space:nowrap;font-weight:800} .ax.x{background:var(--axx)} .ax.y{background:var(--axy)}
 .acts{margin:2px 0 0;padding-left:1.4em;display:grid;gap:3px} .acts li{padding-left:2px}
 .tilereels{display:grid;gap:8px} .tpairs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .tpairs .tp{display:flex;align-items:center;justify-content:center;gap:3px;background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:6px 2px;font-family:var(--f-display);font-weight:800;font-size:clamp(22px,7.2vw,30px);line-height:1.05;white-space:nowrap}
@@ -1951,7 +1951,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.11.0", ITERATION=11, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.12.0", ITERATION=12, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -2137,8 +2137,9 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
     6.NS.C.6b ("signs of numbers in ordered pairs as indicating locations in quadrants… when two ordered pairs differ only by signs, the
     locations of the points are related by reflections across one or both axes"), 6.NS.C.8 (all four quadrants), 4.G.A.3 ("a line of
     symmetry… such that the figure can be folded along the line into matching parts"). Four colors, far apart for the camera. */
- {key:"l6",no:6,name:"The medallion",what:"Spin for the vertices and the color of each tile, make it, and fill the first quadrant. Then mirror it across the axes.",std:"4.G.A.3, 5.G.A.2, 6.NS.C.6b, 6.NS.C.8, 6.G.A.3",
- end:{lines:[],q:"Your medallion fills all four quadrants. The x-axis and the y-axis are its lines of symmetry: the folds you made at the start. And the diamond is double the yellow square in the middle: 8 square units and 4."},
+ {key:"l6",no:6,name:"The medallion",what:"Spin for the vertices and the color of each tile, make it, and fill the first quadrant. Mirror it across the axes. Then find the area of each color.",std:"3.MD.C.6, 3.MD.C.7d, 4.G.A.3, 5.G.A.2, 6.NS.C.6b, 6.NS.C.8, 6.G.A.1, 6.G.A.3",
+ end:{lines:["Each color: 4 square units","Yellow, blue, red, green: 4 + 4 + 4 + 4 = 16 square units","The big square: 4 × 4 = 16 square units"],
+  q:"Your medallion fills all four quadrants. The x-axis and the y-axis are two of its lines of symmetry: the folds you made at the start. Yellow and blue fill the same diamond as in Set 4: 4 + 4 = 8 square units, the area you found in Set 5. Red and green fill the rest of the big square: 8 more."},
  steps:[
   {id:"l6.r", label:"rule: a tile", do:true, ruleText:["The reels: the points of a tile, and its color."], prompt:"New game: each spin gives you a tile.", sub:"The reels show its points and its color.",
    say:"Mark the points, connect them, and color the tile."},
@@ -2159,6 +2160,22 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
   {id:"l6.a2", label:"(2, 1) across the y-axis", do:true, mode:"reflect", prompt:"Find the mirror of (2, 1) across the y-axis.", sub:"This time its mirror is on the left of the y-axis, the same distance from it.",
    ask:{kind:"line",axis:"x",target:-2,min:-4,max:4,q:"The mirror of (2, 1) across the y-axis is (?, 1)",hint:"Count left from (2, 1) to the y-axis, then the same number of squares past it."},
    say:"(−2, 1): the opposite x, the same y. The two points differ only by a sign. Fold the sheet on an axis and the two halves match: each axis is a line of symmetry.", words:["line of symmetry"]},
+  {id:"l6.y", label:"area of the yellow", do:true, mode:"units", prompt:"Look at the yellow in the middle of your medallion.", sub:"Each unit square is one square unit of area.",
+   ask:{kind:"count",target:4,max:16,q:"What is the total area of yellow, in square units?",hint:"Count the yellow unit squares."},
+   say:"4 square units: 4 yellow unit squares."},
+  {id:"l6.b", label:"area of the blue", do:true, mode:"halves", prompt:"Look at the blue triangles.", sub:"Each one is half of a unit square.",
+   ask:{kind:"count",target:4,max:16,q:"What is the total area of blue, in square units?",hint:"How many triangles is not the area: each triangle is only half of a square unit."},
+   hints:["Two blue triangles fit together into one unit square.","Count the blue triangles in all four quadrants.","There are 8 blue triangles: 8 × ½ = ?"],
+   say:"4 square units: 8 blue triangles, and 8 × ½ = 4."},
+  {id:"l6.rd", label:"area of the red", do:true, mode:"halves", prompt:"Look at the red triangles.", sub:"They are halves of unit squares too.",
+   ask:{kind:"count",target:4,max:16,q:"What is the total area of red, in square units?",hint:"Count the red triangles, then take half: two halves make one whole."},
+   say:"4 square units: 8 red triangles, and 8 × ½ = 4. The same as the blue."},
+  {id:"l6.g", label:"area of the green", do:true, mode:"units", prompt:"Look at the green squares in the corners.", sub:"Each one is a unit square.",
+   ask:{kind:"count",target:4,max:16,q:"What is the total area of green, in square units?",hint:"Count the green unit squares: one in each corner."},
+   say:"4 square units: 4 green unit squares, one in each corner."},
+  {id:"l6.w", label:"area of the medallion", do:true, mode:"addarea", prompt:"Look at the whole medallion.", sub:"Yellow, blue, red and green together.",
+   ask:{kind:"count",target:16,max:24,q:"What is the total area of the medallion, in square units?",hint:"Add the areas of the four colors. Or: one side of the big square times the other."},
+   say:"16 square units: 4 + 4 + 4 + 4 = 16, the same as 4 × 4. Each color covers 4 of the 16 square units."},
  ]}];
 /* the standard each step works on (Arizona and Common Core) */
 const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","l1.y":"5.G.A.1","l1.n":"2.MD.B.6",
@@ -2166,7 +2183,7 @@ const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","
   "l3.c0":"5.G.A.1","l3.p1":"7.NS.A.1","l3.p2":"7.NS.A.1","l3.p3":"7.NS.A.1","l3.p4":"7.NS.A.1","l3.p5":"7.NS.A.1","l3.p6":"7.NS.A.1b","l3.n":"6.NS.C.6c","l3.p7":"7.NS.A.1b","l3.p8":"7.NS.A.1b","l3.o":"6.NS.C.7c","l3.d":"7.NS.A.1c",
   "l4.r":"5.G.A.1","l4.pt1":"5.G.A.1","l4.pt2":"5.G.A.1","l4.pt3":"6.NS.C.6c","l4.pt4":"6.NS.C.6c","l4.c1":"6.G.A.3","l4.pt5":"5.G.A.2","l4.pt6":"6.NS.C.6c","l4.pt7":"6.NS.C.6c","l4.pt8":"6.NS.C.6c","l4.c2":"6.G.A.3","l4.s":"6.G.A.3",
   "l5.b":"3.MD.C.6","l5.u":"3.MD.C.6","l5.m":"3.MD.C.7a","l5.f":"3.MD.C.7a","l5.a":"3.MD.C.5b","l5.k":"3.MD.C.6","l5.d":"6.G.A.1","l5.c":"3.MD.C.6","l5.h":"6.G.A.1","l5.e":"4.NF.B.4b","l5.s":"6.G.A.1",
-  "l6.r":"6.G.A.3","l6.t1":"6.G.A.3","l6.t1c":"6.G.A.3","l6.t2":"6.G.A.3","l6.t3":"6.G.A.3","l6.t4":"6.G.A.3","l6.t5":"6.G.A.3","l6.t6":"5.G.A.2","l6.m1":"6.NS.C.6b","l6.a1":"6.NS.C.6b","l6.m2":"6.NS.C.8","l6.a2":"4.G.A.3"};
+  "l6.r":"6.G.A.3","l6.t1":"6.G.A.3","l6.t1c":"6.G.A.3","l6.t2":"6.G.A.3","l6.t3":"6.G.A.3","l6.t4":"6.G.A.3","l6.t5":"6.G.A.3","l6.t6":"5.G.A.2","l6.m1":"6.NS.C.6b","l6.a1":"6.NS.C.6b","l6.m2":"6.NS.C.8","l6.a2":"4.G.A.3","l6.y":"3.MD.C.6","l6.b":"6.G.A.1","l6.rd":"6.G.A.1","l6.g":"3.MD.C.6","l6.w":"3.MD.C.7d"};
 /* a game step: the reels give a start, a sign and a count; the coin's landing is checked, then the student shows where it landed on the slider */
 const minus=v=>v<0?"−"+(-v):String(v), landOf=g=>g.start+(g.sign==="+"?1:-1)*g.count;
 const arrow=(sign,axis)=>axis==="y"?(sign==="+"?"↑":"↓"):(sign==="+"?"→":"←"), axisOf=()=>(S.set&&S.set.axis)||"x";
@@ -2189,7 +2206,7 @@ const TILES=Q1T.concat(mir(Q1T,1,-1),mir(Q1T,-1,1),mir(Q1T,-1,-1));
 const COLORS={yellow:"#f2cc1d",green:"#3a9e4f",blue:"#2e64c8",red:"#d6333a"};
 const tileName=t=>t.poly.map(pair).join(", "), shapeOf=t=>t.poly.length===4?"square":"triangle";
 SETS.forEach(X=>X.steps.forEach(st=>{ if(st.tile===undefined&&st.mirror===undefined) return;
-  if(st.tile!==undefined){ const t=TILES[st.tile]; st.mode="shape"; st.label=st.label||(st.part==="dots"?"mark the "+t.poly.length+" points":"tile "+tileName(t));
+  if(st.tile!==undefined){ const t=TILES[st.tile]; st.mode="shape"; st.label=st.label||(st.part==="dots"?"mark the "+t.poly.length+" points":t.color+" "+shapeOf(t)+" "+tileName(t));
     st.prompt=st.part==="color"?"Connect the dots, and color the square.":"Spin the reels."; st.sub=st.part==="color"?"":"They give you the points of a tile, and its color.";
     st.need=st.part==="dots"?{verts:t.poly.filter(p=>p[0]||p[1])}:{tiles:st.tile+1}; st.target=tileName(t)+" "+t.color;
     st.say=st.say||(t.poly.length+" sides, "+t.poly.length+" vertices: a "+shapeOf(t)+"."); }
@@ -2235,7 +2252,7 @@ $("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.d
 /* the game: the rules so far in this set, and the three reels (spun by the student, stopping on the step's start, sign and count) */
 function renderGame(st){ const X=S.set, box=$("gameBox"), g=st.game, P=st.plot, rules=S.set.steps.filter((x,i)=>(x.rule||x.ruleText)&&i<=S.s);
   box.hidden=!(g||P||st.rule||st.ruleText||st.tile!==undefined); if(box.hidden) return; S.spun=false;
-  $("rules").innerHTML=rules.map(x=>(x.ruleText||[esc(x.rule)+' means move this way '+arrow(x.rule,axisOf())]).map(t=>'<div class="'+(x===st?"new":"")+'">'+(x.ruleText?esc(t):t)+'</div>').join("")).join("");
+  $("rules").innerHTML=rules.map(x=>(x.ruleText||[esc(x.rule)+' means move this way '+arrow(x.rule,axisOf())]).map(t=>'<div class="'+(x===st?"new":"")+'">'+(x.ruleText?escAx(t):t)+'</div>').join("")).join("");
   const T=st.tile!==undefined, setTile=X.key==="l6";
   box.querySelector(".reels").hidden=!g; $("pairReels").hidden=!(P||(st.ruleText&&!setTile)); $("tileReels").hidden=!(T||(st.ruleText&&setTile)); $("spin").hidden=!(g||P||(T&&st.part!=="color")); ["reel0","reel1","reel2","reelX","reelY"].forEach(id=>$(id).textContent="?");
   if(T||(st.ruleText&&setTile)) showTile(T?TILES[st.tile]:null, T&&st.part==="color", T&&st.part==="dots"); }
@@ -2269,11 +2286,11 @@ function afterSpin(st){ if(st.tile!==undefined){ const t=TILES[st.tile]; showTil
     const acts=st.part==="dots"?["Mark each point with a pencil dot, like the one at the origin.","Take a photo."]:st.part==="color"?["Connect the dots in order, and back to the first one.","Color the square "+t.color+".","Take a photo."]
       :["Mark each point with a pencil dot (some are already there).","Connect the dots in order, and back to the first one.","Color the "+shapeOf(t)+" "+t.color+".","Take a photo."];
     $("prompt").textContent=st.part==="dots"?"Mark the "+t.poly.length+" points.":st.part==="color"?"Connect the dots, and color the square.":"Make the "+shapeOf(t)+".";
-    $("sub").innerHTML='<ol class="acts">'+acts.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ol>"; return }
+    $("sub").innerHTML='<ol class="acts">'+acts.map(x=>"<li>"+escAx(x)+"</li>").join("")+"</ol>"; return }
   if(st.plot){ const P=st.plot; $("reelX").textContent=minus(P[0]); $("reelY").textContent=minus(P[1]); $("spin").hidden=true;
     document.querySelectorAll(".reel").forEach(r=>r.classList.remove("spinning"));
     $("prompt").textContent="Go to "+pair(P)+"."; $("sub").hidden=false;
-    $("sub").innerHTML='<ol class="acts">'+["Put the coin on the origin.",P[0]===0?"Go 0 along x: stay there.":"Move it "+along(P[0],"x")+".",P[1]===0?"Then go 0 along y: stay there.":"Then move it "+along(P[1],"y")+".","Lift the coin. Color in a dot where it was.","Take a photo."].map(t=>"<li>"+esc(t)+"</li>").join("")+"</ol>";
+    $("sub").innerHTML='<ol class="acts">'+["Put the coin on the origin.",P[0]===0?"Go 0 along x: stay there.":"Move it "+along(P[0],"x")+".",P[1]===0?"Then go 0 along y: stay there.":"Then move it "+along(P[1],"y")+".","Lift the coin. Color in a dot where it was.","Take a photo."].map(t=>"<li>"+escAx(t)+"</li>").join("")+"</ol>";
     return }
   const g=st.game; $("reel0").textContent=minus(g.start); $("reel1").textContent=g.sign; $("reel2").textContent=String(g.count); $("spin").hidden=true;
   document.querySelectorAll(".reel").forEach(r=>r.classList.remove("spinning"));
@@ -2283,9 +2300,13 @@ function afterSpin(st){ if(st.tile!==undefined){ const t=TILES[st.tile]; showTil
 function renderWords(all){ const out=[]; S.set.steps.forEach((x,i)=>{ if(!x.words) return; const got=all||i<S.s||(i===S.s&&S.stepOk); if(got) x.words.forEach(w=>out.push([w,!all&&i===S.s])); });
   $("wholes").innerHTML=out.map(([w,now])=>'<span class="'+(now?"now":"done")+'">'+esc(w)+'</span>').join(""); }
 /* "x-axis" and "y-axis" stand out (Frank: which axis is easy to miss in a sentence) */
-const axHL=h=>h.replace(/\b([xy])-axis\b/g,'<b class="ax">$1-axis</b>').replace(/\((−?\d+|\?), (−?\d+|\?)\)/g,'<span class="nw">($1, $2)</span>');   // and an ordered pair never splits across lines
+const axHL=h=>h.replace(/\b([xy])-axis(es)?\b/g,'<b class="ax $1">$1-axis$2</b>').replace(/\((−?\d+|\?), (−?\d+|\?)\)/g,'<span class="nw">($1, $2)</span>');   // and an ordered pair never splits across lines
 function setText(id,t){ $(id).innerHTML=axHL(esc(t||"")); }
-function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; f.innerHTML=""; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html; }
+const escAx=t=>axHL(esc(t));
+function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; f.innerHTML=""; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html;
+  /* the box is a grid: the bold line, then the rest as one piece, so an axis word or a pair inside it stays in the sentence */
+  const first=f.firstChild, head=first&&first.nodeType===1&&first.tagName==="B"&&!first.classList.contains("ax")?first:null, rest=[...f.childNodes].filter(n=>n!==head);
+  if(rest.length&&(head||rest.some(n=>n.nodeType===1))){ const w=document.createElement("span"); rest.forEach(n=>w.appendChild(n)); f.appendChild(w); } }
 function showStep(){ const st=ST(); closeCam();
   if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.moved=false; S.hintN=0; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
   $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
@@ -2451,14 +2472,14 @@ function analyse(img,w,h,source){ const st=ST(); let R;
   const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found,coin:R.coin&&R.coin.found?{at:R.coin.at,x:R.coin.x,y:R.coin.y}:null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined,cells:R.cells?R.cells.covered:undefined}:null;
   log("photo",{step:st.id,source,w,h,ok:!!R.ok,reason:R.reason||null,seen:brief,ms:R.ms});
   drawStage();
-  if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put the sheet on a table, get all of it in the picture, and take it again.")); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); showResult(); return }
+  if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+escAx(R.message||"Put the sheet on a table, get all of it in the picture, and take it again.")); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); showResult(); return }
   $("seen").textContent=seenText(R);
   const probs=check(R,st.need), ok=!probs.length;
   if(st.plot) plotAnswer(st,R,ok);
   if(st.tile!==undefined||st.mirror!==undefined) tileAnswer(st,R,ok);
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:brief});
   const firstTry=st.need&&st.need.tiles&&tileCheck(R,st.need).wrong.length;   // a wrong color can't be erased: the way on shows at once
-  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&(S.photoTries>=3||firstTry)); persist(); showResult(); return }
+  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(escAx).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&(S.photoTries>=3||firstTry)); persist(); showResult(); return }
   photoGood(); }
 /* Set 4: each point is an answer, as each hop was: right when its dot is there; wrong when a new dot is somewhere else
    (what it says is where that dot is). No new dot, or a stray dot beside the right one: not yet, and no answer counted. */
@@ -2470,11 +2491,12 @@ function plotAnswer(st,R,ok){ const P=st.plot, found=(R.dots||[]).filter(d=>d.fo
 /* Set 6: each tile (and each mirror) is an answer: right when the photo checks out; wrong when the colors are there but not right.
    A photo with nothing done yet is not counted, and the same mistake photographed again counts once. */
 function tileAnswer(st,R,ok){ let wrote;
-  if(st.need.verts){ const f=(R.dots||[]).filter(d=>(d.found||d.loose)&&st.need.verts.some(v=>samePt(v,d.at))).length; if(!ok&&!f) return; wrote=f+" of "+st.need.verts.length+" points"; }
+  if(st.need.verts){ const f=(R.dots||[]).filter(d=>(d.found||d.loose)&&st.need.verts.some(v=>samePt(v,d.at))).length; if(!ok&&!f) return; const all=TILES[st.tile].poly.length, o=all-st.need.verts.length; wrote="marked "+(f+o)+" of "+all+" points"+(o?" (the origin is one)":""); }
   else { const c=tileCheck(R,st.need);
     if(!ok&&!c.wrong.length&&!c.early.length) return;   // unfinished, or nothing done yet: not an answer
-    if(ok) wrote="right"; else if(st.tile!==undefined) wrote=c.early.length?"colored "+tileName(TILES[c.early[0]]):"colored "+colorWord((R.tiles[st.tile].color||"").replace(/^some /,""));
-    else wrote=c.wrong.length+" wrong color"; }
+    if(ok) wrote="right"; else if(st.tile!==undefined){ const t=TILES[st.tile], e=c.early.length&&TILES[c.early[0]], g=(R.tiles[st.tile].color||"").replace(/^some /,"");
+      wrote=e?"colored the "+shapeOf(e)+" at "+tileName(e)+" instead":"colored it "+(g==="other"?"another color":colorWord(g))+", the reels said "+t.color; }
+    else wrote=c.wrong.length+(c.wrong.length===1?" tile":" tiles")+" in the wrong color"; }
   const last=runs(st.id).slice(-1)[0]; if(!ok&&last&&!last.correct&&last.wrote===wrote) return;
   answer(st,ok,wrote); }
 function answer(st,ok,wrote,extra){ S.tries++;
@@ -2559,7 +2581,7 @@ $("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("s
   if(ok){ S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); }
   else { setFeedback("warn","<b>"+(a.kind==="frac"||a.kind==="line"?wrote+" isn't it.":S.num+" isn't it.")+"</b>"+hint(st)+" Change it and Submit again, or go on."); showNext(); }
   persist(); showResult(["nextRow","feedback"]); };
-function hint(st){ return st.ask.hint||"Count again." }
+function hint(st){ return escEq(st.ask.hint||"Count again.") }
 function showNext(){ $("nextRow").hidden=false; const last=S.s===S.set.steps.length-1; $("next").textContent=last?"See my answers":"Next"; $("next").className=S.stepOk?"btn go next":"btn ghost"; }
 $("next").onclick=()=>{ if(!S.stepOk){ // moving on without the right answer: the record says so
     const st=ST(); if(st.ask) S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,correct:false,try:0});
@@ -2611,7 +2633,7 @@ const shots=id=>S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step=
 function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student&&("#"+S.student)].filter(Boolean).join(" ");
   const asked=S.set.steps.filter(st=>st.ask||st.plot||st.tile!==undefined||st.mirror!==undefined); let first=0; const misses=[];
   for(const st of asked){ const rs=runs(st.id); if(rs.length&&rs[0].correct) first++; const bad=rs.find(r=>!r.correct&&!r.skipped);
-    if(bad){ const right=rs.find(r=>r.correct&&r.try>bad.try); misses.push(st.label+": wrote "+bad.wrote+(right?" → right on try "+right.try:" → moved on")); } }
+    if(bad){ const right=rs.find(r=>r.correct&&r.try>bad.try); misses.push(st.label+": "+(st.mode==="shape"||st.mode==="mirror"?"":"wrote ")+bad.wrote+(right?" → right on try "+right.try:" → moved on")); } }
   const photos=S.set.steps.filter(st=>st.need).map(st=>shots(st.id).filter(r=>!r.skipped)).filter(a=>a.length), firstPhoto=photos.filter(a=>a[0].correct).length;
   const miscount=S.set.steps.filter(st=>shots(st.id).some(r=>r.phone_miscounted)).map(st=>st.label);
   const src=new Set(S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.source).map(r=>r.source));
@@ -2620,12 +2642,12 @@ function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student
 function showDone(){ if($("doneView").hidden) S.doneAt=performance.now(); view("doneView"); renderWords(true); $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
   $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask||st.plot||st.tile!==undefined||st.mirror!==undefined?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
     const mis=shots(st.id).some(r=>r.phone_miscounted);
-    return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
+    return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+escAx(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
   renderEnd();
   $("summaryLine").textContent=summaryLine(); if(!S.loggedDone){ S.loggedDone=true; log("set_done",{}); sendDone(); } persist(); doneLiveLine(); }
 /* the set's closing line: the names, put together into the sentence of the standard (5.G.A.1) */
 function renderEnd(){ const e=S.set&&S.set.end, el=$("endCard"); if(!el) return; if(!e){ el.hidden=true; el.innerHTML=""; return }
-  el.hidden=false; el.innerHTML=(e.lines||[]).map(t=>'<div class="peq">'+escEq(t)+'</div>').join("")+'<div class="endq">'+esc(e.q)+'</div>'; }
+  el.hidden=false; el.innerHTML=(e.lines||[]).map(t=>'<div class="peq">'+escEq(t)+'</div>').join("")+'<div class="endq">'+escAx(e.q)+'</div>'; }
 function recordObj(){ const done=new Set(S.results.concat(S.photos).map(r=>r.set));
   return {schema:RECORD_SCHEMA,app:"FotoLine",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
     sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoLine: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask||st.plot||st.tile!==undefined||st.mirror!==undefined).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
@@ -2774,7 +2796,7 @@ function doneLiveLine(){ const el=$("doneLive"); if(!el) return; if(!LIVE||!S.se
 
 let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(!$("stepView").hidden) drawStage(); },150) });
 renderHome(); liveUI();
-window.__fl={S,SETS,recordText,recordObj,summaryLine,analyse,check,showDone,OUT,live:()=>LIVE};
+window.__fl={S,SETS,showStep,recordText,recordObj,summaryLine,analyse,check,showDone,OUT,live:()=>LIVE};
 })();
 </script>
 </body></html>

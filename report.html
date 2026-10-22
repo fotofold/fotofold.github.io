@@ -425,6 +425,7 @@ function missText(r){
   if(r.per_swipe_ok===false) return swipesTxt(r);
   if(r.mode==="compare"||r.mode==="estimate") return "picked "+r.wrote;
   if(r.mode==="name") return "wrote "+r.wrote;
+  if(r.mode==="shape"||r.mode==="mirror") return String(r.wrote||"");   // FotoLine 6: already in words ("colored it green, the reels said yellow")
   const top=String(r.wrote||"").split("/")[0], verb=r.mode==="sub"?"left ":"colored ";
   if(r.color_ok===false && r.symbol_ok) return verb+r.colored;
   if(r.color_ok===false) return verb+r.colored+", wrote "+top;
@@ -432,6 +433,7 @@ function missText(r){
 }
 function kindOf(r,uneven){
   if(r.skipped) return "skip";
+  if(r.mode==="shape"||r.mode==="mirror") return "hands";   // FotoLine 6: a tile colored wrong, or in the wrong place
   if(uneven) return "paper";
   if(r.per_swipe_ok===false) return "steps";
   if(r.color_ok===false && r.symbol_ok) return "hands";
@@ -440,7 +442,7 @@ function kindOf(r,uneven){
 }
 function tryText(x){ // one try, in the teacher's words
   if(x.skipped) return "moved on without answering";
-  const what = (x.mode==="compare"||x.mode==="estimate") ? "picked "+x.wrote : x.per_swipe_ok===false ? swipesTxt(x)+", wrote "+x.wrote : (x.mode==="name"||x.colored==null) ? "wrote "+x.wrote : (x.mode==="sub"?"left ":"colored ")+x.colored+", wrote "+x.wrote;
+  const what = (x.mode==="compare"||x.mode==="estimate") ? "picked "+x.wrote : (x.mode==="shape"||x.mode==="mirror") ? String(x.wrote||"") : x.per_swipe_ok===false ? swipesTxt(x)+", wrote "+x.wrote : (x.mode==="name"||x.colored==null) ? "wrote "+x.wrote : (x.mode==="sub"?"left ":"colored ")+x.colored+", wrote "+x.wrote;
   return (x.correct?"✓ ":"✗ ")+what+(x.moved_on?(x.set_by_phone?" → moved on (the phone set it)":" → moved on"):"");
 }
 const KIND_WORD={hands:"hands (color)",steps:"steps (not one unit per swipe)",symbol:"symbol",both:"both",paper:"paper (uneven fold)",skip:"skipped"};
@@ -622,7 +624,7 @@ function renderHeadline(T,rows,stats){
    '<div class="tile"><b>'+(scores.length?fmtNum(median(scores)):"—")+' <small style="font-size:15px;font-weight:600">of '+T.steps.length+'</small></b><span>median steps right on the first try</span></div>'+
    '<div class="tile"><b>'+again.length+'</b><span>did the set again</span></div></div>';
 }
-const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)",plot:"Graph a point (FotoLine)",side:"Side length (FotoLine)",tile:"Fill unit squares and count (FotoLine)",multiply:"Multiply the sides (FotoLine)",area:"Area of a square (FotoLine)",halves:"Area with half squares (FotoLine)",subtract:"Subtract areas (FotoLine)",halfcount:"Count half squares (FotoLine)",shape:"Graph and color a tile (FotoLine)",mirror:"Mirror the tiles (FotoLine)",reflect:"Reflect a point (FotoLine)"};
+const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)",plot:"Graph a point (FotoLine)",side:"Side length (FotoLine)",tile:"Fill unit squares and count (FotoLine)",multiply:"Multiply the sides (FotoLine)",area:"Area of a square (FotoLine)",halves:"Area with half squares (FotoLine)",subtract:"Subtract areas (FotoLine)",halfcount:"Count half squares (FotoLine)",shape:"Graph and color a tile (FotoLine)",mirror:"Mirror the tiles (FotoLine)",reflect:"Reflect a point (FotoLine)",units:"Area of a color, in unit squares (FotoLine)",addarea:"Add the areas (FotoLine)"};
 function renderPct(){ const by={set:new Map(),kind:new Map(),std:new Map()}, tot=[0,0];
   const add=(m,k,ok,n)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[0]+=ok; e[1]+=n; };
   for(const T of [...M.sets.values()].sort((a,b)=>ord(a)-ord(b))){ const stats=stepStats(T,rowsFor(T.key));
