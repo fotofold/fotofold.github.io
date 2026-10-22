@@ -179,7 +179,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
   <div class="big" id="big" hidden role="dialog" aria-label="Join code, big"><div class="in"><canvas id="qrBig" aria-label="QR code to join"></canvas><div class="code" id="codeBig"></div><div class="sub">Tap anywhere to go back.</div></div></div>
 
-  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class a week after it starts, or when you tap End and erase. <span id="pageVer">Teacher page: built Oct 22, 2026, 21:15 UTC.</span></footer>
+  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class a week after it starts, or when you tap End and erase. <span id="pageVer">Teacher page: built Oct 22, 2026, 22:20 UTC.</span></footer>
 </main>
 
 <script>
@@ -327,7 +327,7 @@ function model(){ const S=new Map(), devNum=new Map(), devs=new Map();
     if(!s.sets.has(key)) s.sets.set(key,{key,set:String(b.set),no:whole(b.no,0,9),app:b.app==="FotoSet"||b.app==="FotoLine"?b.app:"",iter:0,round,of,steps:new Map(),done:null,at:x.at});
     const R=s.sets.get(key); R.at=x.at; if(of) R.of=of; s.cur=key; if(b.iter) R.iter=whole(b.iter,0,999);
     if(x.kind==="done"){ R.done=b; continue }
-    if(b.type==="answer"||b.type==="moved_on"){ if(!R.steps.has(b.step)) R.steps.set(b.step,{i:whole(b.i,0,60),label:String(b.label||b.step||""),mode:String(b.mode||""),std:String(b.std||""),runs:[],moved:false}); const P=R.steps.get(b.step);
+    if(b.type==="answer"||b.type==="moved_on"){ if(!R.steps.has(b.step)) R.steps.set(b.step,{i:whole(b.i,0,60),at:whole(b.at,0,60),label:String(b.label||b.step||""),mode:String(b.mode||""),std:String(b.std||""),runs:[],moved:false}); const P=R.steps.get(b.step);
       if(b.type==="answer") P.runs.push({correct:b.correct===true,try:whole(b.try,0,99),wrote:b.wrote==null?"":String(b.wrote),secs:whole(b.secs,0,36000)}); else P.moved=true; } }
   // a number that only joined, from a phone that then switched to another number, was a typo: drop it
   for(const [n,s] of [...S]){ const ds=devs.get(n); if(!s.sets.size&&ds&&[...ds].every(d=>devNum.get(d)!==n)) S.delete(n); }
@@ -380,14 +380,14 @@ function detail(S){ if(!sel){ return } const s=S.get(sel);
     const head='<h2 style="font-size:18px">'+esc(setName(R))+(R.round>1?", round "+R.round:"")+(R.done?" · done":"")+(R.iter?' <small style="font-weight:600;color:var(--muted)">· iteration '+R.iter+'</small>':'')+'</h2><div class="sub">'+first+' of '+(R.of||arr.length)+' right on the first try'+(R.done?"":" so far")+'. <small>Seconds run from the start of each step, photo tries included: a rough guide.</small></div>';
     const li=arr.map(P=>{ const marks=P.runs.map(r=>r.correct?"✓":"✗").join("→")+(P.moved?" → moved on":""); const ok=P.runs.some(r=>r.correct);
       const lastBad=[...P.runs].reverse().find(r=>!r.correct); const secs=P.runs.reduce((a,r)=>a+(+r.secs||0),0);
-      return '<li><span class="i">'+esc(P.i)+'</span><span class="lab">'+esc(P.label)+(lastBad&&lastBad.wrote?' <small>'+(P.mode==="shape"||P.mode==="mirror"?"":"wrote ")+esc(lastBad.wrote)+'</small>':'')+'</span><span class="m '+(ok?"ok":"no")+'">'+esc(marks)+' · '+Math.round(secs)+' s</span></li>'; }).join("");
+      return '<li><span class="i">'+esc(P.at||P.i)+'</span><span class="lab">'+esc(P.label)+(lastBad&&lastBad.wrote?' <small>'+(P.mode==="shape"||P.mode==="mirror"?"":"wrote ")+esc(lastBad.wrote)+'</small>':'')+'</span><span class="m '+(ok?"ok":"no")+'">'+esc(marks)+' · '+Math.round(secs)+' s</span></li>'; }).join("");
     const sum=R.done&&R.done.summary?'<div class="summary">'+esc(R.done.summary)+'</div>':'';
     const save=R.done&&R.done.record?'<div class="row"><button class="btn small ghost" type="button" data-save="'+esc(R.key)+'">Save this record</button></div>':'';
     return '<div style="display:grid;gap:8px">'+head+'<ol class="steps">'+li+'</ol>'+sum+save+'</div>'; }).join("");
   $("dBody").querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{ const R=s.sets.get(b.dataset.save); download((R.app?R.app.toLowerCase()+"-":"fotofold-")+fileTag()+"-"+sel+"-set"+(R.no||"")+".json",JSON.stringify(R.done.record,null,1)); }); }
 
 function missed(S){ const by=new Map();
-  for(const s of S.values()) for(const R of s.sets.values()) for(const [id,P] of R.steps){ const k=R.set+"|"+id; if(!by.has(k)) by.set(k,{label:P.label,name:setName(R),i:P.i,n:0,miss:0}); const e=by.get(k); if(P.runs.length){ e.n++; if(!P.runs[0].correct) e.miss++; } }
+  for(const s of S.values()) for(const R of s.sets.values()) for(const [id,P] of R.steps){ const k=R.set+"|"+id; if(!by.has(k)) by.set(k,{label:P.label,name:setName(R),i:P.at||P.i,n:0,miss:0})   /* at: the step number the phone shows (FotoLine counts its rule cards) */; const e=by.get(k); if(P.runs.length){ e.n++; if(!P.runs[0].correct) e.miss++; } }
   const top=[...by.values()].filter(e=>e.miss>=2).sort((a,b)=>b.miss/b.n-a.miss/a.n||b.miss-a.miss).slice(0,5);
   $("missedCard").hidden=!top.length;
   $("missed").innerHTML=top.map(e=>'<li><b>'+esc(e.label)+'</b> ('+esc(e.name)+', step '+esc(e.i)+'): '+e.miss+' of '+e.n+' missed it on the first try</li>').join(""); }

@@ -140,7 +140,8 @@ tr.later td.stick{background:var(--bg)}
 .who .uw{color:var(--warn);font-weight:700}
 @media (max-width:640px){ .who .sc{display:inline} .who{min-width:118px} .grid td.score{display:none} .grid th.lbl.fts{display:none} }
 .chip{font-family:var(--f-mono);font-size:12px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap;display:inline-block}
-.chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)} .chip.smp{background:var(--line);color:var(--fg)} .chip.ink{background:var(--ink-soft);color:var(--ink)}
+.chip.ok{background:var(--good-soft);color:var(--good)} .chip.no{background:var(--warn-soft);color:var(--warn)}
+#storySec .chip.no,.steplist .chip.no{white-space:normal;border-radius:10px;max-width:100%;overflow-wrap:anywhere}   /* a long wrong answer ("colored it green, the reels said yellow") wraps inside its column */ .chip.smp{background:var(--line);color:var(--fg)} .chip.ink{background:var(--ink-soft);color:var(--ink)}
 .grid tfoot td{border-bottom:0;background:var(--bg)}
 .grid tfoot td.c{font-size:12.5px;line-height:1.15;font-weight:700;height:auto;padding:6px 2px}
 .grid tfoot td.c small{display:block;font-weight:400;color:var(--muted);font-size:11px}
@@ -318,7 +319,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
         <div class="seg" id="orderSeg" role="group" aria-label="Order of steps"><button type="button" data-o="missed" aria-pressed="true">Most missed first</button><button type="button" data-o="plan" aria-pressed="false">In plan order</button></div>
       </div>
       <p class="muted" id="storyNote" style="font-size:14.5px"></p>
-      <p class="muted" id="kindsFS" hidden style="font-size:14.5px">In FotoSet the phone checks the coins before it asks the question; in FotoLine the question comes after the drawing is done, after the phone sees where the coin landed, or, for a point, the dot itself; for area, the coins in the unit squares. Either way, every miss here is the number.</p>
+      <p class="muted" id="kindsFS" hidden style="font-size:14.5px">In FotoSet the phone checks the coins before it asks the question; in FotoLine the question comes after the drawing is done, after the phone sees where the coin landed, or, for a point, the dot itself; for area, the coins in the unit squares. Either way, a miss here is the number, except on the medallion's tiles and mirrors in FotoLine 6, where a miss is the coloring (the hands).</p>
       <div class="kinds" id="kinds">
         <span><i class="kb-hands"></i><span><b>Hands</b>: the color was wrong, the number right.</span></span>
         <span><i class="kb-steps"></i><span><b>Steps</b>: the right length, but not one unit per swipe (Set 4).</span></span>

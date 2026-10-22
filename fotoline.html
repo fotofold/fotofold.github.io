@@ -2206,7 +2206,7 @@ const TILES=Q1T.concat(mir(Q1T,1,-1),mir(Q1T,-1,1),mir(Q1T,-1,-1));
 const COLORS={yellow:"#f2cc1d",green:"#3a9e4f",blue:"#2e64c8",red:"#d6333a"};
 const tileName=t=>t.poly.map(pair).join(", "), shapeOf=t=>t.poly.length===4?"square":"triangle";
 SETS.forEach(X=>X.steps.forEach(st=>{ if(st.tile===undefined&&st.mirror===undefined) return;
-  if(st.tile!==undefined){ const t=TILES[st.tile]; st.mode="shape"; st.label=st.label||(st.part==="dots"?"mark the "+t.poly.length+" points":t.color+" "+shapeOf(t)+" "+tileName(t));
+  if(st.tile!==undefined){ const t=TILES[st.tile]; st.mode="shape"; st.label=st.label||(st.part==="dots"?"tile 1: mark the "+t.poly.length+" points":"tile "+(st.tile+1)+": "+t.color+" "+shapeOf(t));   // short, for the teacher's grid
     st.prompt=st.part==="color"?"Connect the dots, and color the square.":"Spin the reels."; st.sub=st.part==="color"?"":"They give you the points of a tile, and its color.";
     st.need=st.part==="dots"?{verts:t.poly.filter(p=>p[0]||p[1])}:{tiles:st.tile+1}; st.target=tileName(t)+" "+t.color;
     st.say=st.say||(t.poly.length+" sides, "+t.poly.length+" vertices: a "+shapeOf(t)+"."); }
@@ -2431,7 +2431,7 @@ function tileProbs(R,need){ const c=tileCheck(R,need), st=ST(), one=i=>"the "+sh
     if(c.missing.length&&c.early.length) return ["I see "+t.color+" in "+one(c.early[0])+". This tile is "+one(cur)+": color it "+t.color+" too."];
     if(c.missing.length) return ["I can't see the color in "+one(cur)+". Color it "+t.color+", right up to its sides: the phone shows it in dashes."];
     if(c.partly.length) return ["Color all of "+one(cur)+", right up to its sides."];
-    if(c.wrong.length){ const g=(R.tiles[cur].color||"").replace(/^some /,""); return ["That tile looks "+colorWord(g)+": the reels said "+t.color+". Color over it in "+t.color+", as well as you can, or tap The phone got it wrong to go on."]; }
+    if(c.wrong.length){ const g=(R.tiles[cur].color||"").replace(/^some /,""); return ["That tile looks "+colorWord(g)+": the reels said "+t.color+". Color over it in "+t.color+", as well as you can, and take the photo again. If the color won't cover it, tap The phone got it wrong to go on."]; }
     return []; }
   const todo=c.missing.length+c.partly.length;
   if(todo) return [(todo===1?"1 tile still needs its":todo+" tiles still need their")+" color, right up to the sides: the phone shows "+(todo===1?"it":"them")+" in dashes."];
@@ -2479,7 +2479,7 @@ function analyse(img,w,h,source){ const st=ST(); let R;
   if(st.tile!==undefined||st.mirror!==undefined) tileAnswer(st,R,ok);
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:brief});
   const firstTry=st.need&&st.need.tiles&&tileCheck(R,st.need).wrong.length;   // a wrong color can't be erased: the way on shows at once
-  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(escAx).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&(S.photoTries>=3||firstTry)); persist(); showResult(); return }
+  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(escAx).join(" ")+(probs.some(x=>/photo again/.test(x))?"":" Then take the photo again.")); $("anyway").hidden=!(source==="photo"&&(S.photoTries>=3||firstTry)); persist(); showResult(); return }
   photoGood(); }
 /* Set 4: each point is an answer, as each hop was: right when its dot is there; wrong when a new dot is somewhere else
    (what it says is where that dot is). No new dot, or a stray dot beside the right one: not yet, and no answer counted. */
@@ -2502,7 +2502,7 @@ function tileAnswer(st,R,ok){ let wrote;
 function answer(st,ok,wrote,extra){ S.tries++;
   S.results.push(Object.assign({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,symbol_ok:ok,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source},extra||{}));
   log("answer",{step:st.id,correct:ok,try:S.tries});
-  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.mode,std:st.std,i:asked().indexOf(st)+1,of:asked().length,correct:ok,try:S.tries,wrote,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)}); }
+  note("step",{type:"answer",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,mode:st.mode,std:st.std,i:asked().indexOf(st)+1,at:S.set.steps.indexOf(st)+1,of:asked().length,correct:ok,try:S.tries,wrote,secs:+((performance.now()-S.stepAt)/1000).toFixed(1)}); }
 function showResult(order){ requestAnimationFrame(()=>{ const t=(order||["answerRow","nextRow","feedback"]).map(id=>$(id)).find(e=>!e.hidden); try{ const r=t&&t.getBoundingClientRect(); if(r&&(r.bottom>innerHeight||r.top<0)) t.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(e){} }); }   // only when it's out of view
 /* the last photo already shows what this step asks for (the student drew ahead): say so, name it, and go on */
 function already(st){ S.seen=S.prev.R; S.img=S.prev.img; S.source="photo"; S.photoOk=true; S.stepOk=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
@@ -2517,7 +2517,7 @@ $("anyway").onclick=()=>{ const st=ST(); log("phone_miscounted",{step:st.id,seen
   const r=S.photos.filter(x=>x.set===S.set.key&&x.round===S.round&&x.step===st.id).slice(-1)[0]; if(r) r.phone_miscounted=true;
   if((st.plot||st.tile!==undefined||st.mirror!==undefined)&&!runs(st.id).some(x=>x.correct)){   // not counted right or wrong: the teacher sees the phone was overruled
     S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,phone_miscounted:true,correct:false,try:0});
-    note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,phone:true,i:asked().indexOf(st)+1,of:asked().length}); }
+    note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,phone:true,i:asked().indexOf(st)+1,at:S.set.steps.indexOf(st)+1,of:asked().length}); }
   photoGood(); };
 /* a step done by hand, with nothing for the phone to check */
 $("did").onclick=()=>{ const st=ST(); if(S.stepOk||!st.do) return; S.stepOk=true; $("didRow").hidden=true;
@@ -2585,7 +2585,7 @@ function hint(st){ return escEq(st.ask.hint||"Count again.") }
 function showNext(){ $("nextRow").hidden=false; const last=S.s===S.set.steps.length-1; $("next").textContent=last?"See my answers":"Next"; $("next").className=S.stepOk?"btn go next":"btn ghost"; }
 $("next").onclick=()=>{ if(!S.stepOk){ // moving on without the right answer: the record says so
     const st=ST(); if(st.ask) S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,correct:false,try:0});
-    else S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,skipped:true,moved_on:true,correct:false,try:0}); log("moved_on",{step:st.id}); if(st.ask) note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,i:asked().indexOf(st)+1,of:asked().length}); }
+    else S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,skipped:true,moved_on:true,correct:false,try:0}); log("moved_on",{step:st.id}); if(st.ask) note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,i:asked().indexOf(st)+1,at:S.set.steps.indexOf(st)+1,of:asked().length}); }
   if(S.s<S.set.steps.length-1){ S.s++; showStep() } else showDone(); };
 
 /* ======================= PHOTOS ======================= */
