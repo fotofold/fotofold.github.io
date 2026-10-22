@@ -179,7 +179,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 
   <div class="big" id="big" hidden role="dialog" aria-label="Join code, big"><div class="in"><canvas id="qrBig" aria-label="QR code to join"></canvas><div class="code" id="codeBig"></div><div class="sub">Tap anywhere to go back.</div></div></div>
 
-  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class a week after it starts, or when you tap End and erase.</footer>
+  <footer>FotoFold live class. Students' phones send their number and their answers, never a name or a photo. The relay deletes a class a week after it starts, or when you tap End and erase. <span id="pageVer">Teacher page: built Oct 22, 2026, 14:21 UTC.</span></footer>
 </main>
 
 <script>
@@ -357,7 +357,7 @@ function draw(){ if(!T) return; const S=model();
   $("stat").innerHTML='<span>'+joined+' joined</span><span class="ok">'+done+' done</span>'+(look?'<span class="bad">'+look+' maybe stuck</span>':'')+'<span>'+left()+'</span>';
   if(!nums.length) $("tiles").innerHTML='<p class="sub">Waiting for students. Each one shows up here, by number, as they join.</p>';
   detail(S); missed(S); stats(S); }
-const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)"};
+const KIND={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along an axis (FotoLine)",distance:"Distance from 0 (FotoLine)",plot:"Graph a point (FotoLine)",side:"Side length (FotoLine)",tile:"Fill unit squares and count (FotoLine)",multiply:"Multiply the sides (FotoLine)",area:"Area of a square (FotoLine)",halves:"Area with half squares (FotoLine)"};
 function stats(S){ const by={set:new Map(),kind:new Map(),std:new Map()}; let tot=[0,0];
   const add=(m,k,ok)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[1]++; if(ok) e[0]++; };
   for(const s of S.values()) for(const R of s.sets.values()) for(const P of R.steps.values()){ if(!P.runs.length) continue; const ok=P.runs[0].correct===true;

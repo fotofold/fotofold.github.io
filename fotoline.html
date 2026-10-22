@@ -99,6 +99,8 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .reel{display:grid;justify-items:center;gap:2px;background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:6px 4px}
 .reel small{font-size:13px;color:var(--muted);font-weight:700} .reel b{font-family:var(--f-display);font-size:clamp(34px,11vw,48px);line-height:1.05}
 .reel.spinning b{color:var(--muted)}
+.hints{margin:0;padding:12px 14px 12px 34px;background:var(--bg);border:2px dashed var(--line);border-radius:10px;display:grid;gap:6px;font-weight:600}
+.arrows button,.nlrow button,.nlside button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .acts{margin:2px 0 0;padding-left:1.4em;display:grid;gap:3px} .acts li{padding-left:2px}
 .reels.pair{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr) auto;align-items:end;gap:4px}
 .paren{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,13vw,56px);line-height:1;padding-bottom:6px;color:var(--ink)} .paren.comma{align-self:end;padding-bottom:2px}
@@ -133,7 +135,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <section id="homeView" style="display:grid;gap:16px">
     <a class="btn link back" href="index.html" id="allLink">← All activities</a>
     <h1 class="prompt">Fold it, draw it, name it.</h1>
-    <p class="sub">You need a FotoLine sheet, scissors and a pencil. <a href="fotoline_sheet.pdf" id="sheetLink">Print the sheet</a> at 100% (Actual size); the grid should measure 7 inches across.</p>
+    <p class="sub">You need a FotoLine sheet, scissors and a pencil; a coin for Sets 2 to 4, and 16 coins for Set 5 (pennies, nickels or dimes: a quarter is too big for a square). <a href="fotoline_sheet.pdf" id="sheetLink">Print the sheet</a> at 100% (Actual size); the grid should measure 7 inches across.</p>
     <div class="card">
       <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
       <div class="ids">
@@ -169,7 +171,8 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     </div>
     <div id="answerRow" hidden style="display:grid;gap:14px">
       <div class="eq" id="eq" aria-live="polite"></div>
-      <div class="row"><button class="btn" id="submit" type="button">Submit</button></div>
+      <div class="row"><button class="btn" id="submit" type="button">Submit</button><button class="btn ghost" id="hintBtn" type="button" hidden>Hint</button></div>
+      <ol class="hints" id="hintBox" hidden aria-live="polite" aria-relevant="additions" aria-label="Hints"></ol>
     </div>
     <div class="feedback" id="feedback" hidden aria-live="polite"></div>
     <div class="row" id="didRow" hidden><button class="btn go" id="did" type="button">Done</button></div>
@@ -203,7 +206,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoLine never keeps the photo you take: it looks for your lines and your dot and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
       <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
   </details>
-  <footer>FotoLine, iteration <span id="footIter"></span>. Cut out a square, fold it into two axes and an origin, play a game along them, then graph points and connect them. The photo is never kept.</footer>
+  <footer>FotoLine, iteration <span id="footIter"></span>. Cut out a square, fold it into two axes and an origin, play a game along them, graph points and connect them, then fill the square to find its area. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -1051,7 +1054,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     }
     conf = Math.round(clamp(conf, 0, 1) * 100) / 100;
 
-    var outCoins = coins.map(function (c) { return { x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, r: Math.round(c.r * 10) / 10, half: c.half, pile: c.pile, round: Math.round((c.round || 0) * 100) / 100, peaks: c.peaks || 0, edge: c.edge }; });   // round, peaks: the coin's blob (1 = a lone disc), for FotoLine
+    var outCoins = coins.map(function (c) { return { x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, r: Math.round(c.r * 10) / 10, half: c.half, pile: c.pile, round: Math.round((c.round || 0) * 100) / 100, peaks: c.peaks || 0, edge: c.edge, blob: c.blob }; });   // round, peaks: the coin's blob (1 = a lone disc), for FotoLine
     var res = {
       ok: coins.length > 0, size: { w: W, h: H }, coins: outCoins, coinR: Math.round(coinR * 10) / 10,
       fold: foldRes, paper: paper, top: top, bottom: bottom, confidence: coins.length ? conf : 0
@@ -1482,7 +1485,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   /* ---------- 3. a drawn line on a grid line ---------- */
   // ink across a line at each point along it: sum of darkness over +-HW around the darkest spot within the band
   var HW = 6;
-  var CFG = { cover: 0.65, peak: 0.21, width: 11, ends: 0.3, dotDark: 0.25, dotFill: 0, dotRound: 2.2, dotMm: 4.2, blur: 11, soft: 6.8, coinL: 0.84, coinMin: 16, coinMax: 28, coinSnap: 0.3, coinSquare: 0.09, hueMin: 10, hueMax: 65, sheetSquare: 0.085 };   // see readSheet.cfg
+  var CFG = { cover: 0.65, peak: 0.21, width: 11, ends: 0.3, dotDark: 0.25, dotFill: 0, dotRound: 2.2, dotMm: 4.2, blur: 11, soft: 6.8, coinL: 0.84, coinMin: 16, coinMax: 28, coinSnap: 0.3, coinSquare: 0.09, hueMin: 10, hueMax: 65, sheetSquare: 0.085, cellSnap: 0.3, cellM: 0.12, cellMmax: 0.5, cellF: 0.6 };   // see readSheet.cfg
   function inkAlong(D, R, horiz, center, band, a0, a1, skip) { var out = [];
     for (var m = Math.round(a0) + 2; m < a1 - 2; m += 2) { var near = false; for (var q = 0; q < skip.length; q++) if (Math.abs(m - skip[q]) < 8) { near = true; break; } if (near) continue;
       var bv = -1, bp = 0; for (var d = -band; d <= band; d++) { var c = Math.round(center + d); if (c < 1 || c >= R - 1) continue;
@@ -1554,6 +1557,12 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     var seed = function (q) { if (!M[q] && !out[q]) { out[q] = 1; st.push(q); } };
     for (x = 0; x < r4; x++) { seed(x); seed((r4 - 1) * r4 + x); } for (y = 0; y < r4; y++) { seed(y * r4); seed(y * r4 + r4 - 1); }
     while (st.length) { var q = st.pop(), qx = q % r4, qy = (q / r4) | 0; if (qx > 0) seed(q - 1); if (qx < r4 - 1) seed(q + 1); if (qy > 0) seed(q - r4); if (qy < r4 - 1) seed(q + r4); }
+    // only small holes are filled (a coin's shine): a drawn outline (Set 4's square) encloses far more than a coin, and stays open
+    var HMAX = Math.PI * Math.pow(CFG.coinMax / 2 / 25.4 * PPI / K, 2), hl = new Uint8Array(n4);
+    for (k = 0; k < n4; k++) { if (out[k] || M[k] || hl[k]) continue; var hole = [k]; hl[k] = 1;
+      for (var hi = 0; hi < hole.length; hi++) { var hq = hole[hi], hx = hq % r4, hy = (hq / r4) | 0, nbs = [hx > 0 ? hq - 1 : -1, hx < r4 - 1 ? hq + 1 : -1, hy > 0 ? hq - r4 : -1, hy < r4 - 1 ? hq + r4 : -1];
+        for (var hn = 0; hn < 4; hn++) { var q2 = nbs[hn]; if (q2 >= 0 && !out[q2] && !M[q2] && !hl[q2]) { hl[q2] = 1; hole.push(q2); } } }
+      if (hole.length > HMAX) hole.forEach(function (q3) { out[q3] = 1; }); }
     var F = new Float32Array(n4); for (k = 0; k < n4; k++) F[k] = out[k] ? 0 : 1;
     for (k = 0; k < n4; k++) F[k] = -F[k]; maxFilter(F, r4, r4, 2, a, b); for (k = 0; k < n4; k++) b[k] = -b[k]; maxFilter(b, r4, r4, 2, a, F);
     var lab = new Int32Array(n4), mm = function (px) { return px * K / PPI * 25.4; };
@@ -1581,6 +1590,33 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     var best = cands[0]; best.count = cands.length; best.all = cands; return best; }
 
   readSheet_findCoin = findCoin;
+  /* Set 5: is each unit square covered? A coin (copper or silver) covers most of the middle of its square and is darker than the paper
+     around it; an empty square has only thin pencil lines across it. For each square of the grid: the mean darkness in a disc at its
+     middle (against the paper nearby), and where the dark is (a coin pushed toward a line is off the middle). */
+  function cellFill(C, R, xs, ys, CELL) { var K = 4, r4 = Math.floor(R / K), n4 = r4 * r4, x, y, i, j;
+    var C4 = new Float32Array(n4); for (y = 0; y < r4; y++) for (x = 0; x < r4; x++) { var s0 = 0; for (j = 0; j < K; j++) for (i = 0; i < K; i++) s0 += C[(y * K + j) * R + x * K + i]; C4[y * r4 + x] = s0 / (K * K); }
+    // the paper: the square's own corners, which a coin (19 mm in a 22 mm square) leaves bare; a bright share of them, past the grid lines
+    // each corner on its own, then blended across the square: a shadow's slope is followed, not taken for a coin
+    var out = [], rr = 0.36 * CELL / K, rw = 0.62 * CELL / K, rc = 0.5 * CELL / K;
+    var pct = function (a) { a.sort(function (p, q) { return p - q; }); return a.length ? a[Math.floor(0.85 * (a.length - 1))] : 0; };
+    for (var ci = -4; ci < 4; ci++) for (var cj = -4; cj < 4; cj++) { var cx = (xs[4] + (ci + 0.5) * CELL) / K, cy = (ys[4] - (cj + 0.5) * CELL) / K, q4 = [[], [], [], []];
+      for (y = Math.floor(cy - rw); y <= Math.ceil(cy + rw); y++) for (x = Math.floor(cx - rw); x <= Math.ceil(cx + rw); x++) { if (x < 0 || y < 0 || x >= r4 || y >= r4) continue;
+        var dd = Math.hypot(x - cx, y - cy); if (dd >= rc && dd <= rw && Math.abs(x - cx) <= rc && Math.abs(y - cy) <= rc) q4[(x > cx ? 1 : 0) + (y > cy ? 2 : 0)].push(C4[y * r4 + x]); }
+      var pc = q4.map(pct), pm = Math.max.apply(null, pc); pc = pc.map(function (v) { return v || pm || 230; });
+      var paperAt = function (px, py) { var u = Math.max(0, Math.min(1, (px - cx) / (2 * rc) + 0.5)), w = Math.max(0, Math.min(1, (py - cy) / (2 * rc) + 0.5));
+        return (pc[0] * (1 - u) + pc[1] * u) * (1 - w) + (pc[2] * (1 - u) + pc[3] * u) * w; };
+      var sm = 0, n = 0, dk = 0, wx = 0, wy = 0, ws = 0;
+      for (y = Math.floor(cy - rw); y <= Math.ceil(cy + rw); y++) for (x = Math.floor(cx - rw); x <= Math.ceil(cx + rw); x++) { if (x < 0 || y < 0 || x >= r4 || y >= r4) continue;
+        var paper = paperAt(x, y), d = Math.hypot(x - cx, y - cy), v = Math.max(0, (paper - C4[y * r4 + x]) / (paper || 1));
+        if (d <= rr) { sm += v; n++; if (v > 0.1) dk++; }
+        if (d <= rw && v > 0.1) { wx += v * (x - cx); wy += v * (y - cy); ws += v; } }
+      // a coin's shape: dark all round its face, and bare paper just past its edge toward the square's four corners
+      var vAt = function (px, py) { var t = 0, c = 0; for (var yy = Math.round(py) - 1; yy <= Math.round(py) + 1; yy++) for (var xx = Math.round(px) - 1; xx <= Math.round(px) + 1; xx++) { if (xx < 0 || yy < 0 || xx >= r4 || yy >= r4) continue; var pp = paperAt(xx, yy); t += Math.max(0, (pp - C4[yy * r4 + xx]) / (pp || 1)); c++; } return c ? t / c : 0; };
+      var face = 9, edge = 0, cl = CELL / K;
+      for (var a8 = 0; a8 < 8; a8++) { var an = a8 * Math.PI / 4; face = Math.min(face, vAt(cx + 0.25 * cl * Math.cos(an), cy + 0.25 * cl * Math.sin(an))); }
+      for (var a4 = 0; a4 < 4; a4++) { var ad = Math.PI / 4 + a4 * Math.PI / 2, vi = vAt(cx + 0.3 * cl * Math.cos(ad), cy + 0.3 * cl * Math.sin(ad)), vo = vAt(cx + 0.57 * cl * Math.cos(ad), cy + 0.57 * cl * Math.sin(ad)); if (vi - vo >= 0.08 && vo < 0.1) edge++; }
+      out.push({ cell: [ci, cj], m: n ? sm / n : 0, f: n ? dk / n : 0, ox: ws ? wx / ws * K / CELL : 0, oy: ws ? -wy / ws * K / CELL : 0, face: +face.toFixed(3), edge: edge }); }
+    return out; }
   /* ---------- the whole read ---------- */
   function readSheet(source, w, h, opts) { var t0 = nowMs(); opts = opts || {};   // opts.coin false: no coin on this step (skip the search); opts.axis 'y': the game is on y
     try {
@@ -1675,7 +1711,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       // the coin, and where it is: in squares from the origin, along x and along y (up is +)
       // FotoSet's coin reader first (tuned on real pennies); this sheet's own finder for what it misses (silver)
       var cf = null, seenC = [], cands = [], Hi2g = homography(gc, [[MARGIN, MARGIN], [MARGIN + G, MARGIN], [MARGIN + G, MARGIN + G], [MARGIN, MARGIN + G]]);
-      if (opts.coin !== false) { if (typeof window !== 'undefined' && window.readCoins && Hi2g) { try {
+      if (opts.coin !== false || opts.cells) { if (typeof window !== 'undefined' && window.readCoins && Hi2g) { try {
         var Rc = window.readCoins(source, w, h), list = [];
         if (Rc && Rc.ok && Rc.coins) Rc.coins.forEach(function (k) { var ox0 = k.x / Rc.scale * s, oy0 = k.y / Rc.scale * s, rr = (k.r || Rc.coinR) / Rc.scale * s;
           var p0 = applyH(Hi2g, ox0, oy0), p1 = applyH(Hi2g, ox0 + rr, oy0), p2 = applyH(Hi2g, ox0, oy0 + rr), dia = (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) + Math.hypot(p2[0] - p0[0], p2[1] - p0[1])) / PPI * 25.4;
@@ -1685,16 +1721,50 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
           var cand = { x: p0[0], y: p0[1], mm: dia, dark: 0.5, by: 'coins', round: k.round, peaks: k.peaks, hue: col.hue, sat: col.sat, sq: sq };
           seenC.push(cand);
           // a coin is a lone disc (a die, a sticker or an eraser is square; a finger is several "coins" in one blob), copper or brass colored (not pink or red)
-          if (k.peaks === 1 && sq <= CFG.coinSquare && (col.sat < 0.15 || (col.hue >= CFG.hueMin && col.hue <= CFG.hueMax))) list.push(cand); });
+          var colorOk = col.sat < 0.15 || (col.hue >= CFG.hueMin && col.hue <= CFG.hueMax);
+          if (k.peaks === 1 && sq <= CFG.coinSquare && colorOk) list.push(cand);
+          // filling unit squares (Set 5): coins side by side may touch; each peak of the blob is a coin when coin-sized
+          else if (opts.cells && k.peaks > 1 && k.peaks <= 25 && colorOk && dia >= 15 && dia <= 25) { cand.multi = true; cand.blob = k.blob; list.push(cand); } });
+        // touching coins: kept only if most of the blob's peaks sit in the middle of unit squares, one to a square (a finger's do not)
+        var inMid = function (c) { var ux = (c.x - xs[4]) / CELL, uy = (ys[4] - c.y) / CELL; return Math.abs(ux - Math.floor(ux) - 0.5) <= CFG.cellSnap && Math.abs(uy - Math.floor(uy) - 0.5) <= CFG.cellSnap; };
+        var blobs = {}; list.forEach(function (c) { if (c.multi) (blobs[c.blob] = blobs[c.blob] || []).push(c); });
+        // a blob whose peaks mostly aren't: a coin pushed onto its neighbor, or a finger. Kept, but never as a coin in its square: "not in the middle"
+        Object.keys(blobs).forEach(function (bk) { var B = blobs[bk], mid = B.filter(inMid).length; if (mid < 0.75 * B.length) B.forEach(function (c) { c.offMid = true; }); });
         list.forEach(function (c) { cands.push(c); });
       } catch (e) { } }
       // and this sheet's own finder (it sees silver coins, which FotoSet's reader misses): the same coin seen twice counts once
       var sh = findCoin(C, Rn, xs[0] - 0.4 * CELL, xs[N] + 0.4 * CELL, ys[0] - 0.4 * CELL, ys[N] + 0.4 * CELL, ys[4]);
-      if (sh) sh.all.forEach(function (c) { if (!cands.some(function (q) { return Math.hypot(q.x - c.x, q.y - c.y) < 0.6 * CELL; })) { c.by = 'sheet'; cands.push(c); } });
+      if (sh) sh.all.forEach(function (c) { if (cands.some(function (q) { return Math.hypot(q.x - c.x, q.y - c.y) < 0.6 * CELL; })) return;
+        // the color of what it found: gray (silver) or copper and brass, not red, pink or blue (a sticker, a die, an eraser)
+        var pi = toImg(c.x, c.y), pe = toImg(c.x + c.mm / 25.4 * PPI * 0.3, c.y), col = colorAt(data, W, H, pi[0], pi[1], Math.hypot(pe[0] - pi[0], pe[1] - pi[1]));
+        if (!(col.sat < 0.15 || (col.hue >= CFG.hueMin && col.hue <= CFG.hueMax))) return;
+        c.by = 'sheet'; cands.push(c); });
       if (cands.length) { var onY = opts.axis === 'y';   // more than one: the one nearest the game's axis is the game piece, and the student is told there are more
         cands.sort(function (p, q) { return onY ? Math.abs(p.x - xs[4]) - Math.abs(q.x - xs[4]) : Math.abs(p.y - ys[4]) - Math.abs(q.y - ys[4]); });
         cf = Object.assign({}, cands[0], { count: cands.length, all: undefined }); }
       }
+      // Set 5: which unit square each coin is in. A unit square is named by its lower-left corner: [-2, -2] is the one from x = -2 to -1, y = -2 to -1
+      var cells = null, fill = opts.cells ? cellFill(C, Rn, xs, ys, CELL) : null, cellCoins = null;
+      if (opts.cells) cellCoins = cands.filter(function (c) { if (c.by === 'coins') return true; var ux = Math.floor((c.x - xs[4]) / CELL), uy = Math.floor((ys[4] - c.y) / CELL);
+          return !Array.isArray(opts.cells) || opts.cells.some(function (w) { return w[0] === ux && w[1] === uy; }) || opts.cells.some(function (w) { return Math.abs(w[0] - ux) + Math.abs(w[1] - uy) === 1; }); }).map(function (c) { var ux = (c.x - xs[4]) / CELL, uy = (ys[4] - c.y) / CELL, ci = Math.floor(ux), cj = Math.floor(uy), dx = ux - ci - 0.5, dy = uy - cj - 0.5;
+        return { cell: [ci, cj], x: +ux.toFixed(2), y: +uy.toFixed(2), centered: !c.offMid && Math.abs(dx) <= CFG.cellSnap && Math.abs(dy) <= CFG.cellSnap, by: c.by || 'sheet', multi: !!c.multi, pt: toImg(c.x, c.y) }; });
+      // covered: the square looks covered, or a coin was found in its middle. partly: a coin across a line (half in two squares)
+      if (opts.cells) { var key = function (c) { return c[0] + ',' + c[1]; }, cov = {}, part = {};
+        var wanted = {}; (Array.isArray(opts.cells) ? opts.cells : []).forEach(function (c) { wanted[key(c)] = 1; });
+        // darkness alone (a silver coin the coin finders miss) counts only in a square the step asks for: elsewhere a shadow, a finger or a mark could look like a coin
+        // (and no darker than a silver coin: pencil shading a square is much darker, and copper is found by the coin reader)
+        fill.forEach(function (f) { if (!(wanted[key(f.cell)] && f.m >= CFG.cellM && f.m <= CFG.cellMmax && f.f >= CFG.cellF)) return;
+          // and coin-colored: gray (silver), copper or brass. Not a red or yellow sticker, a red die, a blue eraser
+          var pc = toImg(xs[4] + (f.cell[0] + 0.5) * CELL, ys[4] - (f.cell[1] + 0.5) * CELL), pe = toImg(xs[4] + (f.cell[0] + 0.8) * CELL, ys[4] - (f.cell[1] + 0.5) * CELL);
+          var col = colorAt(data, W, H, pc[0], pc[1], Math.hypot(pe[0] - pc[0], pe[1] - pc[1])); f.hue = col.hue; f.sat = col.sat;
+          if (col.sat < 0.2 || (col.hue >= CFG.hueMin && col.hue <= 40)) cov[key(f.cell)] = f.cell; });
+        cellCoins.forEach(function (c) { if (c.centered) cov[key(c.cell)] = c.cell; else part[key(c.cell)] = c.cell; });
+        // a square the step asks for, not covered but partly dark: a coin across its line (silver, which the coin finders may miss), or a mark
+        fill.forEach(function (f) { if (wanted[key(f.cell)] && !cov[key(f.cell)] && f.m >= 0.05 && f.f >= 0.2) part[key(f.cell)] = f.cell; });
+        Object.keys(cov).forEach(function (k) { delete part[k]; });
+        var centers = {}; for (var ii = -4; ii < 4; ii++) for (var jj = -4; jj < 4; jj++) centers[ii + ',' + jj] = toImg(xs[4] + (ii + 0.5) * CELL, ys[4] - (jj + 0.5) * CELL);
+        var c0 = toImg(xs[4], ys[4]), c1 = toImg(xs[4] + CELL, ys[4]);
+        cells = { covered: Object.keys(cov).map(function (k) { return cov[k]; }), partly: Object.keys(part).map(function (k) { return part[k]; }), coins: cellCoins, centers: centers, cellPx: +Math.hypot(c1[0] - c0[0], c1[1] - c0[1]).toFixed(1) }; }
       var coin = { found: false };
       if (cf) { var gx = (cf.x - xs[4]) / CELL, gy = (ys[4] - cf.y) / CELL;
         coin = { found: true, count: cf.count, by: cf.by || 'sheet', x: +gx.toFixed(2), y: +gy.toFixed(2), mm: +cf.mm.toFixed(1), dark: +cf.dark.toFixed(2), pt: toImg(cf.x, cf.y) };
@@ -1707,10 +1777,11 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       var soft = pWidth > CFG.soft;   // soft focus: a missing or faint line may be the photo, not the pencil
       var out = Object.assign(base, { ok: true, kind: kind, soft: soft, grid: { quad: gridQuad, mid: mid, q: +Math.min(fv.q, fh.q).toFixed(1) }, printedInk: +pInk.toFixed(2), printedWidth: +pWidth.toFixed(1),
         h: Object.assign({}, hA, { seg: seg(hA, true), fit: undefined }), v: Object.assign({}, vA, { seg: seg(vA, false), fit: undefined }),
-        coin: coin, dots: dots, origin: Object.assign(origin, origin.found ? { pt: toImg(origin.cx, origin.cy), r: +(Math.sqrt(dot.area / Math.PI) * (Hg ? 1 : 1)).toFixed(1) } : {}, { cx: undefined, cy: undefined }) });
+        coin: coin, dots: dots, cells: cells, origin: Object.assign(origin, origin.found ? { pt: toImg(origin.cx, origin.cy), r: +(Math.sqrt(dot.area / Math.PI) * (Hg ? 1 : 1)).toFixed(1) } : {}, { cx: undefined, cy: undefined }) });
       // the dot's radius in photo pixels, for the circle on the stage
       if (out.origin.found) { var e1 = toImg(dot.x + out.origin.r, dot.y); out.origin.rpx = +Math.hypot(e1[0] - out.origin.pt[0], e1[1] - out.origin.pt[1]).toFixed(1); }
       out.ms = Math.round(nowMs() - t0);
+      if (readSheet.coinLog && fill) out.fill = fill;
       if (readSheet.coinLog) out.coinSeen = { coins: seenC, sheet: sh ? sh.all : [] };
       if (readSheet.debug) out._debug = { D: D, R: Rn, xs: xs, ys: ys, T: T, pInk: pInk };
       return out;
@@ -1768,7 +1839,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       for (i = 1; i <= 4; i++) { g.fillText(String(i), ox + 0.06 * F, oy - i * cell - 0.05 * F); g.fillText('-' + i, ox + 0.06 * F, oy + i * cell - 0.05 * F); } }
     if (spec.negLabels) { g.fillStyle = 'rgba(55,57,64,' + dark + ')'; g.font = Math.round(0.22 * F) + 'px "Comic Sans MS", cursive, sans-serif';
       for (i = 1; i <= 4; i++) g.fillText('-' + i, ox - i * cell + 3, oy + 0.28 * F); }
-    [spec.coin, spec.coin2].forEach(function (cn) { if (!cn) return; var cr = (cn.mm || 19) / 2 / 25.4 * F, ccx = ox + (cn.x || 0) * cell + (cn.dx || 0) / 25.4 * F, ccy = oy - (cn.y || 0) * cell + (cn.dy || 0) / 25.4 * F, silver = cn.kind === 'silver';
+    [spec.coin, spec.coin2].concat(spec.coins || []).forEach(function (cn) { if (!cn) return; /* spec.coins: [{x, y, kind, mm, dx, dy}], x and y in squares (a unit square's middle is at .5) */ var cr = (cn.mm || 19) / 2 / 25.4 * F, ccx = ox + (cn.x || 0) * cell + (cn.dx || 0) / 25.4 * F, ccy = oy - (cn.y || 0) * cell + (cn.dy || 0) / 25.4 * F, silver = cn.kind === 'silver';
       g.save(); g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 0.06 * F; g.shadowOffsetX = 0.03 * F; g.shadowOffsetY = 0.04 * F;
       var cg = g.createRadialGradient(ccx - cr * 0.3, ccy - cr * 0.35, cr * 0.1, ccx, ccy, cr);
       if (silver) { cg.addColorStop(0, '#e4e6ea'); cg.addColorStop(0.6, '#b4b8bf'); cg.addColorStop(1, '#8c9097'); }
@@ -1814,7 +1885,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.7.0", ITERATION=7, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.8.0", ITERATION=8, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1944,12 +2015,48 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
   {id:"l4.s", label:"side from (−2, 2) to (2, 2)", do:true, mode:"side", prompt:"Look at the top side of the big square.", sub:"It goes from (−2, 2) to (2, 2).",
    ask:{kind:"count",target:4,max:8,q:"How many squares from (−2, 2) to (2, 2)?",hint:"Count the squares along the top side, from (−2, 2) to (2, 2)."},
    say:"4: from −2 to 2 along x. Both points have the same y-coordinate, 2, so the side runs straight across."},
+ ]},
+ /* Set 5: area, on the Set 4 picture. Arizona 3.MD.C.5: "A square with side length 1 unit, called 'a unit square,' is said to have 'one
+    square unit' of area… A plane figure which can be covered without gaps or overlaps by n unit squares is said to have an area of n square
+    units." 3.MD.C.6: "Measure areas by counting unit squares." 3.MD.C.7a: "Find the area of a rectangle with whole-number side lengths by
+    tiling it, and show that the area is the same as would be found by multiplying the side lengths." 6.G.A.1: "Find the area of right
+    triangles… by composing into rectangles or decomposing into triangles." 4.NF.B.4b: a whole number times a fraction (8 × ½).
+    Frank's order: fill the bottom row (across), fill the side (up), multiply, fill the whole square; then the diamond, with a hint. */
+ {key:"l5",no:5,name:"Fill the square",what:"Fill the big square with coins, one row and one side first. Count, multiply, and find its area. Then a challenge: the diamond.",std:"3.MD.C.5, 3.MD.C.6, 3.MD.C.7a, 4.NF.B.4b, 6.G.A.1",
+ end:{lines:[],q:"The big square's area is 16 square units: 4 × 4. The diamond's area is 8 square units: half of the big square."},
+ steps:[
+  {id:"l5.b", label:"fill the bottom row", prompt:"Fill the bottom row of the big square with coins.", sub:"One coin inside each square of the grid, from −2 to 2. Put each coin in the middle of its square, not on a line. Use pennies, nickels or dimes: a quarter is too big.",
+   need:{cells:[[-2,-2],[-1,-2],[0,-2],[1,-2]],where:"the bottom row"}, mode:"tile",
+   ask:{kind:"count",target:4,max:8,q:"How many coins fill the bottom row, going across?",hint:"Count the coins in the bottom row, one at a time."},
+   say:"4. Each little square of the grid is a unit square: each of its sides is 1 long.", words:["unit square"]},
+  {id:"l5.u", label:"fill the side, going up", prompt:"Fill the left side of the big square, going up.", sub:"Keep the bottom row. Add coins up the left side, from −2 to 2: one in each unit square.",
+   need:{cells:[[-2,-2],[-1,-2],[0,-2],[1,-2],[-2,-1],[-2,0],[-2,1]],where:"the bottom row and the left side"}, mode:"tile",
+   ask:{kind:"count",target:4,max:8,q:"How many coins fill the side, going up?",hint:"Count up the left side, from the bottom. The corner coin counts too: it is in the bottom row and in the side."},
+   say:"4: the corner coin is in both."},
+  {id:"l5.m", label:"4 × 4", do:true, mode:"multiply", prompt:"Multiply the two numbers.", sub:"4 coins across, 4 coins up.",
+   ask:{kind:"count",target:16,max:24,q:"4 × 4 = ?",hint:"4 rows of 4: 4 + 4 + 4 + 4."}, say:"16."},
+  {id:"l5.f", label:"fill the big square", prompt:"Fill all the unit squares in the big square with coins.", sub:"Keep the coins you have. One coin in each unit square, row by row.",
+   need:{cells:[[-2,-2],[-1,-2],[0,-2],[1,-2],[-2,-1],[-1,-1],[0,-1],[1,-1],[-2,0],[-1,0],[0,0],[1,0],[-2,1],[-1,1],[0,1],[1,1]],where:"the big square"}, mode:"tile",
+   ask:{kind:"count",target:16,max:24,q:"How many coins fill the big square?",hint:"Count row by row: how many in each row, and how many rows?"},
+   say:"16: the same as 4 × 4. One coin for each unit square: 16 unit squares cover the big square, with no gaps and no overlaps."},
+  {id:"l5.a", label:"area of the big square", do:true, mode:"area", prompt:"Look at the big square, full of coins.", sub:"Each unit square is one square unit of area. The number of unit squares that cover a shape, with no gaps and no overlaps, is its area.",
+   ask:{kind:"count",target:16,max:24,q:"What is the area of the big square, in square units?",hint:"You just filled it with coins: one coin for each unit square."},
+   say:"16 square units. The area of a square: one side times the other, 4 × 4.", words:["area","square units"]},
+  {id:"l5.k", label:"keep the coins inside the diamond", prompt:"Leave only the coins that are all the way inside the diamond.", sub:"Take off every coin that the diamond's lines cross, and every coin outside the diamond.",
+   need:{cells:[[-1,-1],[0,-1],[-1,0],[0,0]],where:"the diamond",inside:true}, mode:"tile",
+   ask:{kind:"count",target:4,max:16,q:"How many coins are all the way inside the diamond?",hint:"Count the coins still on the sheet."},
+   say:"4: four whole unit squares are inside the diamond."},
+  {id:"l5.d", label:"area of the diamond", do:true, mode:"halves", prompt:"Challenge: the area of the diamond.", sub:"Think it through before you answer. The Hint button helps.",
+   ask:{kind:"count",target:8,max:16,q:"What is the area of the diamond, in square units?",hint:"4 whole unit squares, and the half squares: two halves make one whole."},
+   hints:["The 4 coins are 4 whole unit squares. Now look at the unit squares the diamond's lines cut.","Each one is cut in half, into two triangles. How many half squares are inside the diamond? Two halves make one whole unit square.","There are 8 half squares: 8 × ½ = ? Add that to the 4 whole squares."],
+   say:"8 square units: 4 whole unit squares, and 8 half squares (triangles) make 4 more: 8 × ½ = 4. 4 + 4 = 8, half of the big square's 16.", words:["triangle"]},
  ]}];
 /* the standard each step works on (Arizona and Common Core) */
 const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","l1.y":"5.G.A.1","l1.n":"2.MD.B.6",
   "l2.c0":"5.G.A.1","l2.p1":"2.MD.B.6","l2.p2":"2.MD.B.6","l2.p3":"2.MD.B.6","l2.p4":"2.MD.B.6","l2.p5":"2.MD.B.6","l2.p6":"7.NS.A.1b","l2.n":"6.NS.C.5","l2.p7":"7.NS.A.1b","l2.p8":"7.NS.A.1b","l2.o":"6.NS.C.7c","l2.d":"7.NS.A.1c",
   "l3.c0":"5.G.A.1","l3.p1":"7.NS.A.1","l3.p2":"7.NS.A.1","l3.p3":"7.NS.A.1","l3.p4":"7.NS.A.1","l3.p5":"7.NS.A.1","l3.p6":"7.NS.A.1b","l3.n":"6.NS.C.6c","l3.p7":"7.NS.A.1b","l3.p8":"7.NS.A.1b","l3.o":"6.NS.C.7c","l3.d":"7.NS.A.1c",
-  "l4.r":"5.G.A.1","l4.pt1":"5.G.A.1","l4.pt2":"5.G.A.1","l4.pt3":"6.NS.C.6c","l4.pt4":"6.NS.C.6c","l4.c1":"6.G.A.3","l4.pt5":"5.G.A.2","l4.pt6":"6.NS.C.6c","l4.pt7":"6.NS.C.6c","l4.pt8":"6.NS.C.6c","l4.c2":"6.G.A.3","l4.s":"6.G.A.3"};
+  "l4.r":"5.G.A.1","l4.pt1":"5.G.A.1","l4.pt2":"5.G.A.1","l4.pt3":"6.NS.C.6c","l4.pt4":"6.NS.C.6c","l4.c1":"6.G.A.3","l4.pt5":"5.G.A.2","l4.pt6":"6.NS.C.6c","l4.pt7":"6.NS.C.6c","l4.pt8":"6.NS.C.6c","l4.c2":"6.G.A.3","l4.s":"6.G.A.3",
+  "l5.b":"3.MD.C.6","l5.u":"3.MD.C.6","l5.m":"3.MD.C.7a","l5.f":"3.MD.C.7a","l5.a":"3.MD.C.5b","l5.k":"3.MD.C.6","l5.d":"6.G.A.1"};
 /* a game step: the reels give a start, a sign and a count; the coin's landing is checked, then the student shows where it landed on the slider */
 const minus=v=>v<0?"−"+(-v):String(v), landOf=g=>g.start+(g.sign==="+"?1:-1)*g.count;
 const arrow=(sign,axis)=>axis==="y"?(sign==="+"?"↑":"↓"):(sign==="+"?"→":"←"), axisOf=()=>(S.set&&S.set.axis)||"x";
@@ -1973,7 +2080,7 @@ const t0=performance.now();
 function log(type,data){ S.events.push(Object.assign({t:+((performance.now()-t0)/1000).toFixed(2),set:S.set&&S.set.key,round:S.round,type},data)); persist(); }
 const PKEY="fl.progress.v1";
 function persist(){ if(!S.set) return; try{ localStorage.setItem(PKEY,JSON.stringify({at:Date.now(),set:S.set.key,round:S.round,s:S.s,stepOk:!!S.stepOk,done:!!S.loggedDone,spun:!!S.spun,coinOk:!!(S.photoOk&&ST()&&ST().game&&!S.stepOk),seen:slim(S.seen),source:S.source||null,results:S.results,photos:S.photos,events:S.events,started:S.started})) }catch(e){} }
-const slim=R=>R&&R.ok?{ok:true,h:!!(R.h&&R.h.drawn),v:!!(R.v&&R.v.drawn),o:!!(R.origin&&R.origin.found),coin:R.coin&&R.coin.found?(R.coin.at||"off"):null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined}:null;
+const slim=R=>R&&R.ok?{ok:true,h:!!(R.h&&R.h.drawn),v:!!(R.v&&R.v.drawn),o:!!(R.origin&&R.origin.found),coin:R.coin&&R.coin.found?(R.coin.at||"off"):null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined,cells:R.cells?R.cells.covered:undefined}:null;
 function loadProgress(){ try{ const p=JSON.parse(localStorage.getItem(PKEY)||"null"); if(p&&Date.now()-p.at<24*3600e3&&SETS.find(x=>x.key===p.set)) return p }catch(e){} return null }
 function forget(){ try{ localStorage.removeItem(PKEY) }catch(e){} }
 const ST=()=>S.set.steps[S.s];
@@ -2036,7 +2143,7 @@ function renderWords(all){ const out=[]; S.set.steps.forEach((x,i)=>{ if(!x.word
   $("wholes").innerHTML=out.map(([w,now])=>'<span class="'+(now?"now":"done")+'">'+esc(w)+'</span>').join(""); }
 function setFeedback(kind,html){ const f=$("feedback"); if(!html){ f.hidden=true; f.innerHTML=""; return } f.hidden=false; f.className="feedback "+kind; f.innerHTML=html; }
 function showStep(){ const st=ST(); closeCam();
-  if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.moved=false; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
+  if(!st.reuse){ S.seen=null; S.img=null; } S.photoOk=false; S.stepOk=false; S.moved=false; S.hintN=0; S.num=0; S.tries=S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===st.id).length; S.photoTries=0; S.stepAt=performance.now();
   $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
   $("where").innerHTML=esc(S.set.name)+' · <b>step '+(S.s+1)+' of '+S.set.steps.length+'</b>';
   renderWords();
@@ -2073,6 +2180,11 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(!R.ok||!R.grid) return;
   const q=R.grid.quad; g.save(); g.strokeStyle="rgba(31,79,138,.55)"; g.lineWidth=2; g.beginPath(); q.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]))); g.closePath(); g.stroke(); g.restore();
   const need=(ST()&&ST().need)||{};
+  if(need.cells&&R.cells){ const C=R.cells, ctr=c=>C.centers[c[0]+","+c[1]], half=C.cellPx*k/2, want=c=>need.cells.some(w=>samePt(w,c));
+    const ring=(c,col)=>{ const p=ctr(c); if(!p) return; g.save(); g.strokeStyle=col; g.lineWidth=3; g.beginPath(); g.arc(X(p[0]),Y(p[1]),Math.max(8,half*0.88),0,Math.PI*2); g.stroke(); g.restore(); };
+    C.covered.forEach(c=>ring(c,want(c)?"rgba(29,122,69,.95)":"rgba(154,91,0,.95)")); C.partly.forEach(c=>ring(c,"rgba(154,91,0,.95)"));
+    need.cells.filter(w=>!C.covered.some(c=>samePt(c,w))).forEach(c=>{ const p=ctr(c); if(!p) return; g.save(); g.setLineDash([6,5]); g.strokeStyle="rgba(154,91,0,.95)"; g.lineWidth=3; g.strokeRect(X(p[0])-half*0.8,Y(p[1])-half*0.8,half*1.6,half*1.6); g.restore(); });
+    return }   // Set 5: green for a coin where it belongs, amber for one that isn't, dashes for a square still empty
   if(need.dot){ (R.dots||[]).filter(d=>d.found).forEach(d=>{ const ok=samePt(d.at,need.dot)||need.have.some(h=>samePt(h,d.at)); g.save(); g.strokeStyle=ok?"rgba(29,122,69,.95)":"rgba(154,91,0,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(d.pt[0]),Y(d.pt[1]),Math.max(9,(d.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }); return }   // Set 4: the dots
   if(need.coin){ if(R.coin&&R.coin.found){ const ok=R.coin.at&&R.coin.at[0]===need.coin[0]&&R.coin.at[1]===need.coin[1]; g.save(); g.strokeStyle=ok?"rgba(29,122,69,.95)":"rgba(154,91,0,.95)"; g.lineWidth=4; g.beginPath(); g.arc(X(R.coin.pt[0]),Y(R.coin.pt[1]),Math.max(12,(R.coin.rpx||20)*k+5),0,Math.PI*2); g.stroke(); g.restore(); } return }   // the game: the coin is what counts
   const good=A=>A&&A.seg&&Math.abs(A.offset||0)<=OFF&&A.straight!==false;   // green: a line that counts; amber dashes: where the phone looked for one
@@ -2081,6 +2193,7 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(R.origin&&R.origin.found){ g.save(); g.strokeStyle="rgba(29,122,69,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(R.origin.pt[0]),Y(R.origin.pt[1]),Math.max(9,(R.origin.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }
 }
 function seenText(R){ if(!R||!R.ok) return ""; const parts=["the grid"];
+  if(ST()&&ST().need&&ST().need.cells) return R.cells&&R.cells.covered.length?"I see your coins.":"I see the grid, but no coins in the squares.";   // not how many: that's the question
   if(ST()&&ST().need&&ST().need.dot){ const P=ST().need.dot; return (R.dots||[]).some(d=>d.found&&samePt(d.at,P))?"I see your dot on "+pair(P)+".":"I see the grid and your axes."; }
   if(ST()&&ST().need&&ST().need.coin){ return R.coin&&R.coin.found?"I see your coin.":"I see the grid, but no coin."; }   // not where it is: that's the question that comes next
   if(R.h&&R.h.drawn&&Math.abs(R.h.offset||0)<=OFF&&R.h.straight!==false) parts.push("a line across the middle"); if(R.v&&R.v.drawn&&Math.abs(R.v.offset||0)<=OFF&&R.v.straight!==false) parts.push("a line up the middle"); if(R.origin&&R.origin.found) parts.push("a dot where they cross");
@@ -2106,8 +2219,22 @@ function dotProbs(R,need){ const P=need.dot, found=(R.dots||[]).filter(d=>d.foun
   const near=(R.dots||[]).find(d=>samePt(d.at,P));
   if(near&&near.n>=25) return ["Make the dot on "+pair(P)+" bigger and darker: about as big as a pencil eraser, colored in."];
   return ["I can't see a dot on "+pair(P)+". Lift the coin, and color in a dot right where it was, on the grid point."]; }
+/* Set 5: are the coins in just the unit squares the step asked for? */
+function cellProbs(R,need){ const C=R.cells||{covered:[],partly:[]}, has=a=>need.cells.some(w=>samePt(w,a)), got=C.covered;
+  const missing=need.cells.filter(w=>!got.some(g=>samePt(g,w))), extra=got.filter(g=>!has(g)), across=C.partly.filter(p=>!got.some(g=>samePt(g,p)));
+  const n=(k,w)=>k+" "+w+(k===1?"":"s");
+  if(need.inside){   // Set 5's diamond: keep only the coins all the way inside it
+    if(extra.length) return [(extra.length===1?"A coin on the sheet isn't":n(extra.length,"coin")+" on the sheet aren't")+" all the way inside the diamond: a line of the diamond crosses "+(extra.length===1?"it":"them")+", or "+(extra.length===1?"it is":"they are")+" outside. Take "+(extra.length===1?"it":"them")+" off."];
+    if(across.length&&(C.coins||[]).length) return ["A coin is on a grid line. Slide it into the middle of its unit square, or take it off if it isn't inside the diamond."];
+    if(missing.length) return [n(missing.length,"unit square")+" all the way inside the diamond "+(missing.length===1?"needs its coin":"need their coins")+" back. The empty square"+(missing.length===1?" is":"s are")+" in dashes on the photo."]; }
+  if(!got.length&&(!across.length||!(C.coins||[]).length)) return ["I can't see any coins in the unit squares. Put each coin flat, in the middle of a square, and keep your hand and its shadow off the sheet."];
+  if(across.length) return ["A coin is on a grid line, or something else is on the sheet. Slide each coin into the middle of its unit square."];
+  if(extra.length) return [("There "+(extra.length>1?"are "+extra.length+" coins":"is a coin")+" outside "+need.where+". Take "+(extra.length>1?"them":"it")+" off: the coins go only in "+need.where+".")];
+  if(missing.length) return [("Put "+missing.length+" more coin"+(missing.length>1?"s":"")+" in "+need.where+": one in each unit square. The empty square"+(missing.length>1?"s are":" is")+" in dashes on the photo.")];
+  return []; }
 function check(R,need){ const probs=[];
   if(need.dot) return dotProbs(R,need);
+  if(need.cells) return cellProbs(R,need);
   if(need.coin){ const c=R.coin, st=ST(), g=st&&st.game;
     if(!c||!c.found) return ["I can't see your coin. Put it on the sheet, keep your hand and its shadow off the sheet, and tilt the phone a little if the coin shines."];
     if(c.count>1) return ["I see more than one coin. Leave just your game piece on the sheet."];
@@ -2133,9 +2260,9 @@ function check(R,need){ const probs=[];
   return probs; }
 
 function analyse(img,w,h,source){ const st=ST(); let R;
-  try{ R=window.readSheet(img,w,h,{coin:!!(st.need&&st.need.coin),dots:!!(st.need&&st.need.dot),axis:axisOf()}); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
+  try{ R=window.readSheet(img,w,h,{coin:!!(st.need&&st.need.coin),dots:!!(st.need&&st.need.dot),cells:(st.need&&st.need.cells)||false,axis:axisOf()}); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
   S.seen=R; S.img=img; S.source=source; S.photoTries++;
-  const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found,coin:R.coin&&R.coin.found?{at:R.coin.at,x:R.coin.x,y:R.coin.y}:null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined}:null;
+  const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found,coin:R.coin&&R.coin.found?{at:R.coin.at,x:R.coin.x,y:R.coin.y}:null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined,cells:R.cells?R.cells.covered:undefined}:null;
   log("photo",{step:st.id,source,w,h,ok:!!R.ok,reason:R.reason||null,seen:brief,ms:R.ms});
   drawStage();
   if(!R.ok){ $("seen").textContent=""; setFeedback("warn","<b>I can't read this photo.</b>"+esc(R.message||"Put the sheet on a table, get all of it in the picture, and take it again.")); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); showResult(); return }
@@ -2178,14 +2305,24 @@ $("did").onclick=()=>{ const st=ST(); if(S.stepOk||!st.do) return; S.stepOk=true
   setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); persist(); showResult(["nextRow","feedback"]); };
 
 /* ---- the one number to set ---- */
-function renderEq(){ const a=ST().ask; if(a.kind==="line") return renderLine(a); let h='<span class="say">'+escEq(a.q)+'</span>';
+function renderHints(){ const st=ST(), H=st.hints||[], box=$("hintBox"); $("hintBtn").hidden=!H.length||S.hintN>=H.length||S.stepOk; $("hintBtn").textContent=S.hintN?"Another hint":"Hint";
+  box.hidden=!S.hintN; while(box.children.length>S.hintN) box.lastChild.remove();
+  for(let i=box.children.length;i<S.hintN;i++){ const li=document.createElement("li"); li.innerHTML=escEq(H[i]); box.appendChild(li); } }
+$("hintBtn").onclick=()=>{ const st=ST(); if(!st.hints||S.stepOk) return; S.hintN=Math.min(st.hints.length,(S.hintN||0)+1); log("hint",{step:st.id,n:S.hintN}); renderHints(); if($("hintBtn").hidden){ $("hintBox").tabIndex=-1; try{ $("hintBox").focus() }catch(e){} } persist(); };
+function renderEq(){ renderHints(); const a=ST().ask; if(a.kind==="line") return renderLine(a); let h='<span class="say">'+escEq(a.q)+'</span>';
   const arrows='<span class="arrows"><button type="button" id="up" aria-label="Up">▲</button><button type="button" id="down" aria-label="Down">▼</button></span>';
   if(a.kind==="frac") h+='<span class="nowrap"><span class="frac ask"><span id="num">'+S.num+'</span><span class="bar"></span><span>'+a.den+'</span></span>'+arrows+'</span>';
   else h+='<span class="nowrap"><span class="countbox" id="num">'+S.num+'</span>'+arrows+'</span>';
   $("eq").innerHTML=h; $("submit").disabled=false;
   const max=a.max||(a.kind==="frac"?a.den:15);
   $("up").onclick=()=>{ if(S.stepOk) return; S.num=Math.min(max,S.num+1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; };
-  $("down").onclick=()=>{ if(S.stepOk) return; S.num=Math.max(0,S.num-1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; }; }
+  $("down").onclick=()=>{ if(S.stepOk) return; S.num=Math.max(0,S.num-1); $("num").textContent=S.num; $("submit").disabled=false; $("nextRow").hidden=true; };
+  hold($("up")); hold($("down")); }
+/* press and hold ▲ or ▼: it keeps counting (16 is a lot of taps) */
+function hold(b){ let t=null, rep=false; const stop=()=>{ clearTimeout(t); clearInterval(t); t=null; };
+  b.onpointerdown=e=>{ rep=false; stop(); t=setTimeout(()=>{ rep=true; b.onclick(); t=setInterval(()=>b.onclick(),110); },450); };
+  b.onpointerup=b.onpointerleave=b.onpointercancel=stop;
+  b.addEventListener("click",e=>{ if(rep){ rep=false; e.stopImmediatePropagation(); } },true); }
 /* the number line: always starts at 0; slide, tap a mark, or use the arrows. Numbers left of 0 show only once the set has
    named them; before that, the mark is there and the readout shows the number when you get there. */
 function renderLine(a){ if(a.axis==="y") return renderLineY(a); const before=S.set.steps.findIndex(x=>/\.p6$/.test(x.id))>S.s, lo=before?0:a.min, hi=a.max, n=hi-lo, W=250, pad=16, step=(W-2*pad)/n, X=v=>pad+(v-lo)*step, named=negNamed();
@@ -2220,7 +2357,7 @@ function renderLineY(a){ const before=S.set.steps.findIndex(x=>/\.p6$/.test(x.id
   show(); $("submit").disabled=!S.moved; }
 $("submit").onclick=()=>{ const st=ST(), a=st.ask; if(!a||S.stepOk) return; $("submit").disabled=true;
   const ok=S.num===a.target, wrote=a.kind==="frac"?S.num+"/"+a.den:a.kind==="line"?minus(S.num):String(S.num);
-  answer(st,ok,wrote);
+  answer(st,ok,wrote,st.hints?{hints:S.hintN||0}:null); if(ok) renderHints();
   if(ok){ S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); }
   else { setFeedback("warn","<b>"+(a.kind==="frac"||a.kind==="line"?wrote+" isn't it.":S.num+" isn't it.")+"</b>"+hint(st)+" Change it and Submit again, or go on."); showNext(); }
   persist(); showResult(["nextRow","feedback"]); };
@@ -2238,6 +2375,9 @@ function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…"
   function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
 $("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
 $("sampleBtn").onclick=()=>{ const n=ST().need||{}, game=S.set.key!=="l1", labels=game||S.set.steps.findIndex(x=>x.id==="l1.z")<S.s;
+  if(n.cells){ const SQ=[[2,0],[0,2],[-2,0],[0,-2],[2,2],[-2,2],[-2,-2],[2,-2]];
+    const c=window.drawSheetSample({h:true,v:true,dot:true,labels:true,negLabels:true,yLabels:true,cut:true,dots:SQ.map(p=>({x:p[0],y:p[1]})),segs:[[2,0,0,2],[0,2,-2,0],[-2,0,0,-2],[0,-2,2,0],[2,2,-2,2],[-2,2,-2,-2],[-2,-2,2,-2],[2,-2,2,2]],coins:n.cells.map(c=>({x:c[0]+0.5,y:c[1]+0.5})),seed:S.s+7*S.round,width:900,height:1100});
+    return analyse(c,c.width,c.height,"sample"); }
   if(n.dot){ const done=id=>S.set.steps.findIndex(x=>x.id===id)<S.s, D=[[2,0,0,2],[0,2,-2,0],[-2,0,0,-2],[0,-2,2,0]], Q=[[2,2,-2,2],[-2,2,-2,-2],[-2,-2,2,-2],[2,-2,2,2]];
     const c=window.drawSheetSample({h:true,v:true,dot:true,labels:true,negLabels:true,yLabels:true,cut:true,dots:n.have.concat([n.dot]).map(p=>({x:p[0],y:p[1]})),segs:(done("l4.c1")?D:[]).concat(done("l4.c2")?Q:[]),seed:S.s+7*S.round,width:900,height:1100});
     return analyse(c,c.width,c.height,"sample"); }
