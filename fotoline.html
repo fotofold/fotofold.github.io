@@ -1784,7 +1784,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
             // the four crayon colors, with room between them: orange, brown and tan (15-38°), violet (240-335°) are "other"; pale yellow needs less color
             var yel = hue >= 38 && hue < 75, k;
             if (sat < (yel ? CFG.tileSatY : CFG.tileSat)) k = mx < 0.62 ? 'gray' : 'none';
-            else k = (hue >= 335 || hue < 12 || (hue < 20 && g / Math.max(r, 1e-3) < 0.5)) ? (mx < 0.45 ? 'other' : 'red') : hue < 38 ? 'other' : yel ? 'yellow' : hue < 178 ? 'green' : hue < 240 ? 'blue' : 'other';   // brown and orange (12-38°, and not deep red) are other
+            else k = (hue >= 335 || hue < 12 || (hue < 20 && g / Math.max(r, 1e-3) < 0.5)) ? (mx < 0.45 ? 'other' : 'red') : hue < 38 ? 'other' : yel ? 'yellow' : hue < 178 ? 'green' : (hue < 240 || (hue < 258 && sat >= 0.6)) ? 'blue' : 'other';   // a deep blue marker (navy, ~243°) is blue; a pale blue-violet is not   // brown and orange (12-38°, and not deep red) are other
             count[k]++; n++; }
           var best = 'none', bn = -1; ['yellow', 'green', 'blue', 'red', 'other', 'gray'].forEach(function (k) { if (count[k] > bn) { bn = count[k]; best = k; } });
           // colored: how much of the tile has color; share: how much of the color is one color (wax shine and gaps leave paper, not another color)
@@ -1948,7 +1948,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.9.0", ITERATION=9, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.10.0", ITERATION=10, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -2263,8 +2263,8 @@ function spinPair(st){ if(S.spun) return; $("spin").disabled=true; const reels=[
       S.spun=true; log("spin",{step:st.id}); persist(); afterSpin(st); $("photoRow").hidden=false; $("sampleBtn").hidden=false; showResult(["photoRow"]); } },70); }
 /* after the spin: the reels show the turn, and the instruction says what to do with it */
 function afterSpin(st){ if(st.tile!==undefined){ const t=TILES[st.tile]; showTile(t,true); $("spin").hidden=true; $("sub").hidden=false;
-    const acts=st.part==="dots"?["Mark each point with a dot, colored in.","Take a photo."]:st.part==="color"?["Connect the points in order, and back to the first one.","Color the square "+t.color+".","Take a photo."]
-      :["Mark each point with a dot.","Connect them in order, and back to the first one.","Color the "+shapeOf(t)+" "+t.color+".","Take a photo."];
+    const acts=st.part==="dots"?["Mark each point with a pencil dot, like the one at the origin.","Take a photo."]:st.part==="color"?["Connect the points in order, and back to the first one.","Color the square "+t.color+".","Take a photo."]
+      :["Mark each point with a pencil dot (some are already there).","Connect them in order, and back to the first one.","Color the "+shapeOf(t)+" "+t.color+".","Take a photo."];
     $("prompt").textContent=st.part==="dots"?"Mark the "+t.poly.length+" points.":"Make the "+shapeOf(t)+".";
     $("sub").innerHTML='<ol class="acts">'+acts.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ol>"; return }
   if(st.plot){ const P=st.plot; $("reelX").textContent=minus(P[0]); $("reelY").textContent=minus(P[1]); $("spin").hidden=true;
@@ -2319,7 +2319,8 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(!R.ok||!R.grid) return;
   const q=R.grid.quad; g.save(); g.strokeStyle="rgba(31,79,138,.55)"; g.lineWidth=2; g.beginPath(); q.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]))); g.closePath(); g.stroke(); g.restore();
   const need=(ST()&&ST().need)||{};
-  if(need.verts){ (R.dots||[]).filter(d=>d.found).forEach(d=>{ const ok=need.verts.some(v=>samePt(v,d.at)); g.save(); g.strokeStyle=ok?"rgba(29,122,69,.95)":"rgba(90,99,94,.6)"; g.lineWidth=3; g.beginPath(); g.arc(X(d.pt[0]),Y(d.pt[1]),Math.max(9,(d.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }); return }
+  if(need.verts){ if(R.origin&&R.origin.found&&TILES[ST().tile].poly.some(p=>!p[0]&&!p[1])){ g.save(); g.strokeStyle="rgba(29,122,69,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(R.origin.pt[0]),Y(R.origin.pt[1]),Math.max(9,(R.origin.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }
+    (R.dots||[]).filter(d=>d.found).forEach(d=>{ const ok=need.verts.some(v=>samePt(v,d.at)); g.save(); g.strokeStyle=ok?"rgba(29,122,69,.95)":"rgba(90,99,94,.6)"; g.lineWidth=3; g.beginPath(); g.arc(X(d.pt[0]),Y(d.pt[1]),Math.max(9,(d.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }); return }
   if(need.tiles&&R.tiles){ const c=tileCheck(R,need), poly=(i,col,dash,fill)=>{ const P=R.tiles[i].pts; g.save(); if(dash) g.setLineDash([7,6]); g.beginPath(); P.forEach((p,j)=>j?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]))); g.closePath();
       if(fill){ g.fillStyle=fill; g.fill(); } g.strokeStyle=col; g.lineWidth=3; g.stroke(); g.restore(); };
     const rg=tileRange(ST()); for(let i=rg[0];i<rg[1];i++) if(c.missing.indexOf(i)<0&&c.partly.indexOf(i)<0&&c.wrong.indexOf(i)<0) poly(i,"rgba(29,122,69,.9)");
@@ -2388,7 +2389,7 @@ function cellProbs(R,need){ const C=R.cells||{covered:[],partly:[]}, has=a=>need
 function vertProbs(R,need){ const found=(R.dots||[]).filter(d=>d.found).map(d=>d.at), miss=need.verts.filter(v=>!found.some(f=>samePt(f,v)));
   if(!miss.length) return [];
   const near=(R.dots||[]).filter(d=>!d.found&&d.n>=25&&miss.some(m=>samePt(m,d.at)));
-  return [(miss.length===1?"I can't see a dot on "+pair(miss[0]):"I can't see dots on "+miss.map(pair).join(" and "))+". "+(near.length?"Make each dot bigger and darker: about as big as a pencil eraser, colored in.":"Color in a dot right on each point the reels gave.")]; }
+  return [(miss.length===1?"I can't see a dot on "+pair(miss[0]):"I can't see dots on "+miss.map(pair).join(" and "))+". "+(near.length?"Make each dot bigger and darker, like the one at the origin.":"Make a pencil dot on each point the reels gave, like the one at the origin.")]; }
 /* Each tile step checks its own tile; each mirror checks its new tiles. Tiles already done stay as they are: crayon can't be erased,
    and one mistake must not block the rest. A tile colored early in its right color is fine (drew ahead). */
 function tileRange(st){ return st.tile!==undefined?[st.tile,st.tile+1]:st.mirror===24?[12,24]:[6,12]; }
@@ -2403,7 +2404,7 @@ function tileProbs(R,need){ const c=tileCheck(R,need), st=ST(), one=i=>"the "+sh
     if(c.missing.length&&c.early.length) return ["I see "+t.color+" in "+one(c.early[0])+". This tile is "+one(cur)+": color it "+t.color+" too."];
     if(c.missing.length) return ["I can't see the color in "+one(cur)+". Color it "+t.color+", right up to its sides: the phone shows it in dashes."];
     if(c.partly.length) return ["Color all of "+one(cur)+", right up to its sides."];
-    if(c.wrong.length){ const g=(R.tiles[cur].color||"").replace(/^some /,""); return ["That tile looks "+colorWord(g)+": the reels said "+t.color+". Color over it in "+t.color+", as well as you can. If that won't work, tap The phone got it wrong to go on."]; }
+    if(c.wrong.length){ const g=(R.tiles[cur].color||"").replace(/^some /,""); return ["That tile looks "+colorWord(g)+": the reels said "+t.color+". Color over it in "+t.color+", as well as you can, or tap The phone got it wrong to go on."]; }
     return []; }
   const todo=c.missing.length+c.partly.length;
   if(todo) return [(todo===1?"1 tile still needs its":todo+" tiles still need their")+" color, right up to the sides: the phone shows "+(todo===1?"it":"them")+" in dashes."];
@@ -2450,7 +2451,8 @@ function analyse(img,w,h,source){ const st=ST(); let R;
   if(st.plot) plotAnswer(st,R,ok);
   if(st.tile!==undefined||st.mirror!==undefined) tileAnswer(st,R,ok);
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:brief});
-  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); persist(); showResult(); return }
+  const firstTry=st.need&&st.need.tiles&&tileCheck(R,st.need).wrong.length;   // a wrong color can't be erased: the way on shows at once
+  if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&(S.photoTries>=3||firstTry)); persist(); showResult(); return }
   photoGood(); }
 /* Set 4: each point is an answer, as each hop was: right when its dot is there; wrong when a new dot is somewhere else
    (what it says is where that dot is). No new dot, or a stray dot beside the right one: not yet, and no answer counted. */
