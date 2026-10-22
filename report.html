@@ -274,7 +274,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
     <div class="filters" role="group" aria-label="Filters">
       <div class="seg" id="setSeg" role="group" aria-label="Set"></div>
       <label class="flab" for="classSel">Class <select id="classSel"></select></label>
-      <label class="flab" for="incSample"><input type="checkbox" id="incSample"> Count sample work (strip or coins)</label>
+      <label class="flab" for="incSample"><input type="checkbox" id="incSample"> Count sample work (strip, coins or sheet)</label>
       <nav class="jump" aria-label="Jump to"><a href="#pctSec">First-try percentages</a><a href="#gridSec">Class grid</a><a href="#storySec">Each step's story</a><a href="#baSec">Before and after</a></nav>
     </div>
 
@@ -293,7 +293,7 @@ footer{color:var(--muted);font-size:13px;display:grid;gap:6px;border-top:1px sol
         <span><i class="m no">✗</i>never right (moved on)</span>
         <span><i class="m skip">skip</i>moved on, no answer</span>
         <span><i class="m nr">—</i>not reached</span>
-        <span><i class="m ok smp">✓</i>sample strip or coins</span>
+        <span><i class="m ok smp">✓</i>sample strip, coins or sheet</span>
         <span id="legUnev"><i class="m ok unev">✓</i>uneven fold on this whole</span>
       </div>
       <div class="row" style="justify-content:space-between">
@@ -491,7 +491,7 @@ function build(){
   for(const T of sets.values()){
     T.wholes=[]; for(const s of T.steps){ s.whole=wholeKeyOf(s.id); let W=T.wholes.find(w=>w.key===s.whole);
       if(!W){ W={key:s.whole,n:nOf[T.key+"."+s.whole]||null,steps:[]}; T.wholes.push(W) } W.steps.push(s) }
-    T.wholes.forEach(W=>{ const m=/^([wbs])(\d+)$/.exec(W.key), c=/^n(\d+)$/.exec(W.key); W.tag = appOf(T)==="FotoLine"?"the axes":W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]+(m[1]==="s"?", again":""):c?c[1]+" coins":(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins; s12 = a whole of 12 again; n6 = 6 coins, no whole
+    T.wholes.forEach(W=>{ const m=/^([wbs])(\d+)$/.exec(W.key), c=/^n(\d+)$/.exec(W.key); W.tag = appOf(T)==="FotoLine"?(T.key==="l2"?"the game":"the axes"):W.key==="bridge"?"bridge":m?(m[1]==="b"?"bottom whole of ":"whole of ")+m[2]+(m[1]==="s"?", again":""):c?c[1]+" coins":(W.n?W.n+" parts":W.key) }); // FotoSet: w4 = whole of 4 coins; s12 = a whole of 12 again; n6 = 6 coins, no whole
     T.steps=T.wholes.flatMap(W=>W.steps); T.steps.forEach((s,i)=>{ s.i=i; s.g0 = T.wholes.find(W=>W.key===s.whole).steps[0]===s });
   }
   // cells
@@ -622,7 +622,7 @@ function renderHeadline(T,rows,stats){
    '<div class="tile"><b>'+(scores.length?fmtNum(median(scores)):"—")+' <small style="font-size:15px;font-weight:600">of '+T.steps.length+'</small></b><span>median steps right on the first try</span></div>'+
    '<div class="tile"><b>'+again.length+'</b><span>did the set again</span></div></div>';
 }
-const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)"};
+const KIND_NAME={fresh:"Color a fraction",add:"Add",sub:"Take away",same:"Same length, other name",compare:"Compare",name:"Fewest parts",estimate:"Estimate",repeat:"Repeat a part (times)",fit:"How many fit (divide)",frac:"Fraction of a set (FotoSet)",count:"Coins in a part (FotoSet)",along:"Count along an axis (FotoLine)",hop:"Hop along x (FotoLine)",distance:"Distance from 0 (FotoLine)"};
 function renderPct(){ const by={set:new Map(),kind:new Map(),std:new Map()}, tot=[0,0];
   const add=(m,k,ok,n)=>{ if(!m.has(k)) m.set(k,[0,0]); const e=m.get(k); e[0]+=ok; e[1]+=n; };
   for(const T of [...M.sets.values()].sort((a,b)=>ord(a)-ord(b))){ const stats=stepStats(T,rowsFor(T.key));
