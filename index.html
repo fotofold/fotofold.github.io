@@ -754,7 +754,7 @@ $("retake").onclick=()=>armed($("retake"),"Tap again: start this whole over with
 
 /* ---- screens ---- */
 const SITE_NAME="Fractions by Photo";
-const FOTOSET_ITER=(v=>v.indexOf("/*")===0?"":v)("8"), FOTOLINE_ITER=(v=>v.indexOf("/*")===0?"":v)("2");   // put in by the site build: the first screen shows both versions   // the name over both activities (a working title)
+const FOTOSET_ITER=(v=>v.indexOf("/*")===0?"":v)("8"), FOTOLINE_ITER=(v=>v.indexOf("/*")===0?"":v)("3");   // put in by the site build: the first screen shows both versions   // the name over both activities (a working title)
 function view(which){ for(const v of ["homeView","stepView","doneView"]) $(v).hidden = v!==which; $("brandName").textContent = which==="homeView" ? SITE_NAME : "FotoFold"; $("homeFoot").hidden = which!=="homeView"; $("mapStatus").hidden = which==="homeView"; $("home").setAttribute("aria-label",(which==="homeView"?SITE_NAME:"FotoFold")+", back to the start"); }
 let FOLD_OPEN=false;   // closed each time the site opens, so both activities show; open while you're working in it
 function openFolder(on,save){ $("foldBody").hidden=!on; $("foldBox").classList.toggle("open",!!on); $("foldFolder").setAttribute("aria-expanded",on?"true":"false"); if(save) FOLD_OPEN=!!on; }

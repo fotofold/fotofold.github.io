@@ -562,7 +562,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.2.0", ITERATION=2, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.3.0", ITERATION=3, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -636,7 +636,7 @@ function renderHome(){ view("homeView"); $("wholes").innerHTML=""; $("brandSet")
 function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.photos=p.photos||[]; S.events=p.events||[]; S.started=p.started||S.started;
   S.seen=p.seen||null; S.img=null; S.source=p.source||null; S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
   view("stepView"); log("resume",{step:S.s}); showStep(); }
-function startSet(X){ S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(X.key)); bumpRound(X.key,S.round); setOwner(S.student); S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); sendJoin(); note("step",{type:"start",set:X.key,no:X.no,round:S.round,of:asked().length}); showStep(); }
+function startSet(X){ S.prev=null; S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(X.key)); bumpRound(X.key,S.round); setOwner(S.student); S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); sendJoin(); note("step",{type:"start",set:X.key,no:X.no,round:S.round,of:asked().length}); showStep(); }
 $("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.dataset.armed){ delete b.dataset.armed; closeCam(); renderHome(); return } b.dataset.armed="1"; const t=b.textContent; b.textContent="tap again to leave this set"; setTimeout(()=>{ if(b.dataset.armed){ delete b.dataset.armed; b.textContent=t } },3500); } else renderHome(); };
 
 /* ======================= A STEP ======================= */
@@ -653,6 +653,7 @@ function showStep(){ const st=ST(); closeCam();
   $("prompt").textContent=st.prompt; $("sub").textContent=st.sub; $("sub").hidden=!st.sub;
   $("photoRow").hidden=false; $("sampleBtn").hidden=false; $("anyway").hidden=true; $("answerRow").hidden=true; $("nextRow").hidden=true; $("didRow").hidden=true; setFeedback("","");
   $("stageBox").hidden=!!st.do; $("seen").hidden=!!st.do; $("seen").textContent=""; drawStage(); persist();
+  if(st.need&&!st.ask&&S.prev&&S.prev.set===S.set.key&&S.prev.round===S.round&&!check(S.prev.R,st.need).length) return already(st);
   if(st.do){ S.photoOk=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;   // no photo: done when the student says so, or when they answer
     if(st.ask){ $("answerRow").hidden=false; renderEq(); } else $("didRow").hidden=false; }
   requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} }); }
@@ -721,7 +722,13 @@ function analyse(img,w,h,source){ const st=ST(); let R;
   if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); persist(); showResult(); return }
   photoGood(); }
 function showResult(order){ requestAnimationFrame(()=>{ const t=(order||["answerRow","nextRow","feedback"]).map(id=>$(id)).find(e=>!e.hidden); try{ const r=t&&t.getBoundingClientRect(); if(r&&(r.bottom>innerHeight||r.top<0)) t.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(e){} }); }   // only when it's out of view
-function photoGood(){ const st=ST(); S.photoOk=true; $("anyway").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
+/* the last photo already shows what this step asks for (the student drew ahead): say so, name it, and go on */
+function already(st){ S.seen=S.prev.R; S.img=S.prev.img; S.source="photo"; S.photoOk=true; S.stepOk=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
+  drawStage(); $("seen").textContent=seenText(S.seen);
+  S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,correct:true,try:1,already:true,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:"photo"}); log("already",{step:st.id});
+  setFeedback("good","<b>"+escEq(st.say)+"</b>Your last photo already shows this."); renderWords(); showNext(); persist();
+  requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} }); }
+function photoGood(){ const st=ST(); S.photoOk=true; if(S.seen&&S.seen.ok&&S.img) S.prev={R:S.seen,img:S.img,set:S.set.key,round:S.round}; $("anyway").hidden=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;
   if(st.ask){ setFeedback("",""); $("answerRow").hidden=false; renderEq(); }
   else { S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); } persist(); showResult(); }
 $("anyway").onclick=()=>{ const st=ST(); log("phone_miscounted",{step:st.id,seen:slim(S.seen)});
