@@ -201,6 +201,1118 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 </main>
 
 <script>
+/*
+ * FotoSet coin reader.  Plain browser JavaScript, no libraries, no network.
+ *
+ * window.readCoins(source, w, h, expect?)
+ *   source: HTMLImageElement | ImageBitmap | canvas (anything drawImage accepts); w, h: its size.
+ *   Photos longer than 1200 px are downscaled to 1100 px on the long side; all coordinates are in that size.
+ *   expect (optional): { top: {count, piles}, bottom: {count, piles} }.  `piles` = number of piles the step
+ *   asks for: that half is split into exactly that many piles by cutting the piles-1 longest links of a
+ *   minimum spanning tree over the coin centres.  `count` is NOT used to change the count (a student who put
+ *   11 coins down must be told 11).  Without piles, natural breaks are used.
+ *   Returns {
+ *     ok, reason?, message?,          // reason: 'no_paper' | 'too_dark' | 'no_coins' | 'unreadable'
+ *     size: {w, h}, scale,            // working size, and working/original scale
+ *     coins: [{x, y, r, half: 'top'|'bottom', pile}],
+ *     coinR,                          // typical coin radius (median)
+ *     fold: {y, found, angle, x0, y0, x1, y1, coverage},   // y at the image centre column; angle in degrees
+ *     paper: {x0, y0, x1, y1},
+ *     top:    {count, piles: [sizes in reading order: rows top to bottom, each row left to right],
+ *              pileOf: [pile index per entry of coins, -1 if the coin is in the other half], clear, links},
+ *     bottom: {...same},
+ *     confidence,                     // 0..1
+ *     ms, stages                      // timing (total, per stage) for debugging
+ *   }
+ *   Link weights in `links` are centre distance / (r1 + r2): 1.0 = touching.
+ *
+ * window.drawCoinsSample(spec) -> canvas (default 1200x900) with a synthetic photo; canvas.truth holds the truth.
+ *   spec: { top: [pile sizes], bottom: [pile sizes], seed,
+ *           optional: rotate (deg), light (0..1), spacing (centre pitch in a pile, in diameters, 1.0 = touching),
+ *           gap (clear space between piles, in diameters), mixed (1/2/5 cent sizes), shadow, fold (line alpha, 0 = none),
+ *           coinScale, handShadow (0..0.5), tint ('cool'|'warm'), blur (px), noise, width, height }
+ *
+ * window.coinsOverlay(source, result) -> canvas with coins, pile hulls, fold line and a summary (debugging).
+ * window.coinsWarmup() -> ms.  Optional: call once at app start so the first real read is faster.
+ */
+(function (root) {
+  'use strict';
+
+  var PI = Math.PI;
+  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+  function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function median(a) { if (!a.length) return 0; var b = a.slice().sort(function (p, q) { return p - q; }); var m = b.length >> 1; return b.length % 2 ? b[m] : 0.5 * (b[m - 1] + b[m]); }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  /* ------------------------------------------------------------------ */
+  /* small image helpers                                                 */
+  /* ------------------------------------------------------------------ */
+
+  // hot per-pixel loops live in small functions so the JIT optimises them once and reuses them
+  function lumSat(data, N, L, C) {
+    for (var i = 0, j = 0; i < N; i++, j += 4) {
+      var r = data[j], g = data[j + 1], b = data[j + 2];
+      L[i] = (r + 2 * g + b) >> 2;
+      var mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+      C[i] = mx > 0 ? ((mx - mn) * 255 / mx) | 0 : 0;   // saturation 0..255 (exposure independent)
+    }
+  }
+  function blockMeans(L, C, W, H, bs, sw, bxi, bL, bC, bN) {
+    for (var y = 0; y < H; y += 2) {
+      var by = ((y / bs) | 0) * sw, o = y * W;
+      for (var x = 0; x < W; x += 2) { var bi = by + bxi[x]; bL[bi] += L[o + x]; bC[bi] += C[o + x]; bN[bi]++; }
+    }
+  }
+  // coin pixels: warm and dark relative to the local paper colour (pr,pg,pb), interpolated along the row
+  function maskRow(data, o3, xs, xe, rr, rg, rb, ix0, ix1, ixa, M, PL) {
+    for (var x = xs; x <= xe; x++) {
+      var k0 = ix0[x], k1 = ix1[x], aa = ixa[x];
+      var pr = rr[k0] + (rr[k1] - rr[k0]) * aa, pg = rg[k0] + (rg[k1] - rg[k0]) * aa, pb = rb[k0] + (rb[k1] - rb[k0]) * aa;
+      if (pr < 1) pr = 1; if (pg < 1) pg = 1; if (pb < 1) pb = 1;
+      var idx = o3 + x, j = 4 * idx;
+      PL[idx] = (pr + 2 * pg + pb) * 0.25;
+      var rn = data[j] * 255 / pr, gn = data[j + 1] * 255 / pg, bn = data[j + 2] * 255 / pb;
+      var warm = rn - bn, dark = 255 - (rn + 2 * gn + bn) * 0.25;
+      if ((warm >= 30 && dark >= 40) || (dark >= 130 && warm >= 12)) M[idx] = 1;
+    }
+  }
+  // 4-connected components of M within [i0, i1]; pushes {id, area, bbox} to blobs
+  function labelBlobs(M, W, H, CL, st, blobs, i0, i1) {
+    for (var i = i0; i <= i1; i++) if (M[i] && !CL[i]) {
+      var bid = blobs.length + 1, spp = 0, ar = 0, bx0 = W, by0 = H, bx1 = 0, by1 = 0;
+      st[spp++] = i; CL[i] = bid;
+      while (spp) {
+        var qq = st[--spp]; ar++;
+        var qx2 = qq % W, qy2 = (qq / W) | 0;
+        if (qx2 < bx0) bx0 = qx2; if (qx2 > bx1) bx1 = qx2; if (qy2 < by0) by0 = qy2; if (qy2 > by1) by1 = qy2;
+        if (qx2 > 0 && M[qq - 1] && !CL[qq - 1]) { CL[qq - 1] = bid; st[spp++] = qq - 1; }
+        if (qx2 < W - 1 && M[qq + 1] && !CL[qq + 1]) { CL[qq + 1] = bid; st[spp++] = qq + 1; }
+        if (qy2 > 0 && M[qq - W] && !CL[qq - W]) { CL[qq - W] = bid; st[spp++] = qq - W; }
+        if (qy2 < H - 1 && M[qq + W] && !CL[qq + W]) { CL[qq + W] = bid; st[spp++] = qq + W; }
+      }
+      blobs.push({ id: bid, area: ar, x0: bx0, y0: by0, x1: bx1, y1: by1 });
+    }
+  }
+  // thin dark horizontal-ish line detector: how much darker a pixel is than BOTH its neighbours o rows above and below
+  function ridgeRow(L, PL, excl, ridge, o4, W, xs, xe, o1, o2) {
+    var a1 = o1 * W, a2 = o2 * W;
+    for (var x = xs; x <= xe; x += 2) {
+      var id4 = o4 + x;
+      if (excl[id4]) continue;
+      var cL = L[id4];
+      var u1 = L[id4 - a1], d1 = L[id4 + a1], u2 = L[id4 - a2], d2 = L[id4 + a2];
+      var r1 = (u1 < d1 ? u1 : d1) - cL, r2 = (u2 < d2 ? u2 : d2) - cL;
+      var p = PL[id4]; if (p < 40) p = 40;
+      var rv = (r1 > r2 ? r1 : r2) * 255 / p;
+      if (rv > 0) ridge[id4] = rv > 255 ? 255 : rv;
+    }
+  }
+
+  // 3x3 dilation / erosion of a 0/1 mask (separable)
+  function morph3(src, W, H, isMax, tmp, dst, y0, y1) {
+    var x, y, i, a, b, c;
+    for (y = y0; y <= y1; y++) {
+      var o = y * W;
+      for (x = 0; x < W; x++) {
+        i = o + x;
+        a = x > 0 ? src[i - 1] : src[i]; b = src[i]; c = x < W - 1 ? src[i + 1] : src[i];
+        tmp[i] = isMax ? (a | b | c) : (a & b & c);
+      }
+    }
+    for (y = y0; y <= y1; y++) {
+      for (x = 0; x < W; x++) {
+        i = y * W + x;
+        a = y > y0 ? tmp[i - W] : tmp[i]; c = y < y1 ? tmp[i + W] : tmp[i]; b = tmp[i];
+        dst[i] = isMax ? (a | b | c) : (a & b & c);
+      }
+    }
+    return dst;
+  }
+
+  // 1D squared Euclidean distance transform (Felzenszwalb & Huttenlocher)
+  function edt1d(f, n, d, v, z) {
+    var k = 0, q, s, p;
+    v[0] = 0; z[0] = -1e30; z[1] = 1e30;
+    for (q = 1; q < n; q++) {
+      p = v[k];
+      s = ((f[q] + q * q) - (f[p] + p * p)) / (2 * q - 2 * p);
+      while (s <= z[k]) { k--; p = v[k]; s = ((f[q] + q * q) - (f[p] + p * p)) / (2 * q - 2 * p); }
+      k++; v[k] = q; z[k] = s; z[k + 1] = 1e30;
+    }
+    k = 0;
+    for (q = 0; q < n; q++) {
+      while (z[k + 1] < q) k++;
+      p = v[k];
+      d[q] = (q - p) * (q - p) + f[p];
+    }
+  }
+
+  // Euclidean distance transform of a binary mask (inside=1) of size bw*bh; returns Float32 distances
+  function edt(mask, bw, bh) {
+    var INF = 1e20, n = Math.max(bw, bh);
+    var f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+    var g = new Float64Array(bw * bh);
+    var x, y;
+    for (x = 0; x < bw; x++) {
+      for (y = 0; y < bh; y++) f[y] = mask[y * bw + x] ? INF : 0;
+      edt1d(f, bh, d, v, z);
+      for (y = 0; y < bh; y++) g[y * bw + x] = d[y];
+    }
+    var out = new Float32Array(bw * bh);
+    for (y = 0; y < bh; y++) {
+      var o = y * bw;
+      for (x = 0; x < bw; x++) f[x] = g[o + x];
+      edt1d(f, bw, d, v, z);
+      for (x = 0; x < bw; x++) out[o + x] = Math.sqrt(d[x]);
+    }
+    return out;
+  }
+
+  // Andrew monotone chain convex hull of [[x,y],...]
+  function convexHull(pts) {
+    if (pts.length < 3) return pts.slice();
+    pts = pts.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+    function cross(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+    var lower = [], upper = [], i;
+    for (i = 0; i < pts.length; i++) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) lower.pop(); lower.push(pts[i]); }
+    for (i = pts.length - 1; i >= 0; i--) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) upper.pop(); upper.push(pts[i]); }
+    upper.pop(); lower.pop();
+    return lower.concat(upper);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* piles: minimum spanning tree over coin centres                      */
+  /* ------------------------------------------------------------------ */
+
+  // edge weight = centre distance / (r_a + r_b): 1.0 = touching, 1.5 = gap of half a coin, ...
+  function mstEdges(cs) {
+    var n = cs.length, edges = [];
+    if (n < 2) return edges;
+    var inT = new Uint8Array(n), best = new Float64Array(n), par = new Int32Array(n), i, j;
+    for (i = 0; i < n; i++) { best[i] = Infinity; par[i] = -1; }
+    best[0] = 0;
+    for (var it = 0; it < n; it++) {
+      var u = -1, bu = Infinity;
+      for (i = 0; i < n; i++) if (!inT[i] && best[i] < bu) { bu = best[i]; u = i; }
+      inT[u] = 1;
+      if (par[u] >= 0) edges.push({ a: par[u], b: u, w: bu });
+      for (j = 0; j < n; j++) if (!inT[j]) {
+        var dx = cs[u].x - cs[j].x, dy = cs[u].y - cs[j].y;
+        var w = Math.sqrt(dx * dx + dy * dy) / (cs[u].r + cs[j].r);
+        if (w < best[j]) { best[j] = w; par[j] = u; }
+      }
+    }
+    return edges;
+  }
+
+  function groupsFromEdges(n, kept) {
+    var p = new Int32Array(n), i;
+    for (i = 0; i < n; i++) p[i] = i;
+    function find(a) { while (p[a] !== a) { p[a] = p[p[a]]; a = p[a]; } return a; }
+    kept.forEach(function (e) { var a = find(e.a), b = find(e.b); if (a !== b) p[a] = b; });
+    var map = {}, groups = [];
+    for (i = 0; i < n; i++) { var r = find(i); if (map[r] === undefined) { map[r] = groups.length; groups.push([]); } groups[map[r]].push(i); }
+    return groups;
+  }
+
+  // Natural breaks without an expectation.  ws = MST link weights (centre distance / (r1+r2)), ascending.
+  // Links are compared by their edge-to-edge gap plus a small offset: c = (w - 1 + DELTA).  A break is the
+  // biggest jump in c between consecutive links; it must be big (ratio) and the upper link must be a real gap.
+  var NAT = { delta: 0.15, minUpper: 1.15, ratio: 1.8, strongRatio: 2.0, absCut: 2.0 };
+  function gapC(w) { return Math.max(0, w - 1) + NAT.delta; }
+  function contrast(lo, hi) { return gapC(hi) / gapC(lo); }
+  function naturalThreshold(ws) {
+    var m = ws.length;
+    if (!m) return { thr: Infinity, clear: true, ratio: 1 };
+    var best = 1, bi = -1, i;
+    for (i = 0; i < m - 1; i++) {
+      if (ws[i + 1] < NAT.minUpper) continue;
+      var r = contrast(ws[i], ws[i + 1]);
+      if (r > best) { best = r; bi = i; }
+    }
+    if (bi >= 0 && best >= NAT.ratio) {
+      return { thr: 0.5 * (ws[bi] + ws[bi + 1]), clear: best >= NAT.strongRatio, ratio: best };
+    }
+    if (ws[m - 1] >= NAT.absCut) {
+      var amb = ws.some(function (w) { return w > 1.6 && w < 2.5; });
+      return { thr: NAT.absCut, clear: !amb, ratio: best };
+    }
+    return { thr: Infinity, clear: ws[m - 1] < 1.6 && best < 1.5, ratio: best };
+  }
+
+  function splitHalf(cs, k) {
+    var n = cs.length;
+    if (!n) return { groups: [], clear: true, cut: [], kept: [] };
+    var edges = mstEdges(cs);
+    var asc = edges.slice().sort(function (a, b) { return a.w - b.w; });
+    var ws = asc.map(function (e) { return e.w; });
+    var nat = naturalThreshold(ws);
+    var cut, kept, clear;
+    if (k && k >= 1) {
+      var kk = Math.min(k, n);
+      cut = asc.slice(asc.length - (kk - 1));
+      kept = asc.slice(0, asc.length - (kk - 1));
+      if (kk === 1) { cut = []; kept = asc; }
+      if (kk === 1) clear = !(nat.thr < Infinity && nat.clear);
+      else {
+        var minCut = cut[0].w, maxKept = kept.length ? kept[kept.length - 1].w : 0;
+        // clear if the cut links are clearly longer than the kept ones: 1.25x in centre distance,
+        // or (for tightly packed piles) at least twice the edge-to-edge gap (offset by DELTA)
+        clear = kept.length ? (minCut >= 1.25 * maxKept || (minCut >= NAT.minUpper && contrast(maxKept, minCut) >= NAT.strongRatio)) : (minCut >= 1.2);
+      }
+      if (kk < k) clear = false;
+    } else {
+      kept = asc.filter(function (e) { return e.w < nat.thr; });
+      cut = asc.filter(function (e) { return e.w >= nat.thr; });
+      clear = nat.clear;
+    }
+    return { groups: groupsFromEdges(n, kept), clear: clear, cut: cut.map(function (e) { return e.w; }), kept: kept.map(function (e) { return e.w; }) };
+  }
+
+  // order groups: rows (top to bottom), each row left to right, in the frame aligned with the fold
+  function orderGroups(groups, cs, ang, coinR) {
+    var ca = Math.cos(ang), sa = Math.sin(ang);
+    var info = groups.map(function (g, gi) {
+      var u = 0, v = 0, vmin = Infinity, vmax = -Infinity;
+      g.forEach(function (i) {
+        var uu = cs[i].x * ca + cs[i].y * sa, vv = -cs[i].x * sa + cs[i].y * ca;
+        u += uu; v += vv; vmin = Math.min(vmin, vv - cs[i].r); vmax = Math.max(vmax, vv + cs[i].r);
+      });
+      return { gi: gi, u: u / g.length, v: v / g.length, vmin: vmin, vmax: vmax };
+    });
+    info.sort(function (a, b) { return a.v - b.v; });
+    var rows = [], cur = null;
+    info.forEach(function (p) {
+      if (cur && p.vmin < cur.vmax - 0.25 * coinR) { cur.items.push(p); cur.vmax = Math.max(cur.vmax, p.vmax); }
+      else { cur = { items: [p], vmax: p.vmax }; rows.push(cur); }
+    });
+    var order = [];
+    rows.forEach(function (r) { r.items.sort(function (a, b) { return a.u - b.u; }); r.items.forEach(function (p) { order.push(groups[p.gi]); }); });
+    return order;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* main reader                                                         */
+  /* ------------------------------------------------------------------ */
+
+  var MESSAGES = {
+    no_paper: "I can't find the white paper. Put the paper on a darker table and fit the whole sheet in the photo.",
+    too_dark: 'The photo is too dark. Turn on a light or move near a window.',
+    no_coins: "I can't see any coins on the paper.",
+    unreadable: "I couldn't read that picture. Please take the photo again."
+  };
+
+  function readCoins(source, w, h, expect) {
+    var t0 = nowMs();
+    w = w || source.naturalWidth || source.videoWidth || source.width;
+    h = h || source.naturalHeight || source.videoHeight || source.height;
+    var long = Math.max(w, h), s = long > 1200 ? 1100 / long : 1;
+    var W = Math.max(1, Math.round(w * s)), H = Math.max(1, Math.round(h * s));
+    var data;
+    try {
+      var cv = makeCanvas(W, H), ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(source, 0, 0, W, H);
+      data = ctx.getImageData(0, 0, W, H).data;
+    } catch (e) {
+      return failResult('unreadable', W, H, t0);
+    }
+    var res = analyze(data, W, H, expect || null);
+    res.scale = s;
+    res.ms = Math.round((nowMs() - t0) * 10) / 10;
+    return res;
+  }
+
+  // reused full-size buffers (avoids ~15 MB of fresh allocations per photo and the GC pauses that come with it)
+  var POOL = {};
+  function buf(name, Type, n, zero) {
+    var b = POOL[name];
+    if (!b || b.length !== n) b = POOL[name] = new Type(n);
+    else if (zero) b.fill(0);
+    return b;
+  }
+
+  function emptyHalf() { return { count: 0, piles: [], pileOf: [], clear: true }; }
+  function failResult(reason, W, H, t0) {
+    return { ok: false, reason: reason, message: MESSAGES[reason], size: { w: W, h: H }, coins: [], coinR: 0,
+      fold: { y: H / 2, found: false, angle: 0 }, paper: null, top: emptyHalf(), bottom: emptyHalf(), confidence: 0,
+      ms: t0 ? Math.round((nowMs() - t0) * 10) / 10 : 0 };
+  }
+
+  function analyze(data, W, H, expect) {
+    var N = W * H, long = Math.max(W, H), i, x, y, TM = [nowMs()];
+    var L = buf('L', Uint8Array, N), C = buf('C', Uint8Array, N);
+    lumSat(data, N, L, C);
+
+    TM.push(nowMs());
+    /* ---- 1. paper: big bright low-chroma regions, then their convex hull ---- */
+    var bs = Math.max(2, Math.round(long / 275));
+    var sw = Math.ceil(W / bs), sh = Math.ceil(H / bs), SN = sw * sh;
+    var bL = new Float32Array(SN), bC = new Float32Array(SN), bN = new Float32Array(SN);
+    var bxi = new Int32Array(W);
+    for (x = 0; x < W; x++) bxi[x] = (x / bs) | 0;
+    blockMeans(L, C, W, H, bs, sw, bxi, bL, bC, bN);
+    var CHROMA_PAPER = 56;   // saturation < 0.22: white / grey paper; wood and coins are ~0.4-0.7
+    var hist = new Float64Array(256), hn = 0;
+    for (i = 0; i < SN; i++) { if (!bN[i]) bN[i] = 1; bL[i] /= bN[i]; bC[i] /= bN[i]; if (bC[i] < CHROMA_PAPER) { hist[bL[i] | 0]++; hn++; } }
+    if (hn < SN * 0.05) return failResult('no_paper', W, H);
+    var acc = 0, p95 = 255;
+    for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= hn * 0.05) { p95 = i; break; } }
+    if (p95 < 55) return failResult('too_dark', W, H);
+    var lT = Math.max(45, 0.55 * p95);
+    var pm = new Uint8Array(SN);
+    for (i = 0; i < SN; i++) pm[i] = (bC[i] < CHROMA_PAPER && bL[i] > lT) ? 1 : 0;
+    // components on block grid
+    var lab = new Int32Array(SN), comps = [], stack = new Int32Array(SN);
+    for (i = 0; i < SN; i++) if (pm[i] && !lab[i]) {
+      var id = comps.length + 1, sp = 0, area = 0;
+      stack[sp++] = i; lab[i] = id;
+      while (sp) {
+        var q = stack[--sp]; area++;
+        var qx = q % sw, qy = (q / sw) | 0;
+        for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+          var nx = qx + dx, ny = qy + dy;
+          if (nx < 0 || ny < 0 || nx >= sw || ny >= sh) continue;
+          var nq = ny * sw + nx;
+          if (pm[nq] && !lab[nq]) { lab[nq] = id; stack[sp++] = nq; }
+        }
+      }
+      comps.push(area);
+    }
+    var biggest = 0;
+    comps.forEach(function (a) { biggest = Math.max(biggest, a); });
+    if (biggest < SN * 0.04) return failResult('no_paper', W, H);
+    var keep = comps.map(function (a) { return a >= Math.max(SN * 0.03, biggest * 0.15); });
+    var hp = [], paperBlocks = 0;
+    for (y = 0; y < sh; y++) {
+      var xl = -1, xr = -1;
+      for (x = 0; x < sw; x++) { var l = lab[y * sw + x]; if (l && keep[l - 1]) { paperBlocks++; if (xl < 0) xl = x; xr = x; } }
+      if (xl >= 0) { hp.push([xl * bs, y * bs], [(xr + 1) * bs, y * bs], [xl * bs, (y + 1) * bs], [(xr + 1) * bs, (y + 1) * bs]); }
+    }
+    var hull = convexHull(hp);
+    var rowL = new Float32Array(H), rowR = new Float32Array(H);
+    var px0 = Infinity, px1 = -Infinity, py0 = Infinity, py1 = -Infinity;
+    hull.forEach(function (p) { px0 = Math.min(px0, p[0]); px1 = Math.max(px1, p[0]); py0 = Math.min(py0, p[1]); py1 = Math.max(py1, p[1]); });
+    px0 = Math.max(0, px0); py0 = Math.max(0, py0); px1 = Math.min(W - 1, px1); py1 = Math.min(H - 1, py1);
+    for (y = 0; y < H; y++) {
+      var yc = y + 0.5, mnx = Infinity, mxx = -Infinity;
+      for (var e = 0; e < hull.length; e++) {
+        var A = hull[e], B = hull[(e + 1) % hull.length];
+        if ((A[1] <= yc && B[1] >= yc) || (B[1] <= yc && A[1] >= yc)) {
+          var xx = A[1] === B[1] ? A[0] : A[0] + (yc - A[1]) * (B[0] - A[0]) / (B[1] - A[1]);
+          if (A[1] === B[1]) { mnx = Math.min(mnx, A[0], B[0]); mxx = Math.max(mxx, A[0], B[0]); }
+          else { mnx = Math.min(mnx, xx); mxx = Math.max(mxx, xx); }
+        }
+      }
+      rowL[y] = mnx; rowR[y] = mxx;
+    }
+    // erode the hull by a margin (convex => check the two end rows)
+    var mg = Math.max(3, Math.round(0.008 * long));
+    var inL = new Int32Array(H), inR = new Int32Array(H);
+    for (y = 0; y < H; y++) {
+      var ya = y - mg, yb = y + mg;
+      if (ya < 0 || yb >= H || !(rowL[ya] <= rowR[ya]) || !(rowL[yb] <= rowR[yb])) { inL[y] = 1; inR[y] = 0; continue; }
+      inL[y] = Math.ceil(Math.max(rowL[ya], rowL[yb], 0) + mg);
+      inR[y] = Math.floor(Math.min(rowR[ya], rowR[yb], W - 1) - mg);
+    }
+    var paper = { x0: Math.round(px0), y0: Math.round(py0), x1: Math.round(px1), y1: Math.round(py1) };
+    var paperFrac = paperBlocks / SN;
+
+    TM.push(nowMs());
+    /* ---- 2. local paper colour (grid, filled, bilinear) ---- */
+    var cs = Math.max(16, Math.round(long / 16));
+    var gx = Math.ceil(W / cs), gy = Math.ceil(H / cs), GN = gx * gy;
+    var sr = new Float64Array(GN), sg = new Float64Array(GN), sb = new Float64Array(GN), sn = new Float64Array(GN);
+    for (y = 0; y < H; y += 2) {
+      var o2 = y * W, cyi = ((y / cs) | 0) * gx;
+      for (x = Math.max(0, inL[y]); x <= inR[y]; x += 2) {
+        var ii = o2 + x;
+        if (C[ii] < CHROMA_PAPER && L[ii] > lT) {
+          var ci = cyi + ((x / cs) | 0);
+          sr[ci] += data[4 * ii]; sg[ci] += data[4 * ii + 1]; sb[ci] += data[4 * ii + 2]; sn[ci]++;
+        }
+      }
+    }
+    var valid = new Uint8Array(GN), cR = new Float32Array(GN), cG = new Float32Array(GN), cB = new Float32Array(GN);
+    var minCnt = cs * cs / 4 * 0.04, anyValid = false, gr = 0, gg = 0, gb = 0, gnn = 0;
+    for (i = 0; i < GN; i++) {
+      if (sn[i] > minCnt) { valid[i] = 1; anyValid = true; cR[i] = sr[i] / sn[i]; cG[i] = sg[i] / sn[i]; cB[i] = sb[i] / sn[i]; }
+      gr += sr[i]; gg += sg[i]; gb += sb[i]; gnn += sn[i];
+    }
+    if (!anyValid) return failResult('no_paper', W, H);
+    for (var pass = 0; pass < gx + gy; pass++) {
+      var changed = false, nv = valid.slice();
+      for (var cy = 0; cy < gy; cy++) for (var cx = 0; cx < gx; cx++) {
+        var c0 = cy * gx + cx;
+        if (valid[c0]) continue;
+        var tr = 0, tg = 0, tb = 0, tn = 0;
+        for (var ddy = -1; ddy <= 1; ddy++) for (var ddx = -1; ddx <= 1; ddx++) {
+          var ax = cx + ddx, ay = cy + ddy;
+          if (ax < 0 || ay < 0 || ax >= gx || ay >= gy) continue;
+          var c1 = ay * gx + ax;
+          if (valid[c1]) { tr += cR[c1]; tg += cG[c1]; tb += cB[c1]; tn++; }
+        }
+        if (tn) { cR[c0] = tr / tn; cG[c0] = tg / tn; cB[c0] = tb / tn; nv[c0] = 1; changed = true; }
+      }
+      valid = nv;
+      if (!changed) break;
+    }
+    var ix0 = new Int32Array(W), ix1 = new Int32Array(W), ixa = new Float32Array(W);
+    for (x = 0; x < W; x++) {
+      var fx = (x + 0.5) / cs - 0.5, i0 = Math.floor(fx);
+      var a0 = fx - i0; if (i0 < 0) { i0 = 0; a0 = 0; } if (i0 >= gx - 1) { i0 = gx - 1; a0 = 0; }
+      ix0[x] = i0; ix1[x] = Math.min(i0 + 1, gx - 1); ixa[x] = a0;
+    }
+
+    TM.push(nowMs());
+    /* ---- 3. coin mask: warm and dark relative to the local paper ---- */
+    var M = buf('M', Uint8Array, N, true), PL = buf('PL', Uint8Array, N);
+    var rr = new Float32Array(gx), rg = new Float32Array(gx), rb = new Float32Array(gx);
+    for (y = 0; y < H; y++) {
+      if (inL[y] > inR[y]) continue;
+      var fy = (y + 0.5) / cs - 0.5, j0 = Math.floor(fy), ay2 = fy - j0;
+      if (j0 < 0) { j0 = 0; ay2 = 0; } if (j0 >= gy - 1) { j0 = gy - 1; ay2 = 0; }
+      var j1 = Math.min(j0 + 1, gy - 1);
+      for (x = 0; x < gx; x++) {
+        var u0 = j0 * gx + x, u1 = j1 * gx + x;
+        rr[x] = cR[u0] + (cR[u1] - cR[u0]) * ay2; rg[x] = cG[u0] + (cG[u1] - cG[u0]) * ay2; rb[x] = cB[u0] + (cB[u1] - cB[u0]) * ay2;
+      }
+      maskRow(data, y * W, Math.max(0, inL[y]), inR[y], rr, rg, rb, ix0, ix1, ixa, M, PL);
+    }
+    TM.push(nowMs());
+    var T1 = buf('T1', Uint8Array, N, true), T2 = buf('T2', Uint8Array, N, true);
+    var mY0 = Math.max(0, Math.floor(py0) - 2), mY1 = Math.min(H - 1, Math.ceil(py1) + 2);
+    morph3(M, W, H, true, T1, T2, mY0, mY1); morph3(T2, W, H, false, T1, M, mY0, mY1);   // close
+    morph3(M, W, H, false, T1, T2, mY0, mY1); morph3(T2, W, H, true, T1, M, mY0, mY1);   // open
+
+    TM.push(nowMs());
+    /* ---- 4. blobs ---- */
+    var CL = buf('CL', Int32Array, N, true), blobs = [];
+    var st = buf('st', Int32Array, N);
+    var minArea = Math.max(25, Math.pow(long * 0.008, 2));
+    labelBlobs(M, W, H, CL, st, blobs, mY0 * W, mY1 * W + W - 1);
+    blobs = blobs.filter(function (b) { return b.area >= minArea; });
+    if (blobs.length > 400) blobs.sort(function (a, b) { return b.area - a.area; }), blobs.length = 400;
+
+    // hole fill + distance transform per blob
+    blobs.forEach(function (b) {
+      var p = 1, ox = b.x0 - p, oy = b.y0 - p, bw = b.x1 - b.x0 + 1 + 2 * p, bh = b.y1 - b.y0 + 1 + 2 * p;
+      var m = new Uint8Array(bw * bh), xx2, yy2;
+      for (yy2 = 0; yy2 < bh; yy2++) {
+        var gy2 = oy + yy2; if (gy2 < 0 || gy2 >= H) continue;
+        for (xx2 = 0; xx2 < bw; xx2++) { var gx2 = ox + xx2; if (gx2 >= 0 && gx2 < W && CL[gy2 * W + gx2] === b.id) m[yy2 * bw + xx2] = 1; }
+      }
+      // flood outside from border
+      var out = new Uint8Array(bw * bh), stk = [], t;
+      for (xx2 = 0; xx2 < bw; xx2++) { stk.push(xx2, (bh - 1) * bw + xx2); }
+      for (yy2 = 0; yy2 < bh; yy2++) { stk.push(yy2 * bw, yy2 * bw + bw - 1); }
+      while (stk.length) {
+        t = stk.pop();
+        if (out[t] || m[t]) continue;
+        out[t] = 1;
+        var tx = t % bw, ty = (t / bw) | 0;
+        if (tx > 0) stk.push(t - 1); if (tx < bw - 1) stk.push(t + 1); if (ty > 0) stk.push(t - bw); if (ty < bh - 1) stk.push(t + bw);
+      }
+      var a2 = 0, sx = 0, sy = 0, mu = null;
+      for (t = 0; t < bw * bh; t++) if (!out[t] && !m[t]) { mu = m.slice(); break; }   // has holes: keep unfilled copy
+      for (t = 0; t < bw * bh; t++) if (!out[t]) { m[t] = 1; a2++; sx += t % bw; sy += (t / bw) | 0; }
+      b.fillArea = a2; b.cx = ox + sx / a2; b.cy = oy + sy / a2;
+      var dt = edt(m, bw, bh), dmax = 0;
+      for (t = 0; t < bw * bh; t++) if (dt[t] > dmax) dmax = dt[t];
+      b.dt = dt; b.m = m; b.mu = mu; b.bw = bw; b.bh = bh; b.ox = ox; b.oy = oy; b.dmax = dmax;
+      b.round = a2 / (PI * dmax * dmax);
+    });
+
+    // typical coin radius
+    var rMinAbs = Math.max(4, long * 0.006);
+    var cand = blobs.filter(function (b) { return b.dmax >= rMinAbs; });
+    var singles = cand.filter(function (b) { return b.round > 0.75 && b.round < 1.7; });
+    if (singles.length >= 2) {   // a packed block can look round too: drop "singles" far bigger than the smallest third
+      var sd = singles.map(function (b) { return b.dmax; }).sort(function (a, b) { return a - b; }), ref = median(sd);
+      var trim = singles.filter(function (b) { return b.dmax <= 1.45 * ref; }); if (trim.length) singles = trim;
+    }
+    var pool = singles.length ? singles : cand;
+    var coinR = 0;
+    if (pool.length) {
+      var ds = pool.map(function (b) { return b.dmax; }).sort(function (a, b) { return b - a; });
+      var rRef = ds[Math.floor(0.2 * ds.length)];
+      coinR = median(ds.filter(function (d) { return d >= 0.45 * rRef; }));
+    }
+
+    TM.push(nowMs());
+    /* ---- 5. coins: greedy distance-transform peaks inside each blob ---- */
+    // greedy: highest DT value first, suppress peaks closer than 0.75*(r1+r2) to an accepted one
+    function peaksOf(dt, bw, bh, thr) {
+      var pk = [], xx3, yy3;
+      for (yy3 = 1; yy3 < bh - 1; yy3++) for (xx3 = 1; xx3 < bw - 1; xx3++) {
+        var t = yy3 * bw + xx3, v = dt[t];
+        if (v < thr) continue;
+        if (v >= dt[t - 1] && v >= dt[t + 1] && v >= dt[t - bw] && v >= dt[t + bw] &&
+            v >= dt[t - bw - 1] && v >= dt[t - bw + 1] && v >= dt[t + bw - 1] && v >= dt[t + bw + 1]) pk.push([v, xx3, yy3]);
+      }
+      pk.sort(function (a, c) { return c[0] - a[0]; });
+      var acc2 = [];
+      pk.forEach(function (p) {
+        for (var j = 0; j < acc2.length; j++) {
+          var q = acc2[j], ddx2 = p[1] - q[1], ddy2 = p[2] - q[2];
+          if (Math.sqrt(ddx2 * ddx2 + ddy2 * ddy2) < 0.75 * (p[0] + q[0])) return;
+        }
+        acc2.push(p);
+      });
+      return acc2;
+    }
+    // how well a set of circles explains the (filled) blob: covered fraction minus spill outside
+    function coverage(pk, m, bw, bh) {
+      var cov = 0, spill = 0, tot = 0, xx3, yy3, j;
+      for (yy3 = 0; yy3 < bh; yy3++) for (xx3 = 0; xx3 < bw; xx3++) {
+        var t = yy3 * bw + xx3, inC = false;
+        for (j = 0; j < pk.length; j++) { var dx = xx3 - pk[j][1], dy = yy3 - pk[j][2], rr = pk[j][0] + 1; if (dx * dx + dy * dy <= rr * rr) { inC = true; break; } }
+        if (m[t]) { tot++; if (inC) cov++; } else if (inC) spill++;
+      }
+      return (cov - 2 * spill) / Math.max(1, tot);
+    }
+    function stepOf(bw, bh) { return Math.max(2, Math.round(Math.sqrt(bw * bh / 15000))); }
+    function fitScore(cs, m, bw, bh, r) {   // (covered - 2 spill - overlap) / blob area, circles of radius r
+      var cov = 0, spill = 0, over = 0, tot = 0, xx3, yy3, j, rr = (r + 1) * (r + 1), st = stepOf(bw, bh);
+      for (yy3 = 0; yy3 < bh; yy3 += st) for (xx3 = 0; xx3 < bw; xx3 += st) {
+        var t = yy3 * bw + xx3, n = 0;
+        for (j = 0; j < cs.length; j++) { var dx = xx3 - cs[j][1], dy = yy3 - cs[j][2]; if (dx * dx + dy * dy <= rr) n++; }
+        if (m[t]) { tot++; if (n) cov++; } else if (n) spill++;
+        if (n > 1) over += n - 1;
+      }
+      return (cov - 2 * spill - over) / Math.max(1, tot);
+    }
+    function lloyd(pts, init, iters) {   // k-means on the blob's pixels, from the given centres
+      var c = init.map(function (q) { return [q[0], q[1]]; }), k = c.length, it, i, j;
+      for (it = 0; it < iters; it++) {
+        var sx = new Float64Array(k), sy = new Float64Array(k), sn = new Float64Array(k);
+        for (i = 0; i < pts.length; i += 2) {
+          var px = pts[i], py = pts[i + 1], best = 0, bd = 1e18;
+          for (j = 0; j < k; j++) { var dx = px - c[j][0], dy = py - c[j][1], d = dx * dx + dy * dy; if (d < bd) { bd = d; best = j; } }
+          sx[best] += px; sy[best] += py; sn[best]++;
+        }
+        for (j = 0; j < k; j++) if (sn[j]) { c[j][0] = sx[j] / sn[j]; c[j][1] = sy[j] / sn[j]; }
+      }
+      return c;
+    }
+    function refitBlock(b, acc2, r0, mult) {
+      var bw = b.bw, bh = b.bh, m = b.m, pts = [], xx3, yy3, st = stepOf(bw, bh) + (refitBlock.inMulti ? 2 : 1);
+      for (yy3 = 0; yy3 < bh; yy3 += st) for (xx3 = 0; xx3 < bw; xx3 += st) if (m[yy3 * bw + xx3]) pts.push(xx3, yy3);
+      if (pts.length < 8) return acc2;
+      if (mult) {   // several coin sizes: keep the best fit over all of them (the peaks as found, scored at their own size, to beat)
+        var bestA = acc2, bestSA = fitScore(acc2.map(function (p) { return [p[0], p[1], p[2]]; }), m, bw, bh, acc2.length === 1 ? acc2[0][0] : r0) + 0.005;
+        refitBlock.inMulti = true;
+        mult.forEach(function (f) { var res = refitBlock(b, acc2.length > 1 ? acc2 : [], r0 * f), sc = res.length > 1 ? fitScore(res.map(function (q) { return [r0 * f, q[1], q[2]]; }), m, bw, bh, r0 * f) : -1; if (sc > bestSA) { bestSA = sc; bestA = res; } });
+        refitBlock.inMulti = false;
+        return bestA;
+      }
+      var r = r0, mult0 = !!refitBlock.inMulti;
+      // seeds: on the coins themselves (gaps between touching coins left unfilled) every coin's centre is its own
+      // peak, about r from the edge; spaced at least 1.5 r apart
+      var dtu = b.mu ? edt(b.mu, bw, bh) : b.dt, seeds = [], cand = [], q;
+      for (yy3 = 1; yy3 < bh - 1; yy3++) for (xx3 = 1; xx3 < bw - 1; xx3++) { q = yy3 * bw + xx3; var v = dtu[q];
+        if (v >= 0.6 * r && v >= dtu[q - 1] && v >= dtu[q + 1] && v >= dtu[q - bw] && v >= dtu[q + bw]) cand.push([v, xx3, yy3]); }
+      cand.sort(function (a, c) { return c[0] - a[0]; });
+      cand.forEach(function (p) { for (var j = 0; j < seeds.length; j++) { var dx = p[1] - seeds[j][1], dy = p[2] - seeds[j][2]; if (dx * dx + dy * dy < 2.25 * r * r) return; } seeds.push(p); });
+      // how many coins could fill this blob: packed square (4 r² a coin, gaps included) up to no gaps at all (π r²),
+      // and the coin pixels alone; every count in that range is tried
+      var est = b.fillArea / (PI * r * r), ks = {}, k0 = acc2.length, kLo = Math.max(1, Math.floor(b.fillArea / (4 * r * r))), kHi = Math.min(Math.ceil(est) + 1, kLo + 5), kRaw = Math.round(b.area / (PI * r * r));
+      if (seeds.length >= 2 && seeds.length <= 18) { [seeds.length - 1, seeds.length, seeds.length + 1, Math.round(est)].forEach(function (k) { if (k >= 1 && k <= 18 && k >= kLo - 1 && k <= kHi + 1) ks[k] = 1; }); ks[seeds.length] = 1; }
+      else { for (var kk = kLo; kk <= kHi && kk <= 18; kk++) ks[kk] = 1; if (kRaw >= kLo && kRaw <= kHi + 1 && kRaw <= 18) ks[kRaw] = 1; }
+      var best = acc2, bestS = fitScore(acc2.map(function (p) { return [r, p[1], p[2]]; }), m, bw, bh, r) + 0.005;   // a small edge for the peaks as found
+      Object.keys(ks).map(Number).forEach(function (k) {
+        if (k === k0 && seeds.length < 2) return;
+        // start from the strongest peaks; add the blob pixels farthest from every centre until there are k
+        var src = seeds.length >= 2 ? seeds : acc2, init = src.slice(0, k).map(function (p) { return [p[1], p[2]]; });
+        while (init.length < k) {
+          var far = -1, fx = 0, fy = 0;
+          for (var i = 0; i < pts.length; i += 2) { var dmin = 1e18; for (var j = 0; j < init.length; j++) { var dx = pts[i] - init[j][0], dy = pts[i + 1] - init[j][1]; dmin = Math.min(dmin, dx * dx + dy * dy); } if (dmin > far) { far = dmin; fx = pts[i]; fy = pts[i + 1]; } }
+          init.push([fx, fy]);
+        }
+        var c = lloyd(pts, init, mult0 ? 6 : 10), cs = c.map(function (q) { return [r, q[0], q[1]]; }), sc = fitScore(cs, m, bw, bh, r) + (k === seeds.length ? 0.015 : 0);   // near-ties go to the count of coin centres found
+        if (sc > bestS) { bestS = sc; best = cs.map(function (q) { return [r - 0.5, q[1], q[2]]; }); }
+      });
+      return best;
+    }
+    var coins = [], multiInfo = [];
+    var rPaper = 0.037 * Math.max(px1 - px0, py1 - py0), lone = false;
+    if (coinR > 0 && singles.length < 2) {   // no loose coins to measure: the coin-sized peaks inside the clumps
+      var allpk = [], mref = rPaper > 0 ? Math.min(coinR, 1.6 * rPaper) : coinR;   // a clump's own size can't hide the loose coins
+      blobs.forEach(function (b) { if (b.dmax >= 0.5 * mref) peaksOf(b.dt, b.bw, b.bh, 0.55 * mref).forEach(function (q) { allpk.push(q[0]); }); });
+      if (allpk.length >= 3) coinR = median(allpk);
+      // still bigger than any coin on this paper: every coin is in one clump, with nothing to measure against
+      if (rPaper > 0 && coinR > 1.6 * rPaper) lone = true;
+    }
+    if (coinR > 0) {
+      var thr = 0.55 * coinR;
+      blobs.forEach(function (b) {
+        if (b.dmax < 0.5 * coinR) return;
+        var acc2 = peaksOf(b.dt, b.bw, b.bh, thr);
+        if (b.mu && b.fillArea > 1.5 * PI * coinR * coinR) {
+          // holes may be gaps enclosed by a ring of touching coins: also try without filling them
+          var alt = peaksOf(edt(b.mu, b.bw, b.bh), b.bw, b.bh, thr);
+          if (alt.length > acc2.length && coverage(alt, b.m, b.bw, b.bh) > coverage(acc2, b.m, b.bw, b.bh) + 0.1) acc2 = alt;
+        }
+        // Touching coins packed in a block (2 x 3, 3 x 4): filling the gaps makes one big "coin" at the block's
+        // centre that crowds out its neighbours. Try other counts too: k coin-sized circles fitted to the blob,
+        // scored on covering it without spilling past its edge or piling onto each other; the best fit wins.
+        {
+          // only when the tell-tale big circle is there: a peak much bigger than both the blob's typical coin and
+          // the photo's; or a one-peak blob far bigger than a coin. The coin size used stays near the photo's.
+          var pv = acc2.map(function (q) { return q[0]; }).sort(function (x, y) { return x - y; });
+          var rb = clamp(pv.length >= 3 ? median(pv) : coinR, 0.85 * coinR, 1.15 * coinR), top = pv[pv.length - 1];
+          var big = acc2.length >= 2 ? (top > 1.2 * rb && top > 1.2 * coinR) : (b.round >= 1.7 || b.dmax > 1.5 * coinR);
+          if (lone && b.dmax > 1.6 * rPaper) acc2 = refitBlock(b, acc2, rPaper, [0.8, 0.95, 1.1, 1.3, 1.55, 1.85, 2.2]);   // sizes judged from the paper
+          else if (big && b.fillArea < 19 * PI * coinR * coinR) acc2 = refitBlock(b, acc2, rb);   // FotoSet uses 15 coins: a bigger blob keeps its peaks
+        }
+        if (acc2.length === 1 && b.round < 1.7) {
+          coins.push({ x: b.cx, y: b.cy, r: Math.sqrt(b.fillArea / PI), blob: b.id });
+        } else {
+          acc2.forEach(function (p) { coins.push({ x: b.ox + p[1], y: b.oy + p[2], r: p[0] + 0.5, blob: b.id }); });
+          multiInfo.push({ n: acc2.length, est: b.fillArea / (PI * coinR * coinR) });
+        }
+      });
+    }
+    if (lone && coins.length) coinR = median(coins.map(function (c) { return c.r; }));
+    blobs.forEach(function (b) { b.dt = b.m = b.mu = null; });
+
+    TM.push(nowMs());
+    /* ---- 6. fold line: thin dark line, small-angle Hough over a ridge map ---- */
+    var excl = buf('excl', Uint8Array, N, true);
+    coins.forEach(function (c) {
+      var rad = c.r * 1.3 + 2, yA = Math.max(0, Math.floor(c.y - rad)), yB = Math.min(H - 1, Math.ceil(c.y + rad));
+      for (var yy = yA; yy <= yB; yy++) {
+        var hw = Math.sqrt(Math.max(0, rad * rad - (yy - c.y) * (yy - c.y)));
+        var xA = Math.max(0, Math.floor(c.x - hw)), xB = Math.min(W - 1, Math.ceil(c.x + hw));
+        for (var xx = xA; xx <= xB; xx++) excl[yy * W + xx] = 1;
+      }
+    });
+    for (i = mY0 * W; i <= mY1 * W + W - 1; i++) if (M[i]) excl[i] = 1;
+    var ph = py1 - py0, pw = px1 - px0, pcx = (px0 + px1) / 2;
+    var bandA = Math.round(py0 + 0.15 * ph), bandB = Math.round(py0 + 0.85 * ph);
+    var o1 = Math.max(2, Math.round(long / 370)), o2r = 2 * o1;
+    var ridge = buf('ridge', Uint8Array, N, true), ptsX = [], ptsY = [];
+    for (y = Math.max(bandA, o2r); y <= Math.min(bandB, H - 1 - o2r); y++) {
+      ridgeRow(L, PL, excl, ridge, y * W, W, Math.max(0, inL[y] + (inL[y] & 1)), inR[y], o1, o2r);
+    }
+    var RT = 16;
+    for (y = bandA; y <= bandB; y++) for (x = 0; x < W; x += 2) if (ridge[y * W + x] >= RT) { ptsX.push(x); ptsY.push(y); }
+    var fold = null, bestCov = 0;
+    var MAXA = 15, STEP = 0.5, nA = Math.round(2 * MAXA / STEP) + 1;
+    if (ptsX.length) {
+      var accA = new Int32Array(3 * H), cands = [];
+      for (var ai = 0; ai < nA; ai++) {
+        var ang = (-MAXA + ai * STEP) * PI / 180, tn = Math.tan(ang);
+        accA.fill(0);
+        for (var pi2 = 0; pi2 < ptsX.length; pi2++) {
+          var y0 = Math.round(ptsY[pi2] - (ptsX[pi2] - pcx) * tn) + H;
+          if (y0 >= 0 && y0 < 3 * H) accA[y0]++;
+        }
+        var bv = 0, by2 = 0;
+        for (var yy4 = 1; yy4 < 3 * H - 1; yy4++) { var sv = accA[yy4 - 1] + accA[yy4] + accA[yy4 + 1]; if (sv > bv) { bv = sv; by2 = yy4 - H; } }
+        cands.push({ score: bv, ang: ang, y0: by2 });
+      }
+      cands.sort(function (a, b) { return b.score - a.score; });
+      var tried = [];
+      for (var ci2 = 0; ci2 < cands.length && tried.length < 8; ci2++) {
+        var cd = cands[ci2];
+        if (tried.some(function (t) { return Math.abs(t.y0 - cd.y0) < 4 && Math.abs(t.ang - cd.ang) < 0.03; })) continue;
+        tried.push(cd);
+        var tn2 = Math.tan(cd.ang), avail = 0, cov = 0, span = 0;
+        for (x = 2 * Math.ceil(px0 / 2); x <= px1; x += 2) {
+          var yl = Math.round(cd.y0 + (x - pcx) * tn2);
+          if (yl < bandA || yl > bandB || x < inL[yl] || x > inR[yl]) continue;
+          span++;
+          if (excl[yl * W + x]) continue;
+          avail++;
+          for (var d3 = -2; d3 <= 2; d3++) { var yq = yl + d3; if (yq >= 0 && yq < H && ridge[yq * W + x] >= RT) { cov++; break; } }
+        }
+        var covF = avail ? cov / avail : 0;
+        if (avail >= 0.3 * span && span >= 0.25 * pw && covF > bestCov) { bestCov = covF; fold = { y0: cd.y0, ang: cd.ang }; }
+      }
+    }
+    // a crease with no line: the paper is a shade darker on one side of it than on the other (the two halves
+    // face the light a little differently). Look for the sharpest change in the paper's brightness from just
+    // above a line to just below it, over small tilts, with the coins left out.
+    function stepFold() {
+      // tests a crease must pass: the same shade change in at least 3 of 4 strips across the paper; a change that
+      // lasts (well past the line on both sides the shade stays as it is just beside it: not a strip or a shadow's
+      // edge); sharp (within a few rows); and not near a coin (a coin's own shadow makes steps too)
+      var K = Math.max(3, Math.round(0.012 * long)), FAR = 7 * K, sx = 4, NS = 4, segW = Math.max(1, (px1 - px0) / NS);
+      var bA = Math.round(py0 + 0.05 * ph), bB = Math.round(py0 + 0.95 * ph), best = null, rejected = 0;
+      function scan(a) {
+        var tn = Math.tan(a * PI / 180), Ssum = [], Scnt = [], sg, y4, x4;
+        for (sg = 0; sg < NS; sg++) { Ssum.push(new Float64Array(3 * H)); Scnt.push(new Float64Array(3 * H)); }
+        for (y4 = Math.max(0, py0); y4 <= Math.min(H - 1, py1); y4++) {
+          var xa = Math.max(px0, inL[y4]), xb = Math.min(px1, inR[y4]);
+          for (x4 = xa - (xa % sx); x4 <= xb; x4 += sx) { var t4 = y4 * W + x4; if (excl[t4]) continue;
+            var yi = Math.round(y4 - (x4 - pcx) * tn) + H; if (yi < 0 || yi >= 3 * H) continue;
+            sg = Math.min(NS - 1, Math.floor((x4 - px0) / segW)); Ssum[sg][yi] += L[t4]; Scnt[sg][yi]++; }
+        }
+        var need = 0.3 * segW / sx;
+        function mean(sg, yA, yB) { var s2 = 0, n2 = 0; for (var q = yA; q <= yB; q++) if (q >= 0 && q < 3 * H && Scnt[sg][q] >= need) { s2 += Ssum[sg][q] / Scnt[sg][q]; n2++; } return n2 >= 0.6 * (yB - yA + 1) ? s2 / n2 : NaN; }
+        for (y4 = bA + H; y4 <= bB + H; y4++) {
+          var steps = [], okSeg = 0, sharpOk = 0;
+          for (sg = 0; sg < NS; sg++) {
+            var nA = mean(sg, y4 - K - 1, y4 - 2), nB = mean(sg, y4 + 2, y4 + K + 1);
+            if (isNaN(nA) || isNaN(nB)) continue;
+            var st2 = nB - nA, fA = mean(sg, y4 - FAR, y4 - 3 * K), fB = mean(sg, y4 + 3 * K, y4 + FAR);
+            // lasting: far out on each side, the shade is still what it is beside the line (when there's paper to look at)
+            if (!isNaN(fA) && Math.abs(fA - nA) > 0.5 * Math.abs(st2)) continue;
+            if (!isNaN(fB) && Math.abs(fB - nB) > 0.5 * Math.abs(st2)) continue;
+            var cA = mean(sg, y4 - 4, y4 - 2), cB = mean(sg, y4 + 2, y4 + 4);
+            if (!isNaN(cA) && !isNaN(cB) && Math.abs(cB - cA) >= 0.6 * Math.abs(st2)) sharpOk++;
+            steps.push(st2); okSeg++;
+          }
+          if (okSeg < 3) continue;
+          var pos = steps.filter(function (v) { return v > 0; }).length, neg = steps.length - pos, sign = pos >= neg ? 1 : -1;
+          var agree = steps.filter(function (v) { return v * sign > 0; }).map(Math.abs), mstep = agree.length ? median(agree) : 0;
+          if (agree.length < 3 || mstep < 4 || sharpOk < 3) continue;
+          if (agree.filter(function (v) { return v >= 0.5 * mstep; }).length < 3) continue;
+          if (best && mstep <= best.step) continue;
+          var yc0 = y4 - H, hit = false;
+          for (var ci4 = 0; ci4 < coins.length && !hit; ci4++) { var cc = coins[ci4]; if (Math.abs(cc.y - (yc0 + (cc.x - pcx) * tn)) * Math.cos(a * PI / 180) < 1.05 * cc.r + 2) hit = true; }
+          if (hit) { rejected = Math.max(rejected, mstep); continue; }
+          best = { step: mstep, y0: yc0, ang: a * PI / 180 };
+        }
+      }
+      for (var a = -15; a <= 15; a += 2) scan(a);   // coarse, then fine around the best
+      if (best) { var a0 = Math.round(best.ang * 180 / PI); scan(a0 - 1); scan(a0 + 1); }
+      if (best) best.doubt = rejected > best.step;   // a stronger step ran through the coins
+      return best;
+    }
+    var foldRes, sf = null;
+    if (!(fold && bestCov >= 0.5)) sf = stepFold();
+    if (fold && bestCov >= 0.5) {
+      foldRes = { y: fold.y0, found: true, angle: fold.ang * 180 / PI, ang: fold.ang, coverage: bestCov };
+    } else if (sf) {
+      foldRes = { y: sf.y0, found: true, angle: sf.ang * 180 / PI, ang: sf.ang, coverage: bestCov, kind: 'shade', doubt: !!sf.doubt };
+    } else {
+      var fy2 = (py0 + py1) / 2, ys = coins.map(function (c) { return c.y; }).sort(function (a, b) { return a - b; });
+      var bA = py0 + 0.25 * ph, bB = py0 + 0.75 * ph, bestGap = 0;
+      for (i = 0; i < ys.length - 1; i++) {
+        var mid = (ys[i] + ys[i + 1]) / 2, gap = ys[i + 1] - ys[i];
+        if (mid >= bA && mid <= bB && gap > bestGap) { bestGap = gap; fy2 = mid; }
+      }
+      if (bestGap < 2.2 * coinR) fy2 = (py0 + py1) / 2;
+      foldRes = { y: fy2, found: false, angle: 0, ang: 0, coverage: bestCov };
+    }
+    var fa = foldRes.ang, ftn = Math.tan(fa);
+    function foldYAt(xq) { return foldRes.y + (xq - pcx) * ftn; }
+    foldRes.x0 = px0; foldRes.y0 = foldYAt(px0); foldRes.x1 = px1; foldRes.y1 = foldYAt(px1);
+    foldRes.y = foldYAt(W / 2);
+    foldRes.y = Math.round(foldRes.y * 10) / 10; foldRes.y0 = Math.round(foldRes.y0 * 10) / 10; foldRes.y1 = Math.round(foldRes.y1 * 10) / 10;
+    foldRes.coverage = Math.round(foldRes.coverage * 100) / 100;
+    foldRes.angle = Math.round(foldRes.angle * 10) / 10;
+    delete foldRes.ang;
+
+    TM.push(nowMs());
+    /* ---- 7. halves and piles ---- */
+    var topIdx = [], botIdx = [];
+    coins.forEach(function (c, ci) { c.half = c.y < foldYAt(c.x) ? 'top' : 'bottom'; (c.half === 'top' ? topIdx : botIdx).push(ci); });
+    function half(idxs, ex) {
+      var cs2 = idxs.map(function (k) { return coins[k]; });
+      var k = ex && ex.piles ? ex.piles : 0;
+      var sp2 = splitHalf(cs2, k);
+      var ordered = orderGroups(sp2.groups, cs2, fa, coinR || 10);
+      var pileOf = coins.map(function () { return -1; });
+      ordered.forEach(function (g, gi) { g.forEach(function (j) { pileOf[idxs[j]] = gi; coins[idxs[j]].pile = gi; }); });
+      return { count: idxs.length, piles: ordered.map(function (g) { return g.length; }), pileOf: pileOf, clear: sp2.clear,
+        links: { cut: sp2.cut.map(round2), kept: sp2.kept.map(round2) } };
+    }
+    function round2(v) { return Math.round(v * 100) / 100; }
+    var top = half(topIdx, expect && expect.top), bottom = half(botIdx, expect && expect.bottom);
+
+    TM.push(nowMs());
+    /* ---- 8. confidence ---- */
+    var conf = 1;
+    if (!foldRes.found) conf *= 0.75;
+    if (foldRes.doubt) conf *= 0.8;
+    if (!top.clear) conf *= 0.75;
+    if (!bottom.clear) conf *= 0.75;
+    multiInfo.forEach(function (mi) { if (Math.abs(mi.n - mi.est) / mi.n > 0.35) conf *= 0.85; });
+    if (paperFrac < 0.15) conf *= 0.85;
+    if (coins.length) {
+      var rs = coins.map(function (c) { return c.r; }), mr = rs.reduce(function (a, b) { return a + b; }, 0) / rs.length;
+      var sd = Math.sqrt(rs.reduce(function (a, b) { return a + (b - mr) * (b - mr); }, 0) / rs.length);
+      if (sd / mr > 0.2) conf *= 0.9;
+    }
+    conf = Math.round(clamp(conf, 0, 1) * 100) / 100;
+
+    var outCoins = coins.map(function (c) { return { x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, r: Math.round(c.r * 10) / 10, half: c.half, pile: c.pile }; });
+    var res = {
+      ok: coins.length > 0, size: { w: W, h: H }, coins: outCoins, coinR: Math.round(coinR * 10) / 10,
+      fold: foldRes, paper: paper, top: top, bottom: bottom, confidence: coins.length ? conf : 0
+    };
+    TM.push(nowMs()); res.stages = TM.slice(1).map(function (t, k) { return Math.round(t - TM[k]); });
+    if (!coins.length) { res.reason = 'no_coins'; res.message = MESSAGES.no_coins; }
+    return res;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* debug overlay                                                       */
+  /* ------------------------------------------------------------------ */
+  var PAL = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#9a6324', '#469990', '#000075'];
+  function coinsOverlay(source, res) {
+    var W = res.size.w, H = res.size.h, c = makeCanvas(W, H), x = c.getContext('2d');
+    x.drawImage(source, 0, 0, W, H);
+    if (res.paper) { x.setLineDash([6, 4]); x.strokeStyle = '#2050ff'; x.lineWidth = 2; x.strokeRect(res.paper.x0, res.paper.y0, res.paper.x1 - res.paper.x0, res.paper.y1 - res.paper.y0); x.setLineDash([]); }
+    var f = res.fold;
+    if (f) { x.strokeStyle = f.found ? 'rgba(255,0,0,0.9)' : 'rgba(255,140,0,0.9)'; x.lineWidth = 2; if (!f.found) x.setLineDash([10, 6]); x.beginPath(); x.moveTo(f.x0 !== undefined ? f.x0 : 0, f.y0 !== undefined ? f.y0 : f.y); x.lineTo(f.x1 !== undefined ? f.x1 : W, f.y1 !== undefined ? f.y1 : f.y); x.stroke(); x.setLineDash([]); }
+    ['top', 'bottom'].forEach(function (hn, hi) {
+      var hf = res[hn];
+      hf.piles.forEach(function (_, pi) {
+        var pts = [];
+        res.coins.forEach(function (cn, ci) { if (hf.pileOf[ci] === pi) for (var a = 0; a < 16; a++) pts.push([cn.x + (cn.r + 5) * Math.cos(a * PI / 8), cn.y + (cn.r + 5) * Math.sin(a * PI / 8)]); });
+        var hl = convexHull(pts), col = PAL[(pi + hi * 5) % PAL.length];
+        x.beginPath(); hl.forEach(function (p, k) { if (k) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }); x.closePath();
+        x.fillStyle = col + '30'; x.fill(); x.strokeStyle = col; x.lineWidth = 2; if (hi) x.setLineDash([5, 3]); x.stroke(); x.setLineDash([]);
+      });
+    });
+    res.coins.forEach(function (cn, ci) {
+      var hf = res[cn.half], pi = hf.pileOf[ci], col = PAL[(pi + (cn.half === 'bottom' ? 5 : 0)) % PAL.length];
+      x.beginPath(); x.arc(cn.x, cn.y, cn.r, 0, 2 * PI); x.strokeStyle = col; x.lineWidth = 2; x.stroke();
+      x.beginPath(); x.arc(cn.x, cn.y, 2, 0, 2 * PI); x.fillStyle = col; x.fill();
+    });
+    x.font = 'bold ' + Math.max(12, Math.round(Math.max(W, H) / 60)) + 'px sans-serif';
+    var lines = [
+      'TOP ' + res.top.count + ' piles [' + res.top.piles.join(',') + ']' + (res.top.clear ? '' : ' (unclear)'),
+      'BOTTOM ' + res.bottom.count + ' piles [' + res.bottom.piles.join(',') + ']' + (res.bottom.clear ? '' : ' (unclear)'),
+      'fold ' + (res.fold.found ? 'found' : 'FALLBACK') + ' ' + res.fold.angle + '°  conf ' + res.confidence + '  r=' + res.coinR + (res.ms !== undefined ? '  ' + res.ms + 'ms' : '')
+    ];
+    var lh = Math.max(14, Math.round(Math.max(W, H) / 50));
+    x.fillStyle = 'rgba(255,255,255,0.8)'; x.fillRect(4, 4, Math.min(W - 8, lh * 18), lh * lines.length + 8);
+    x.fillStyle = '#111';
+    lines.forEach(function (t, k) { x.fillText(t, 10, 4 + lh * (k + 1)); });
+    return c;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* synthetic sample photos                                             */
+  /* ------------------------------------------------------------------ */
+  function mulberry32(a) {
+    return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+
+  // Lay out piles inside a w*h region. Returns {D, coins:[{x,y,pile,slot}]} in region coords (0..w, 0..h).
+  function layoutHalf(piles, w, h, opt, rnd) {
+    var P = piles.length;
+    if (!P) return { D: 0, coins: [] };
+    var pitch = opt.spacing, gap = opt.gap, best = null;
+    for (var pr = 1; pr <= 3; pr++) {
+      if (pr > P) break;
+      var per = Math.ceil(P / pr), rowsOfPiles = [];
+      for (var k = 0; k < P; k += per) rowsOfPiles.push(piles.slice(k, k + per).map(function (s, j) { return { s: s, i: k + j }; }));
+      for (var m = 1; m <= 12; m++) {
+        var maxW = 0, totH = 0;
+        rowsOfPiles.forEach(function (row) {
+          var rw = 0, rh = 0;
+          row.forEach(function (p, j) {
+            var c = Math.min(p.s, m), rws = Math.ceil(p.s / c);
+            rw += (c - 1) * pitch + 1 + (j ? gap : 0);
+            rh = Math.max(rh, (rws - 1) * pitch + 1);
+          });
+          maxW = Math.max(maxW, rw); totH += rh;
+        });
+        totH += (rowsOfPiles.length - 1) * (gap + 0.4);
+        var D = Math.min(w / maxW, h / totH);
+        if (!best || D > best.D * (pr > best.pr ? 1.15 : 1.0001)) best = { D: D, pr: pr, m: m, rows: rowsOfPiles, maxW: maxW, totH: totH };
+      }
+    }
+    var Dm = Math.min(best.D * 0.95, opt.dMax);
+    var blockW = best.maxW * Dm, blockH = best.totH * Dm;
+    var ox = (w - blockW) * (0.2 + 0.6 * rnd()), oy = (h - blockH) * (0.25 + 0.5 * rnd());
+    var coins = [], yCur = oy;
+    best.rows.forEach(function (row) {
+      var rw = 0, rh = 0;
+      var dims = row.map(function (p, j) {
+        var c = Math.min(p.s, best.m), rws = Math.ceil(p.s / c);
+        rw += (c - 1) * pitch + 1 + (j ? gap : 0);
+        rh = Math.max(rh, (rws - 1) * pitch + 1);
+        return { c: c, rws: rws };
+      });
+      var xCur = ox + (blockW - rw * Dm) * rnd();
+      row.forEach(function (p, j) {
+        var d = dims[j];
+        if (j) xCur += gap * Dm;
+        var ph = ((d.rws - 1) * pitch + 1) * Dm, yOff = yCur + (rh * Dm - ph) * rnd();
+        for (var q = 0; q < p.s; q++) {
+          var cc = q % d.c, rq = Math.floor(q / d.c);
+          coins.push({ x: xCur + Dm / 2 + cc * pitch * Dm, y: yOff + Dm / 2 + rq * pitch * Dm, pile: p.i });
+        }
+        xCur += ((d.c - 1) * pitch + 1) * Dm;
+      });
+      yCur += (rh + gap + 0.4) * Dm;
+    });
+    return { D: Dm, coins: coins };
+  }
+
+  function hsl(h, s, l, a) { return 'hsla(' + h.toFixed(1) + ',' + s.toFixed(1) + '%,' + clamp(l, 0, 100).toFixed(1) + '%,' + (a === undefined ? 1 : a) + ')'; }
+
+  function drawCoin(ctx, x, y, r, rnd, shadow) {
+    var h = 17 + rnd() * 11, s = 50 + rnd() * 22, l = 33 + rnd() * 14;
+    ctx.save();
+    ctx.shadowColor = 'rgba(40,30,20,' + (0.45 * shadow) + ')';
+    ctx.shadowBlur = r * 0.35; ctx.shadowOffsetX = r * 0.10; ctx.shadowOffsetY = r * 0.14;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fillStyle = hsl(h, s, l * 0.8); ctx.fill();
+    ctx.restore();
+    var g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
+    g.addColorStop(0, hsl(h, s, l + 15)); g.addColorStop(0.55, hsl(h, s, l)); g.addColorStop(1, hsl(h, s, l - 12));
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = r * 0.07; ctx.strokeStyle = hsl(h, s, l + 9, 0.7);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.9, 0, 2 * PI); ctx.stroke();
+    ctx.lineWidth = Math.max(1, r * 0.035); ctx.strokeStyle = hsl(h, s, l - 18, 0.9);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.985, 0, 2 * PI); ctx.stroke();
+    // stars and an embossed motif
+    var a0 = rnd() * 2 * PI, k;
+    ctx.fillStyle = hsl(h, s, l + 10, 0.6);
+    for (k = 0; k < 12; k++) { if (rnd() < 0.25) continue; var a = a0 + k * PI / 6; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * 0.76, y + Math.sin(a) * r * 0.76, r * 0.04, 0, 2 * PI); ctx.fill(); }
+    ctx.lineWidth = Math.max(1, r * 0.05);
+    for (k = 0; k < 4; k++) {
+      ctx.strokeStyle = rnd() < 0.5 ? hsl(h, s, l + 12, 0.45) : hsl(h, s, l - 12, 0.45);
+      ctx.beginPath();
+      var rr = r * (0.2 + 0.4 * rnd()), aa = rnd() * 2 * PI;
+      ctx.arc(x + (rnd() - 0.5) * r * 0.5, y + (rnd() - 0.5) * r * 0.5, rr, aa, aa + 1 + 2 * rnd());
+      ctx.stroke();
+    }
+    var hg = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, 0, x - r * 0.3, y - r * 0.35, r * 0.7);
+    hg.addColorStop(0, 'rgba(255,235,200,' + (0.10 + 0.15 * rnd()) + ')'); hg.addColorStop(1, 'rgba(255,235,200,0)');
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fillStyle = hg; ctx.fill();
+  }
+
+  function drawCoinsSample(spec) {
+    spec = spec || {};
+    var seed = (spec.seed === undefined ? 12345 : spec.seed) >>> 0;
+    var rnd = mulberry32(seed * 2654435761 + 1);
+    var W = spec.width || 1200, H = spec.height || 900;
+    var topP = (spec.top || []).slice(), botP = (spec.bottom || []).slice();
+    var rot = ((spec.rotate || 0) + (rnd() - 0.5) * 1.5) * PI / 180;
+    var light = spec.light === undefined ? 1 : spec.light;
+    var spacing = spec.spacing === undefined ? 1.08 : spec.spacing;
+    var gap = spec.gap === undefined ? 1.1 : spec.gap;
+    var mixed = !!spec.mixed, shadow = spec.shadow === undefined ? 1 : spec.shadow;
+    var foldAlpha = spec.fold === undefined ? 0.3 + 0.25 * rnd() : spec.fold;
+    var c = makeCanvas(W, H), ctx = c.getContext('2d');
+
+    // wood
+    var wh = 28 + rnd() * 8, wl = 58 + rnd() * 10;
+    ctx.fillStyle = hsl(wh, 42, wl); ctx.fillRect(0, 0, W, H);
+    for (var k = 0; k < 160; k++) {
+      var yy = rnd() * H, amp = 2 + rnd() * 8, ph2 = rnd() * 6, fq = 0.002 + rnd() * 0.006;
+      ctx.strokeStyle = rnd() < 0.6 ? hsl(wh - 4, 45, wl - 12 - rnd() * 10, 0.08 + rnd() * 0.12) : hsl(wh + 4, 40, wl + 8, 0.08 + rnd() * 0.1);
+      ctx.lineWidth = 0.6 + rnd() * 4;
+      ctx.beginPath();
+      for (var xx = 0; xx <= W; xx += 20) { var yv = yy + amp * Math.sin(xx * fq + ph2); if (xx) ctx.lineTo(xx, yv); else ctx.moveTo(xx, yv); }
+      ctx.stroke();
+    }
+
+    // paper
+    var pw = W * (0.84 + 0.04 * rnd()), phh = pw / 1.414;
+    if (phh > H * 0.86) { phh = H * 0.86; pw = phh * 1.414; }
+    var pcx = W / 2 + (rnd() - 0.5) * 30, pcy = H / 2 + (rnd() - 0.5) * 24;
+    var pr0 = 236 + rnd() * 12, pg0 = pr0 - rnd() * 4, pb0 = pr0 - 4 - rnd() * 10;
+    if (spec.tint === 'cool') { pb0 = Math.min(255, pr0 + 6); pg0 = pr0 + 2; pr0 -= 10; }
+    if (spec.tint === 'warm') { pg0 = pr0 - 8; pb0 = pr0 - 26; }
+    ctx.save();
+    ctx.translate(pcx, pcy); ctx.rotate(rot);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 14; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 5;
+    ctx.fillStyle = 'rgb(' + pr0 + ',' + pg0 + ',' + pb0 + ')'; ctx.fillRect(-pw / 2, -phh / 2, pw, phh);
+    ctx.restore();
+    var tg = ctx.createLinearGradient(0, -phh / 2, 0, 0);
+    tg.addColorStop(0, 'rgba(255,255,255,0.04)'); tg.addColorStop(1, 'rgba(0,0,0,' + (0.02 + 0.04 * rnd()) + ')');
+    ctx.fillStyle = tg; ctx.fillRect(-pw / 2, -phh / 2, pw, phh / 2);
+    var bg = ctx.createLinearGradient(0, 0, 0, phh / 2);
+    bg.addColorStop(0, 'rgba(0,0,0,' + (0.03 + 0.05 * rnd()) + ')'); bg.addColorStop(1, 'rgba(0,0,0,0.01)');
+    ctx.fillStyle = bg; ctx.fillRect(-pw / 2, 0, pw, phh / 2);
+    if (foldAlpha > 0) {
+      ctx.strokeStyle = 'rgba(70,70,70,' + foldAlpha + ')'; ctx.lineWidth = 1.4 + rnd();
+      ctx.beginPath(); ctx.moveTo(-pw / 2, 0); ctx.lineTo(pw / 2, (rnd() - 0.5) * 3); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,' + (foldAlpha * 0.6) + ')'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-pw / 2, -2); ctx.lineTo(pw / 2, -2); ctx.stroke();
+    }
+
+    // coins
+    var mX = pw * 0.05, mY = phh * 0.06, fm = phh * 0.05;
+    var regW = pw - 2 * mX, regH = phh / 2 - mY - fm;
+    var dMax = pw * (0.064 + 0.012 * rnd());
+    if (spec.coinScale) dMax *= spec.coinScale;
+    var opt = { spacing: spacing, gap: gap, dMax: dMax };
+    var truthCoins = [];
+    var sizes = [0.765, 0.882, 1.0];
+    [[topP, -phh / 2 + mY, 'top'], [botP, fm, 'bottom']].forEach(function (hd) {
+      var lay = layoutHalf(hd[0], regW, regH, opt, rnd), R = lay.D / 2;
+      lay.coins.forEach(function (cn) {
+        var rr = mixed ? R * sizes[Math.floor(rnd() * 3)] : R * (0.94 + 0.06 * rnd());
+        var jit = Math.max(0, (spacing - 1.0) * lay.D * 0.3);
+        var lx = -pw / 2 + mX + cn.x + (rnd() - 0.5) * 2 * jit * 0.5 + (spacing < 1.03 ? 0 : 0);
+        var ly = hd[1] + cn.y + (rnd() - 0.5) * 2 * Math.max(jit * 0.5, spacing < 1.03 ? R * 0.02 : 0);
+        truthCoins.push({ lx: lx, ly: ly, r: rr, half: hd[2], pile: cn.pile });
+      });
+    });
+    truthCoins.forEach(function (tc) { drawCoin(ctx, tc.lx, tc.ly, tc.r, rnd, shadow); });
+    ctx.restore();
+
+    // lighting
+    var lx0 = W * rnd(), ly0 = H * rnd();
+    var lg = ctx.createRadialGradient(lx0, ly0, 0, lx0, ly0, Math.max(W, H) * (0.8 + 0.5 * rnd()));
+    var edge = Math.round(255 * (0.72 + 0.15 * rnd()));
+    lg.addColorStop(0, 'rgb(255,255,255)'); lg.addColorStop(1, 'rgb(' + edge + ',' + edge + ',' + edge + ')');
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+    var lv = Math.round(255 * light);
+    ctx.fillStyle = 'rgb(' + lv + ',' + Math.round(lv * (0.98 + 0.02 * rnd())) + ',' + Math.round(lv * (0.93 + 0.06 * rnd())) + ')';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // soft shadow of the phone / a hand across part of the page
+    if (spec.handShadow) {
+      var hx = W * (0.2 + 0.6 * rnd()), hy = H * (0.2 + 0.6 * rnd()), hr = Math.min(W, H) * (0.25 + 0.2 * rnd());
+      var sg2 = ctx.createRadialGradient(hx, hy, hr * 0.2, hx, hy, hr);
+      var sv = Math.round(255 * (1 - spec.handShadow));
+      sg2.addColorStop(0, 'rgb(' + sv + ',' + sv + ',' + Math.min(255, sv + 8) + ')'); sg2.addColorStop(1, 'rgb(255,255,255)');
+      ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = sg2; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';
+    }
+    if (spec.blur) {
+      var bc = makeCanvas(W, H), bx = bc.getContext('2d');
+      bx.filter = 'blur(' + spec.blur + 'px)'; bx.drawImage(c, 0, 0); ctx.clearRect(0, 0, W, H); ctx.drawImage(bc, 0, 0);
+    }
+
+    // sensor noise
+    var id = ctx.getImageData(0, 0, W, H), d = id.data, amp2 = spec.noise === undefined ? 7 : spec.noise;
+    for (var p = 0; p < d.length; p += 4) {
+      var n0 = (rnd() + rnd() - 1) * amp2;
+      d[p] = clamp(d[p] + n0 + (rnd() - 0.5) * 3, 0, 255); d[p + 1] = clamp(d[p + 1] + n0, 0, 255); d[p + 2] = clamp(d[p + 2] + n0 + (rnd() - 0.5) * 3, 0, 255);
+    }
+    ctx.putImageData(id, 0, 0);
+
+    var cr = Math.cos(rot), sr = Math.sin(rot);
+    var tcs = truthCoins.map(function (tc) { return { x: pcx + tc.lx * cr - tc.ly * sr, y: pcy + tc.lx * sr + tc.ly * cr, r: tc.r, half: tc.half, pile: tc.pile }; });
+    c.truth = {
+      top: { count: topP.reduce(function (a, b) { return a + b; }, 0), piles: topP.slice() },
+      bottom: { count: botP.reduce(function (a, b) { return a + b; }, 0), piles: botP.slice() },
+      coins: tcs, fold: { y: pcy, angle: rot * 180 / PI }
+    };
+    return c;
+  }
+
+  // Optional: call once at app start (e.g. while the camera opens). Reads two small synthetic photos so the
+  // browser's JIT compiles the pixel loops before the first real photo. Takes ~100-200 ms; returns that time.
+  function coinsWarmup() {
+    var t = nowMs();
+    for (var k = 0; k < 2; k++) {
+      var c = drawCoinsSample({ top: [2, 2], bottom: [3], seed: 7 + k, width: 480, height: 360, noise: 4 });
+      readCoins(c, c.width, c.height, { top: { piles: 2 }, bottom: { piles: 1 } });
+    }
+    return Math.round(nowMs() - t);
+  }
+
+  root.readCoins = readCoins;
+  root.coinsWarmup = coinsWarmup;
+  root.drawCoinsSample = drawCoinsSample;
+  root.coinsOverlay = coinsOverlay;
+})(typeof window !== 'undefined' ? window : this);
+
 /* FotoLine sheet reader.
  * window.readSheet(source, w, h) -> what the phone sees on a FotoLine sheet:
  *   the paper's corners, the printed 8 x 8 grid, a pencil line drawn on the middle grid line each way (the axes),
@@ -520,9 +1632,19 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       // back to the photo, for drawing
       var toImg = function (u, v) { var p = applyH(Hg, u, v); return [+p[0].toFixed(1), +p[1].toFixed(1)]; };
       // the coin, and where it is: in squares from the origin, along x and along y (up is +)
-      var cf = findCoin(C, Rn, xs[0] - 0.4 * CELL, xs[N] + 0.4 * CELL, ys[0] - 0.4 * CELL, ys[N] + 0.4 * CELL, ys[4]), coin = { found: false };
+      // FotoSet's coin reader first (tuned on real pennies); this sheet's own finder for what it misses (silver)
+      var cf = null, Hi2g = homography(gc, [[MARGIN, MARGIN], [MARGIN + G, MARGIN], [MARGIN + G, MARGIN + G], [MARGIN, MARGIN + G]]);
+      if (typeof window !== 'undefined' && window.readCoins && Hi2g) { try {
+        var Rc = window.readCoins(source, w, h), list = [];
+        if (Rc && Rc.ok && Rc.coins) Rc.coins.forEach(function (k) { var ox0 = k.x / Rc.scale * s, oy0 = k.y / Rc.scale * s, rr = (k.r || Rc.coinR) / Rc.scale * s;
+          var p0 = applyH(Hi2g, ox0, oy0), p1 = applyH(Hi2g, ox0 + rr, oy0), p2 = applyH(Hi2g, ox0, oy0 + rr), dia = (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) + Math.hypot(p2[0] - p0[0], p2[1] - p0[1])) / PPI * 25.4;
+          if (p0[0] > xs[0] - 0.6 * CELL && p0[0] < xs[N] + 0.6 * CELL && p0[1] > ys[0] - 0.6 * CELL && p0[1] < ys[N] + 0.6 * CELL && dia >= 13 && dia <= 32) list.push({ x: p0[0], y: p0[1], mm: dia, dark: 0.5, by: 'coins' }); });
+        if (list.length) { list.sort(function (p, q) { return Math.abs(p.y - ys[4]) - Math.abs(q.y - ys[4]); }); cf = list[0]; cf.count = list.length; }
+      } catch (e) { cf = null; } }
+      if (!cf) cf = findCoin(C, Rn, xs[0] - 0.4 * CELL, xs[N] + 0.4 * CELL, ys[0] - 0.4 * CELL, ys[N] + 0.4 * CELL, ys[4]);
+      var coin = { found: false };
       if (cf) { var gx = (cf.x - xs[4]) / CELL, gy = (ys[4] - cf.y) / CELL;
-        coin = { found: true, count: cf.count, x: +gx.toFixed(2), y: +gy.toFixed(2), mm: +cf.mm.toFixed(1), dark: +cf.dark.toFixed(2), pt: toImg(cf.x, cf.y) };
+        coin = { found: true, count: cf.count, by: cf.by || 'sheet', x: +gx.toFixed(2), y: +gy.toFixed(2), mm: +cf.mm.toFixed(1), dark: +cf.dark.toFixed(2), pt: toImg(cf.x, cf.y) };
         var e2 = toImg(cf.x + cf.mm / 25.4 * PPI / 2, cf.y); coin.rpx = +Math.hypot(e2[0] - coin.pt[0], e2[1] - coin.pt[1]).toFixed(1);
         coin.at = Math.abs(gx - Math.round(gx)) <= CFG.coinSnap && Math.abs(gy - Math.round(gy)) <= CFG.coinSnap ? [Math.round(gx), Math.round(gy)] : null; }
       var seg = function (A, horiz) { if (!A.drawn) return null; var a = xs[0], b = xs[N]; if (!horiz) { a = ys[0]; b = ys[N]; }
@@ -630,7 +1752,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.4.0", ITERATION=4, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.5.0", ITERATION=5, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -697,10 +1819,13 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
   {id:"l2.o", label:"how far is −3", do:true, mode:"distance", prompt:"Look at −3 and 3 on your sheet.", sub:"Count the squares from 0 to each one.",
    ask:{kind:"count",target:3,max:8,q:"How many squares is −3 from 0?",hint:"Count the squares from 0 to −3, one at a time."},
    say:"3, and 3 is 3 squares from 0 too. −3 and 3 are the same distance from 0, on opposite sides: they are opposites.", words:["opposites"]},
+  {id:"l2.d", label:"from −3 to 3", do:true, mode:"distance", prompt:"Look at −3 and 3 again.", sub:"Count the squares from −3 to 3, across 0.",
+   ask:{kind:"count",target:6,max:9,q:"How many squares from −3 to 3?",hint:"Count from −3 to 0, then keep counting from 0 to 3."},
+   say:"6: 3 squares from −3 to 0, and 3 more from 0 to 3."},
  ]}];
 /* the standard each step works on (Arizona and Common Core) */
 const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","l1.y":"5.G.A.1","l1.n":"2.MD.B.6",
-  "l2.c0":"5.G.A.1","l2.p1":"2.MD.B.6","l2.p2":"2.MD.B.6","l2.p3":"2.MD.B.6","l2.p4":"2.MD.B.6","l2.p5":"2.MD.B.6","l2.p6":"7.NS.A.1b","l2.n":"6.NS.C.5","l2.p7":"7.NS.A.1b","l2.p8":"7.NS.A.1b","l2.o":"6.NS.C.7c"};
+  "l2.c0":"5.G.A.1","l2.p1":"2.MD.B.6","l2.p2":"2.MD.B.6","l2.p3":"2.MD.B.6","l2.p4":"2.MD.B.6","l2.p5":"2.MD.B.6","l2.p6":"7.NS.A.1b","l2.n":"6.NS.C.5","l2.p7":"7.NS.A.1b","l2.p8":"7.NS.A.1b","l2.o":"6.NS.C.7c","l2.d":"7.NS.A.1c"};
 /* a game step: the reels give a start, a sign and a count; the coin's landing is checked, then the student shows where it landed on the slider */
 const minus=v=>v<0?"−"+(-v):String(v), landOf=g=>g.start+(g.sign==="+"?1:-1)*g.count;
 SETS.forEach(X=>X.steps.forEach(st=>{ if(!st.game) return; const g=st.game, L=landOf(g);
