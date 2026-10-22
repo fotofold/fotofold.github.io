@@ -184,7 +184,7 @@ input[type=number]{font:inherit;font-family:var(--f-mono);width:5.5em;padding:6p
       </div>
     </div>
     <a class="folderhead" href="fotoset.html" id="fotosetLink"><span class="ic"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><g fill="#c7793b" stroke="#7a4317" stroke-width="1.3"><circle cx="9" cy="11" r="5"/><circle cx="20" cy="11" r="5"/><circle cx="14.5" cy="23" r="5"/><circle cx="27" cy="24" r="4.5" fill="#e0a26a"/></g></svg></span><b>FotoSet</b><span class="what">Coins: make a whole, group it into parts, see how many fit and what is left over, and a part of a part. 3 sets.</span><span class="chev" aria-hidden="true">›</span></a>
-    <a class="folderhead" href="fotoline.html" id="fotolineLink"><span class="ic"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="3" width="28" height="28" rx="1.5" fill="#fff" stroke="currentColor" stroke-width="1.2"/><path d="M10 3v28M24 3v28M3 10h28M3 24h28" stroke="currentColor" stroke-width=".6" opacity=".45"/><path d="M17 3v28M3 17h28" stroke="#1d7a45" stroke-width="2.2"/><circle cx="17" cy="17" r="2.6" fill="#17201c"/></svg></span><b>FotoLine</b><span class="what">A printed grid: fold it twice to make the axes and the origin, play a game along them, graph points, then fill the square to find its area. 5 sets. New, for trying out.</span><span class="chev" aria-hidden="true">›</span></a>
+    <a class="folderhead" href="fotoline.html" id="fotolineLink"><span class="ic"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="3" width="28" height="28" rx="1.5" fill="#fff" stroke="currentColor" stroke-width="1.2"/><path d="M10 3v28M24 3v28M3 10h28M3 24h28" stroke="currentColor" stroke-width=".6" opacity=".45"/><path d="M17 3v28M3 17h28" stroke="#1d7a45" stroke-width="2.2"/><circle cx="17" cy="17" r="2.6" fill="#17201c"/></svg></span><b>FotoLine</b><span class="what">A printed grid: fold it twice to make the axes and the origin, play a game along them, graph points, fill the square to find its area, then color a medallion. 6 sets. New, for trying out.</span><span class="chev" aria-hidden="true">›</span></a>
   </section>
 
   <section id="stepView" hidden style="display:grid;gap:16px">
@@ -754,7 +754,7 @@ $("retake").onclick=()=>armed($("retake"),"Tap again: start this whole over with
 
 /* ---- screens ---- */
 const SITE_NAME="Fractions by Photo";
-const FOTOSET_ITER=(v=>v.indexOf("/*")===0?"":v)("8"), FOTOLINE_ITER=(v=>v.indexOf("/*")===0?"":v)("8");   // put in by the site build: the first screen shows both versions   // the name over both activities (a working title)
+const FOTOSET_ITER=(v=>v.indexOf("/*")===0?"":v)("8"), FOTOLINE_ITER=(v=>v.indexOf("/*")===0?"":v)("9");   // put in by the site build: the first screen shows both versions   // the name over both activities (a working title)
 function view(which){ for(const v of ["homeView","stepView","doneView"]) $(v).hidden = v!==which; $("brandName").textContent = which==="homeView" ? SITE_NAME : "FotoFold"; $("homeFoot").hidden = which!=="homeView"; $("mapStatus").hidden = which==="homeView"; $("home").setAttribute("aria-label",(which==="homeView"?SITE_NAME:"FotoFold")+", back to the start"); }
 let FOLD_OPEN=false;   // closed each time the site opens, so both activities show; open while you're working in it
 function openFolder(on,save){ $("foldBody").hidden=!on; $("foldBox").classList.toggle("open",!!on); $("foldFolder").setAttribute("aria-expanded",on?"true":"false"); if(save) FOLD_OPEN=!!on; }

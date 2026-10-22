@@ -102,6 +102,11 @@ label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .hints{margin:0;padding:12px 14px 12px 34px;background:var(--bg);border:2px dashed var(--line);border-radius:10px;display:grid;gap:6px;font-weight:600}
 .arrows button,.nlrow button,.nlside button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .acts{margin:2px 0 0;padding-left:1.4em;display:grid;gap:3px} .acts li{padding-left:2px}
+.tilereels{display:grid;gap:8px} .tpairs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.tpairs .tp{display:flex;align-items:center;justify-content:center;gap:3px;background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:6px 2px;font-family:var(--f-display);font-weight:800;font-size:clamp(22px,7.2vw,30px);line-height:1.05;white-space:nowrap}
+.tpairs .tp.spinning b{color:var(--muted)} .tpairs .tp b{min-width:1.4em;text-align:center}
+@media (max-width:280px){ .tpairs{grid-template-columns:minmax(0,1fr)} }
+.colorreel b{display:flex;align-items:center;gap:8px;font-size:clamp(24px,7.5vw,32px)} .colorreel .sw{display:inline-block;width:1.1em;height:1.1em;border-radius:6px;border:2px solid var(--line);background:transparent}
 .reels.pair{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr) auto;align-items:end;gap:4px}
 .paren{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,13vw,56px);line-height:1;padding-bottom:6px;color:var(--ink)} .paren.comma{align-self:end;padding-bottom:2px}
 /* the number line to answer on: slide along it, the way the coin moved */
@@ -135,7 +140,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <section id="homeView" style="display:grid;gap:16px">
     <a class="btn link back" href="index.html" id="allLink">← All activities</a>
     <h1 class="prompt">Fold it, draw it, name it.</h1>
-    <p class="sub">You need a FotoLine sheet, scissors and a pencil; a coin for Sets 2 to 4, and 16 coins for Set 5 (pennies, nickels or dimes: a quarter is too big for a square). <a href="fotoline_sheet.pdf" id="sheetLink">Print the sheet</a> at 100% (Actual size); the grid should measure 7 inches across.</p>
+    <p class="sub">You need a FotoLine sheet, scissors and a pencil; a coin for Sets 2 to 4; 16 coins for Set 5 (pennies, nickels or dimes: a quarter is too big for a square); and for Set 6, four crayons or colored pencils: yellow, green, blue and red. <a href="fotoline_sheet.pdf" id="sheetLink">Print the sheet</a> at 100% (Actual size); the grid should measure 7 inches across.</p>
     <div class="card">
       <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
       <div class="ids">
@@ -157,6 +162,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       <div class="rules" id="rules" aria-label="Game rules"></div>
       <div class="reels" aria-live="polite" aria-atomic="true"><div class="reel"><small>start</small><b id="reel0">?</b></div><div class="reel"><small>sign</small><b id="reel1">?</b></div><div class="reel"><small>count</small><b id="reel2">?</b></div></div>
       <div class="reels pair" id="pairReels" aria-live="polite" aria-atomic="true" hidden><span class="paren" aria-hidden="true">(</span><div class="reel"><small>x</small><b id="reelX">?</b></div><span class="paren comma" aria-hidden="true">,</span><div class="reel"><small>y</small><b id="reelY">?</b></div><span class="paren" aria-hidden="true">)</span></div>
+      <div class="tilereels" id="tileReels" aria-live="polite" aria-atomic="true" hidden><div class="tpairs" id="tilePairs"></div><div class="reel colorreel"><small>color</small><b id="tileColor"><i class="sw"></i><span>?</span></b></div></div>
       <div class="row"><button class="btn go" id="spin" type="button">Spin</button></div>
     </div>
     <div class="stage" id="stageBox"><canvas id="stage" aria-label="Your sheet, as the phone saw it"></canvas></div>
@@ -206,7 +212,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoLine never keeps the photo you take: it looks for your lines and your dot and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
       <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
   </details>
-  <footer>FotoLine, iteration <span id="footIter"></span>. Cut out a square, fold it into two axes and an origin, play a game along them, graph points and connect them, then fill the square to find its area. The photo is never kept.</footer>
+  <footer>FotoLine, iteration <span id="footIter"></span>. Cut out a square, fold it into two axes and an origin, play a game along them, graph points and connect them, fill the square to find its area, then color a medallion. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -1485,7 +1491,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   /* ---------- 3. a drawn line on a grid line ---------- */
   // ink across a line at each point along it: sum of darkness over +-HW around the darkest spot within the band
   var HW = 6;
-  var CFG = { cover: 0.65, peak: 0.21, width: 11, ends: 0.3, dotDark: 0.25, dotFill: 0, dotRound: 2.2, dotMm: 4.2, blur: 11, soft: 6.8, coinL: 0.84, coinMin: 16, coinMax: 28, coinSnap: 0.3, coinSquare: 0.09, hueMin: 10, hueMax: 65, sheetSquare: 0.085, cellSnap: 0.3, cellM: 0.12, cellMmax: 0.5, cellF: 0.6 };   // see readSheet.cfg
+  var CFG = { cover: 0.65, peak: 0.21, width: 11, ends: 0.3, dotDark: 0.25, dotFill: 0, dotRound: 2.2, dotMm: 4.2, blur: 11, soft: 6.8, coinL: 0.84, coinMin: 16, coinMax: 28, coinSnap: 0.3, coinSquare: 0.09, hueMin: 10, hueMax: 65, sheetSquare: 0.085, cellSnap: 0.3, cellM: 0.12, cellMmax: 0.5, cellF: 0.6, tileSat: 0.11, tileSatY: 0.07, tileFill: 0.45, tileShare: 0.6 };   // see readSheet.cfg
   function inkAlong(D, R, horiz, center, band, a0, a1, skip) { var out = [];
     for (var m = Math.round(a0) + 2; m < a1 - 2; m += 2) { var near = false; for (var q = 0; q < skip.length; q++) if (Math.abs(m - skip[q]) < 8) { near = true; break; } if (near) continue;
       var bv = -1, bp = 0; for (var d = -band; d <= band; d++) { var c = Math.round(center + d); if (c < 1 || c >= R - 1) continue;
@@ -1623,10 +1629,17 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       var s = Math.min(1, MAXS / Math.max(w, h)), W = Math.max(1, Math.round(w * s)), H = Math.max(1, Math.round(h * s));
       var cv = makeCanvas(W, H), g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(source, 0, 0, W, H);
       var data = g.getImageData(0, 0, W, H).data, L = new Float32Array(W * H), Sat = new Float32Array(W * H);
-      for (var i = 0, o = 0; i < W * H; i++, o += 4) { var r = data[o], gg = data[o + 1], b = data[o + 2]; L[i] = 0.299 * r + 0.587 * gg + 0.114 * b; Sat[i] = Math.max(r, gg, b) - Math.min(r, gg, b); }
+      // the light's color: the brightest pixels (mostly paper) should be gray. Balanced for the colorlessness test only (a warm lamp tints the paper)
+      var lum = []; for (var i0 = 0, o0 = 0; i0 < W * H; i0 += 7, o0 += 28) lum.push(0.299 * data[o0] + 0.587 * data[o0 + 1] + 0.114 * data[o0 + 2]); lum.sort(function (p, q) { return p - q; });
+      var lcut = lum[Math.floor(0.85 * (lum.length - 1))] || 0, mr = 0, mg = 0, mb = 0, mn0 = 0;
+      for (var i1 = 0, o1 = 0; i1 < W * H; i1 += 7, o1 += 28) { if (0.299 * data[o1] + 0.587 * data[o1 + 1] + 0.114 * data[o1 + 2] < lcut) continue; mr += data[o1]; mg += data[o1 + 1]; mb += data[o1 + 2]; mn0++; }
+      var mm0 = mn0 ? (mr + mg + mb) / 3 / mn0 : 1, gR = mn0 && mr ? clamp(mm0 / (mr / mn0), 0.75, 1.35) : 1, gG = mn0 && mg ? clamp(mm0 / (mg / mn0), 0.75, 1.35) : 1, gB = mn0 && mb ? clamp(mm0 / (mb / mn0), 0.75, 1.35) : 1;
+      if (Math.max(Math.abs(gR - 1), Math.abs(gG - 1), Math.abs(gB - 1)) < 0.12) gR = gG = gB = 1;   // only a strong cast: an ordinary photo reads as before
+      for (var i = 0, o = 0; i < W * H; i++, o += 4) { var r = data[o], gg = data[o + 1], b = data[o + 2]; L[i] = 0.299 * r + 0.587 * gg + 0.114 * b;
+        var rb = r * gR, gb = gg * gG, bb = b * gB; Sat[i] = Math.max(rb, gb, bb) - Math.min(rb, gb, bb); }
       var base = { size: { w: W, h: H }, scale: s, ms: 0 };
       var P = findPaper(L, Sat, W, H);
-      if (!P.ok) return Object.assign(base, { ok: false, reason: 'nopaper', message: "I can't find the sheet. Put it on a darker table and get the whole sheet in the photo." });
+      if (!P.ok) return Object.assign(base, { ok: false, reason: 'nopaper', message: "I can't find the sheet. Hold the phone a little higher, so the whole sheet is in the photo with some table around it. A darker table helps." });
       var c = P.corners, side = function (a, b) { return Math.hypot(c[b][0] - c[a][0], c[b][1] - c[a][1]); };
       var hor = (side(0, 1) + side(3, 2)) / 2, ver = (side(0, 3) + side(1, 2)) / 2, asp = Math.max(hor, ver) / Math.min(hor, ver);
       var paper = { x0: Math.min(c[0][0], c[3][0]), y0: Math.min(c[0][1], c[1][1]), x1: Math.max(c[1][0], c[2][0]), y1: Math.max(c[2][1], c[3][1]), corners: c };
@@ -1642,7 +1655,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       var C = warp(L, W, H, Hc2i, gx0 - MARGIN, gy0 - MARGIN, Rn), D = darkness(C, Rn);
       var colP = profile(D, Rn, true, MARGIN, Rn - MARGIN), rowP = profile(D, Rn, false, MARGIN, Rn - MARGIN);
       var fv = fitFamily(colP, MARGIN, 30, 0.05), fh = fitFamily(rowP, MARGIN, 30, 0.05);
-      if (fv.q < 1.6 || fh.q < 1.6) return Object.assign(base, { ok: false, reason: 'nogrid', kind: kind, message: "I can't find the grid. Use the FotoLine sheet, and get all of it in the photo." });
+      if (fv.q < 1.6 || fh.q < 1.6) return Object.assign(base, { ok: false, reason: 'nogrid', kind: kind, message: "I can't find the grid. Hold the phone a little higher, so the whole sheet is in the photo, all four corners." });
       // the grid's border lines, fitted, give its corners: map again from them
       var top = traceLine(D, Rn, true, fh.pos[0], fv.pos[0], fv.pos[N], 6), bot = traceLine(D, Rn, true, fh.pos[N], fv.pos[0], fv.pos[N], 6);
       var lef = traceLine(D, Rn, false, fv.pos[0], fh.pos[0], fh.pos[N], 6), rig = traceLine(D, Rn, false, fv.pos[N], fh.pos[0], fh.pos[N], 6);
@@ -1650,11 +1663,11 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         var y = (hl[0] + hl[1] * vl[0]) / (1 - hl[1] * vl[1]), x = vl[0] + vl[1] * y; return [x, y]; }
       var gc = [cross(top, lef), cross(top, rig), cross(bot, rig), cross(bot, lef)].map(function (p) { return applyH(Hc2i, gx0 - MARGIN + p[0], gy0 - MARGIN + p[1]); });
       var G = GRID_IN * PPI, Hg = homography([[MARGIN, MARGIN], [MARGIN + G, MARGIN], [MARGIN + G, MARGIN + G], [MARGIN, MARGIN + G]], gc);
-      if (!Hg) return Object.assign(base, { ok: false, reason: 'nogrid', message: "I can't find the grid. Use the FotoLine sheet, and get all of it in the photo." });
+      if (!Hg) return Object.assign(base, { ok: false, reason: 'nogrid', message: "I can't find the grid. Hold the phone a little higher, so the whole sheet is in the photo, all four corners." });
       C = warp(L, W, H, Hg, 0, 0, Rn); D = darkness(C, Rn);
       colP = profile(D, Rn, true, MARGIN, Rn - MARGIN); rowP = profile(D, Rn, false, MARGIN, Rn - MARGIN);
       fv = fitFamily(colP, MARGIN, 4, 0.01); fh = fitFamily(rowP, MARGIN, 4, 0.01);
-      if (fv.q < 1.6 || fh.q < 1.6) return Object.assign(base, { ok: false, reason: 'nogrid', message: "I can't find the grid. Use the FotoLine sheet, and get all of it in the photo." });
+      if (fv.q < 1.6 || fh.q < 1.6) return Object.assign(base, { ok: false, reason: 'nogrid', message: "I can't find the grid. Hold the phone a little higher, so the whole sheet is in the photo, all four corners." });
       var xs = fv.pos, ys = fh.pos, band = Math.round(0.75 * CELL);
       // the printed line's ink, from the lines nobody draws on
       var pwl = [];
@@ -1743,6 +1756,42 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         cands.sort(function (p, q) { return onY ? Math.abs(p.x - xs[4]) - Math.abs(q.x - xs[4]) : Math.abs(p.y - ys[4]) - Math.abs(q.y - ys[4]); });
         cf = Object.assign({}, cands[0], { count: cands.length, all: undefined }); }
       }
+      // Set 6: the color inside each tile. opts.tiles: [{poly: [[x, y], ...] in squares, y up}, ...]. The paper's own white (the bare squares far
+      // from the middle) balances the colors, so a warm or a blue light doesn't change them.
+      var tiles = null;
+      if (opts.tiles) {
+        var gToImg = function (gx, gy) { return toImg(xs[4] + gx * CELL, ys[4] - gy * CELL); };
+        var px3 = function (q) { var x = Math.round(q[0]), y = Math.round(q[1]), r = 0, g = 0, b = 0, n = 0;
+          for (var yy = y - 1; yy <= y + 1; yy++) for (var xx = x - 1; xx <= x + 1; xx++) { if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; var o = (yy * W + xx) * 4; r += data[o]; g += data[o + 1]; b += data[o + 2]; n++; }
+          return n ? [r / n, g / n, b / n] : [0, 0, 0]; };
+        var white = [[], [], []], whiteAll = [[], [], []];
+        for (var wi = -4; wi < 4; wi++) for (var wj = -4; wj < 4; wj++) { if (Math.max(Math.abs(wi + 0.5), Math.abs(wj + 0.5)) < 3) continue;   // the outer ring of squares
+          [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]].forEach(function (f) { var c = px3(gToImg(wi + f[0], wj + f[1])); whiteAll[0].push(c[0]); whiteAll[1].push(c[1]); whiteAll[2].push(c[2]);
+            if (Math.max(c[0], c[1], c[2]) >= 250) return;   // washed out: its true color is unknown, so it can't say what white is
+            white[0].push(c[0]); white[1].push(c[1]); white[2].push(c[2]); }); }
+        if (white[0].length < 40) white = whiteAll;   // most of the paper washed out (a strong light): use it all
+        var pw = white.map(function (a) { a.sort(function (p, q) { return p - q; }); return a.length ? Math.max(40, a[Math.floor(0.8 * (a.length - 1))]) : 230; });
+        tiles = opts.tiles.map(function (t) { var P = t.poly, cx = 0, cy = 0; P.forEach(function (q) { cx += q[0] / P.length; cy += q[1] / P.length; });
+          // sample a grid inside the tile, pulled in from its sides (pencil lines, the dots at the vertices)
+          var minx = Math.min.apply(null, P.map(function (q) { return q[0]; })), maxx = Math.max.apply(null, P.map(function (q) { return q[0]; })), miny = Math.min.apply(null, P.map(function (q) { return q[1]; })), maxy = Math.max.apply(null, P.map(function (q) { return q[1]; }));
+          var inside = function (x, y) { var c = false; for (var i = 0, j = P.length - 1; i < P.length; j = i++) { var a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+          var count = { yellow: 0, green: 0, blue: 0, red: 0, other: 0, gray: 0, none: 0 }, n = 0, sh = 0.72;
+          for (var sy = 0; sy <= 10; sy++) for (var sx = 0; sx <= 10; sx++) { var gx = minx + (maxx - minx) * sx / 10, gy = miny + (maxy - miny) * sy / 10;
+            var ux = cx + (gx - cx) * sh, uy = cy + (gy - cy) * sh; if (!inside(gx, gy)) continue;
+            var c = px3(gToImg(ux, uy)), r = Math.min(1.2, c[0] / pw[0]), g = Math.min(1.2, c[1] / pw[1]), b = Math.min(1.2, c[2] / pw[2]);
+            var mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx > 0 ? (mx - mn) / mx : 0, hue;
+            if (mx - mn < 1e-6) hue = 0; else if (mx === r) hue = 60 * (((g - b) / (mx - mn) + 6) % 6); else if (mx === g) hue = 60 * ((b - r) / (mx - mn) + 2); else hue = 60 * ((r - g) / (mx - mn) + 4);
+            // the four crayon colors, with room between them: orange, brown and tan (15-38°), violet (240-335°) are "other"; pale yellow needs less color
+            var yel = hue >= 38 && hue < 75, k;
+            if (sat < (yel ? CFG.tileSatY : CFG.tileSat)) k = mx < 0.62 ? 'gray' : 'none';
+            else k = (hue >= 335 || hue < 12 || (hue < 20 && g / Math.max(r, 1e-3) < 0.5)) ? (mx < 0.45 ? 'other' : 'red') : hue < 38 ? 'other' : yel ? 'yellow' : hue < 178 ? 'green' : hue < 240 ? 'blue' : 'other';   // brown and orange (12-38°, and not deep red) are other
+            count[k]++; n++; }
+          var best = 'none', bn = -1; ['yellow', 'green', 'blue', 'red', 'other', 'gray'].forEach(function (k) { if (count[k] > bn) { bn = count[k]; best = k; } });
+          // colored: how much of the tile has color; share: how much of the color is one color (wax shine and gaps leave paper, not another color)
+          var colored = n ? (n - count.none) / n : 0, share = n - count.none ? bn / (n - count.none) : 0;
+          return { poly: P, pts: P.map(function (q) { return gToImg(q[0], q[1]); }), color: colored >= CFG.tileFill && share >= CFG.tileShare ? best : colored >= 0.2 && share >= CFG.tileShare ? 'some ' + best : colored >= 0.2 ? 'other' : 'none',
+            colored: +colored.toFixed(2), share: +share.toFixed(2), count: count, n: n }; });   // share is of the colored part
+      }
       // Set 5: which unit square each coin is in. A unit square is named by its lower-left corner: [-2, -2] is the one from x = -2 to -1, y = -2 to -1
       var cells = null, fill = opts.cells ? cellFill(C, Rn, xs, ys, CELL) : null, cellCoins = null;
       if (opts.cells) cellCoins = cands.filter(function (c) { if (c.by === 'coins') return true; var ux = Math.floor((c.x - xs[4]) / CELL), uy = Math.floor((ys[4] - c.y) / CELL);
@@ -1751,9 +1800,11 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       // covered: the square looks covered, or a coin was found in its middle. partly: a coin across a line (half in two squares)
       if (opts.cells) { var key = function (c) { return c[0] + ',' + c[1]; }, cov = {}, part = {};
         var wanted = {}; (Array.isArray(opts.cells) ? opts.cells : []).forEach(function (c) { wanted[key(c)] = 1; });
+        // opts.look: more squares where darkness may count (Set 5: the whole big square, so a silver coin left where it shouldn't be is seen)
+        var lookAt = {}; Object.keys(wanted).forEach(function (k) { lookAt[k] = 1; }); (opts.look || []).forEach(function (c) { lookAt[key(c)] = 1; });
         // darkness alone (a silver coin the coin finders miss) counts only in a square the step asks for: elsewhere a shadow, a finger or a mark could look like a coin
         // (and no darker than a silver coin: pencil shading a square is much darker, and copper is found by the coin reader)
-        fill.forEach(function (f) { if (!(wanted[key(f.cell)] && f.m >= CFG.cellM && f.m <= CFG.cellMmax && f.f >= CFG.cellF)) return;
+        fill.forEach(function (f) { if (!(lookAt[key(f.cell)] && f.m >= CFG.cellM && f.m <= CFG.cellMmax && f.f >= CFG.cellF)) return;
           // and coin-colored: gray (silver), copper or brass. Not a red or yellow sticker, a red die, a blue eraser
           var pc = toImg(xs[4] + (f.cell[0] + 0.5) * CELL, ys[4] - (f.cell[1] + 0.5) * CELL), pe = toImg(xs[4] + (f.cell[0] + 0.8) * CELL, ys[4] - (f.cell[1] + 0.5) * CELL);
           var col = colorAt(data, W, H, pc[0], pc[1], Math.hypot(pe[0] - pc[0], pe[1] - pc[1])); f.hue = col.hue; f.sat = col.sat;
@@ -1777,7 +1828,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       var soft = pWidth > CFG.soft;   // soft focus: a missing or faint line may be the photo, not the pencil
       var out = Object.assign(base, { ok: true, kind: kind, soft: soft, grid: { quad: gridQuad, mid: mid, q: +Math.min(fv.q, fh.q).toFixed(1) }, printedInk: +pInk.toFixed(2), printedWidth: +pWidth.toFixed(1),
         h: Object.assign({}, hA, { seg: seg(hA, true), fit: undefined }), v: Object.assign({}, vA, { seg: seg(vA, false), fit: undefined }),
-        coin: coin, dots: dots, cells: cells, origin: Object.assign(origin, origin.found ? { pt: toImg(origin.cx, origin.cy), r: +(Math.sqrt(dot.area / Math.PI) * (Hg ? 1 : 1)).toFixed(1) } : {}, { cx: undefined, cy: undefined }) });
+        coin: coin, dots: dots, cells: cells, tiles: tiles, origin: Object.assign(origin, origin.found ? { pt: toImg(origin.cx, origin.cy), r: +(Math.sqrt(dot.area / Math.PI) * (Hg ? 1 : 1)).toFixed(1) } : {}, { cx: undefined, cy: undefined }) });
       // the dot's radius in photo pixels, for the circle on the stage
       if (out.origin.found) { var e1 = toImg(dot.x + out.origin.r, dot.y); out.origin.rpx = +Math.hypot(e1[0] - out.origin.pt[0], e1[1] - out.origin.pt[1]).toFixed(1); }
       out.ms = Math.round(nowMs() - t0);
@@ -1833,6 +1884,18 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     if (spec.dot) drawDot(ox, oy, spec.dot === true ? {} : spec.dot);
     // pencil lines between grid points (Set 4: connect the dots): [x0, y0, x1, y1] in squares, y up
     (spec.segs || []).forEach(function (sg) { pencilLine(ox + sg[0] * cell, oy - sg[1] * cell, ox + sg[2] * cell, oy - sg[3] * cell); });
+    // Set 6: tiles colored in. spec.fills: [{poly: [[x, y], ...] in squares (y up), color: 'yellow'|'green'|'blue'|'red'|'#rrggbb', tool: 'crayon'|'pencil'|'marker', cover}]
+    var TOOL = { yellow: '#f5d327', green: '#3a9e4f', blue: '#2e64c8', red: '#d6333a', purple: '#7d4bb0', orange: '#f08a24', cyan: '#2fb7d6' };
+    (spec.fills || []).forEach(function (f) { var col = TOOL[f.color] || f.color, tool = f.tool || 'crayon', P = f.poly.map(function (q) { return [ox + q[0] * cell, oy - q[1] * cell]; });
+      var a = tool === 'marker' ? 0.85 : tool === 'pencil' ? 0.38 : 0.62, cover = f.cover === undefined ? (tool === 'pencil' ? 0.85 : 0.92) : f.cover;
+      g.save(); g.beginPath(); P.forEach(function (q, i) { i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.closePath(); g.clip();
+      var bx = Math.min.apply(null, P.map(function (q) { return q[0]; })), by = Math.min.apply(null, P.map(function (q) { return q[1]; })), bw = Math.max.apply(null, P.map(function (q) { return q[0]; })) - bx, bh = Math.max.apply(null, P.map(function (q) { return q[1]; })) - by;
+      g.globalCompositeOperation = 'multiply'; g.strokeStyle = col; g.lineCap = 'round';
+      // back-and-forth strokes, a little slanted, the way a child colors; some paper shows through
+      var step = tool === 'marker' ? 3 : 2.2, ang = 0.5 + 0.3 * rnd();
+      for (var k = -bh; k < bw + bh; k += step) { if (rnd() > cover) continue; g.globalAlpha = a * (0.75 + 0.35 * rnd()); g.lineWidth = tool === 'marker' ? 5 : 2.2 + rnd() * 1.4;
+        g.beginPath(); g.moveTo(bx + k, by); g.lineTo(bx + k - bh * Math.tan(ang), by + bh); g.stroke(); }
+      g.restore(); });
     // plotted points: {x, y} in squares from the origin (y up), plus drawDot's options
     (spec.dots || []).forEach(function (d) { drawDot(ox + d.x * cell, oy - d.y * cell, d); });
     if (spec.yLabels) { g.fillStyle = 'rgba(55,57,64,' + dark + ')'; g.font = Math.round(0.22 * F) + 'px "Comic Sans MS", cursive, sans-serif';
@@ -1869,7 +1932,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       if (shadow) { var sd = (X - OW / 2) * Math.cos(shadow.a) + (Y - OH / 2) * Math.sin(shadow.a) - shadow.d; if (sd > 0) lit *= 1 - 0.28 * Math.min(1, sd / shadow.w); }
       if (u >= 0 && v >= 0 && u < FW - 1 && v < FH - 1) { var u0 = u | 0, v0 = v | 0, fu = u - u0, fv = v - v0, p0 = (v0 * FW + u0) * 4;
         for (var ch = 0; ch < 3; ch++) { var val = (fl[p0 + ch] * (1 - fu) + fl[p0 + 4 + ch] * fu) * (1 - fv) + (fl[p0 + FW * 4 + ch] * (1 - fu) + fl[p0 + FW * 4 + 4 + ch] * fu) * fv;
-          dd[o + ch] = clamp(val * lit + (rnd() - 0.5) * 9, 0, 255); } }
+          dd[o + ch] = clamp(val * lit * (spec.tint ? spec.tint[ch] : 1) + (rnd() - 0.5) * 9, 0, 255); } }
       else for (ch = 0; ch < 3; ch++) dd[o + ch] = clamp(dd[o + ch] * lit + (rnd() - 0.5) * 9, 0, 255); }
     og.putImageData(desk, 0, 0);
     var bl = spec.blur === undefined ? 0.8 + rnd() * 0.8 : spec.blur; if (bl > 0) { var t2 = makeCanvas(OW, OH), tg = t2.getContext('2d'); tg.filter = 'blur(' + bl + 'px)'; tg.drawImage(out, 0, 0); out = t2; }
@@ -1885,7 +1948,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.8.0", ITERATION=8, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.9.0", ITERATION=9, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -2022,8 +2085,8 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
     tiling it, and show that the area is the same as would be found by multiplying the side lengths." 6.G.A.1: "Find the area of right
     triangles… by composing into rectangles or decomposing into triangles." 4.NF.B.4b: a whole number times a fraction (8 × ½).
     Frank's order: fill the bottom row (across), fill the side (up), multiply, fill the whole square; then the diamond, with a hint. */
- {key:"l5",no:5,name:"Fill the square",what:"Fill the big square with coins, one row and one side first. Count, multiply, and find its area. Then a challenge: the diamond.",std:"3.MD.C.5, 3.MD.C.6, 3.MD.C.7a, 4.NF.B.4b, 6.G.A.1",
- end:{lines:[],q:"The big square's area is 16 square units: 4 × 4. The diamond's area is 8 square units: half of the big square."},
+ {key:"l5",no:5,name:"Fill the square",what:"Fill the big square with coins, one row and one side first. Count, multiply, and find its area. Then two challenges: the diamond, and the part outside it.",std:"3.MD.C.5, 3.MD.C.6, 3.MD.C.7a, 4.NF.B.4b, 6.G.A.1",
+ end:{lines:["Big square: 4 × 4 = 16 square units","Diamond: 4 + 8 × ½ = 8 square units","Outside the diamond: 16 − 8 = 8 square units"],q:"The diamond's area is 8 square units, and so is the part outside it: each is half of the big square."},
  steps:[
   {id:"l5.b", label:"fill the bottom row", prompt:"Fill the bottom row of the big square with coins.", sub:"One coin inside each square of the grid, from −2 to 2. Put each coin in the middle of its square, not on a line. Use pennies, nickels or dimes: a quarter is too big.",
    need:{cells:[[-2,-2],[-1,-2],[0,-2],[1,-2]],where:"the bottom row"}, mode:"tile",
@@ -2046,17 +2109,61 @@ const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold i
    need:{cells:[[-1,-1],[0,-1],[-1,0],[0,0]],where:"the diamond",inside:true}, mode:"tile",
    ask:{kind:"count",target:4,max:16,q:"How many coins are all the way inside the diamond?",hint:"Count the coins still on the sheet."},
    say:"4: four whole unit squares are inside the diamond."},
-  {id:"l5.d", label:"area of the diamond", do:true, mode:"halves", prompt:"Challenge: the area of the diamond.", sub:"Think it through before you answer. The Hint button helps.",
+  {id:"l5.d", label:"area of the diamond", do:true, mode:"halves", prompt:"Challenge 1: the area of the diamond.", sub:"Think it through before you answer. The Hint button helps.",
    ask:{kind:"count",target:8,max:16,q:"What is the area of the diamond, in square units?",hint:"4 whole unit squares, and the half squares: two halves make one whole."},
    hints:["The 4 coins are 4 whole unit squares. Now look at the unit squares the diamond's lines cut.","Each one is cut in half, into two triangles. How many half squares are inside the diamond? Two halves make one whole unit square.","There are 8 half squares: 8 × ½ = ? Add that to the 4 whole squares."],
    say:"8 square units: 4 whole unit squares, and 8 half squares (triangles) make 4 more: 8 × ½ = 4. 4 + 4 = 8, half of the big square's 16.", words:["triangle"]},
+  /* Challenge 2 (Frank's): the area outside the diamond, the same moves: whole squares with coins, then the halves; then the short way, 16 − 8 */
+  {id:"l5.c", label:"coins to the corners", prompt:"Challenge 2: move the 4 coins to the corners of the big square.", sub:"Put them in unit squares outside the diamond that no line crosses.",
+   need:{cells:[[-2,-2],[1,-2],[-2,1],[1,1]],where:"the corners of the big square",corners:true}, mode:"tile",
+   ask:{kind:"count",target:4,max:16,q:"How many whole unit squares are outside the diamond?",hint:"Count the coins in the corners."},
+   say:"4 whole unit squares outside the diamond, one in each corner."},
+  {id:"l5.h", label:"half squares outside", do:true, mode:"halfcount", prompt:"Count the half squares outside the diamond.", sub:"The diamond's lines cut them: the other half of each cut square.",
+   ask:{kind:"count",target:8,max:16,q:"How many half squares are outside the diamond?",hint:"Two on each side of the diamond, outside its lines."},
+   say:"8: each half outside goes with a half inside."},
+  {id:"l5.e", label:"area outside the diamond", do:true, mode:"halves", prompt:"Put the pieces together.", sub:"4 whole unit squares and 8 half squares.",
+   ask:{kind:"count",target:8,max:16,q:"What is the area outside the diamond, in square units?",hint:"8 half squares: 8 × ½ = 4. Add the 4 whole squares."},
+   say:"8 square units: 4 + 8 × ½ = 4 + 4 = 8."},
+  {id:"l5.s", label:"16 − 8", do:true, mode:"subtract", prompt:"Now the short way.", sub:"The big square is 16 square units. Take away the diamond, 8 square units.",
+   ask:{kind:"count",target:8,max:16,q:"16 − 8 = ?",hint:"Count back 8 from 16."},
+   say:"8: the same answer both ways. The diamond and the part outside it each have an area of 8 square units: half of the big square."},
+ ]},
+ /* Set 6: the medallion (Frank's design, from his medallion work, which stays his). The same board and the same reels: now each spin gives the
+    vertices of a tile and its color. Six tiles fill quadrant I; then mirror across the x-axis, then everything across the y-axis.
+    Arizona 6.G.A.3 ("Draw polygons in the coordinate plane given coordinates for the vertices"), 5.G.A.2 ("the first quadrant"),
+    6.NS.C.6b ("signs of numbers in ordered pairs as indicating locations in quadrants… when two ordered pairs differ only by signs, the
+    locations of the points are related by reflections across one or both axes"), 6.NS.C.8 (all four quadrants), 4.G.A.3 ("a line of
+    symmetry… such that the figure can be folded along the line into matching parts"). Four colors, far apart for the camera. */
+ {key:"l6",no:6,name:"The medallion",what:"Spin for the vertices and the color of each tile, make it, and fill the first quadrant. Then mirror it across the axes.",std:"4.G.A.3, 5.G.A.2, 6.NS.C.6b, 6.NS.C.8, 6.G.A.3",
+ end:{lines:[],q:"Your medallion fills all four quadrants. The x-axis and the y-axis are its lines of symmetry: the folds you made at the start. And the diamond is double the yellow square in the middle: 8 square units and 4."},
+ steps:[
+  {id:"l6.r", label:"rule: a tile", do:true, ruleText:["The reels: the points of a tile, and its color."], prompt:"New game: each spin gives you a tile.", sub:"The reels show its points and its color.",
+   say:"Mark the points, connect them, and color the tile."},
+  {id:"l6.t1", tile:0, part:"dots", words:["vertex"], say:"Each corner of the square is a vertex. This square has 4 vertices."},
+  {id:"l6.t1c", tile:0, part:"color", words:["side"], say:"4 sides, 4 vertices: a square. Each vertex is where two sides meet."},
+  {id:"l6.t2", tile:1, say:"3 sides, 3 vertices: a triangle."},
+  {id:"l6.t3", tile:2},
+  {id:"l6.t4", tile:3},
+  {id:"l6.t5", tile:4},
+  {id:"l6.t6", tile:5, words:["quadrant"], say:"All six tiles are in the first quadrant: the part of the plane where x and y are both positive."},
+  {id:"l6.m1", mirror:12, label:"mirror across the x-axis", prompt:"Mirror quadrant I across the x-axis.", sub:"Color the same tiles below the x-axis. Each one matches its partner above: the same distance from the x-axis, the same color.",
+   say:"Two quadrants now, one above the x-axis and one below."},
+  {id:"l6.a1", label:"(2, 1) across the x-axis", do:true, mode:"reflect", prompt:"Find the mirror of the point (2, 1).", sub:"Its mirror is below the x-axis.",
+   ask:{kind:"line",axis:"y",target:-1,min:-4,max:4,q:"The mirror of (2, 1) across the x-axis is (2, ?)",hint:"Count down from (2, 1) to the x-axis, then the same number of squares below it."},
+   say:"(2, −1): the same x, the opposite y. A mirror image like this is a reflection.", words:["reflection"]},
+  {id:"l6.m2", mirror:24, label:"mirror across the y-axis", prompt:"Mirror everything across the y-axis.", sub:"Color the same tiles on the left of the y-axis. Each one matches its partner on the right: the same distance from the y-axis, the same color.",
+   say:"All four quadrants: the medallion is whole."},
+  {id:"l6.a2", label:"(2, 1) across the y-axis", do:true, mode:"reflect", prompt:"Find the mirror of the point (2, 1) again.", sub:"This time across the y-axis.",
+   ask:{kind:"line",axis:"x",target:-2,min:-4,max:4,q:"The mirror of (2, 1) across the y-axis is (?, 1)",hint:"Count left from (2, 1) to the y-axis, then the same number of squares past it."},
+   say:"(−2, 1): the opposite x, the same y. The two points differ only by a sign. Fold the sheet on an axis and the two halves match: each axis is a line of symmetry.", words:["line of symmetry"]},
  ]}];
 /* the standard each step works on (Arizona and Common Core) */
 const STD={"l1.h":"5.G.A.1","l1.v":"4.G.A.1","l1.o":"5.G.A.1","l1.x":"5.G.A.1","l1.y":"5.G.A.1","l1.n":"2.MD.B.6",
   "l2.c0":"5.G.A.1","l2.p1":"2.MD.B.6","l2.p2":"2.MD.B.6","l2.p3":"2.MD.B.6","l2.p4":"2.MD.B.6","l2.p5":"2.MD.B.6","l2.p6":"7.NS.A.1b","l2.n":"6.NS.C.5","l2.p7":"7.NS.A.1b","l2.p8":"7.NS.A.1b","l2.o":"6.NS.C.7c","l2.d":"7.NS.A.1c",
   "l3.c0":"5.G.A.1","l3.p1":"7.NS.A.1","l3.p2":"7.NS.A.1","l3.p3":"7.NS.A.1","l3.p4":"7.NS.A.1","l3.p5":"7.NS.A.1","l3.p6":"7.NS.A.1b","l3.n":"6.NS.C.6c","l3.p7":"7.NS.A.1b","l3.p8":"7.NS.A.1b","l3.o":"6.NS.C.7c","l3.d":"7.NS.A.1c",
   "l4.r":"5.G.A.1","l4.pt1":"5.G.A.1","l4.pt2":"5.G.A.1","l4.pt3":"6.NS.C.6c","l4.pt4":"6.NS.C.6c","l4.c1":"6.G.A.3","l4.pt5":"5.G.A.2","l4.pt6":"6.NS.C.6c","l4.pt7":"6.NS.C.6c","l4.pt8":"6.NS.C.6c","l4.c2":"6.G.A.3","l4.s":"6.G.A.3",
-  "l5.b":"3.MD.C.6","l5.u":"3.MD.C.6","l5.m":"3.MD.C.7a","l5.f":"3.MD.C.7a","l5.a":"3.MD.C.5b","l5.k":"3.MD.C.6","l5.d":"6.G.A.1"};
+  "l5.b":"3.MD.C.6","l5.u":"3.MD.C.6","l5.m":"3.MD.C.7a","l5.f":"3.MD.C.7a","l5.a":"3.MD.C.5b","l5.k":"3.MD.C.6","l5.d":"6.G.A.1","l5.c":"3.MD.C.6","l5.h":"6.G.A.1","l5.e":"4.NF.B.4b","l5.s":"6.G.A.1",
+  "l6.r":"6.G.A.3","l6.t1":"6.G.A.3","l6.t1c":"6.G.A.3","l6.t2":"6.G.A.3","l6.t3":"6.G.A.3","l6.t4":"6.G.A.3","l6.t5":"6.G.A.3","l6.t6":"5.G.A.2","l6.m1":"6.NS.C.6b","l6.a1":"6.NS.C.6b","l6.m2":"6.NS.C.8","l6.a2":"4.G.A.3"};
 /* a game step: the reels give a start, a sign and a count; the coin's landing is checked, then the student shows where it landed on the slider */
 const minus=v=>v<0?"−"+(-v):String(v), landOf=g=>g.start+(g.sign==="+"?1:-1)*g.count;
 const arrow=(sign,axis)=>axis==="y"?(sign==="+"?"↑":"↓"):(sign==="+"?"→":"←"), axisOf=()=>(S.set&&S.set.axis)||"x";
@@ -2071,6 +2178,19 @@ SETS.forEach(X=>{ const have=[]; X.steps.forEach(st=>{ if(!st.plot) return; cons
   st.label=st.label||"graph "+pair(p); st.prompt="Spin the reels."; st.sub="They give you two numbers: how far to go along x, then along y.";
   st.need={dot:p,have:have.slice()}; st.mode="plot"; st.target=pair(p); have.push(p);
   st.say=pair(p)+": from the origin, "+along(p[0],"x")+", then "+along(p[1],"y")+"."+(st.more?" "+st.more:""); }); });
+/* Set 6's tiles: quadrant I (Frank's six), then its mirror across the x-axis (quadrant IV), then all twelve across the y-axis (II and III) */
+const Q1T=[{color:"yellow",poly:[[0,0],[1,0],[1,1],[0,1]]},{color:"blue",poly:[[1,0],[2,0],[1,1]]},{color:"blue",poly:[[0,1],[1,1],[0,2]]},
+  {color:"red",poly:[[2,0],[2,1],[1,1]]},{color:"red",poly:[[0,2],[1,2],[1,1]]},{color:"green",poly:[[1,1],[2,1],[2,2],[1,2]]}];
+const mir=(T,sx,sy)=>T.map(t=>({color:t.color,poly:t.poly.map(p=>[p[0]*sx,p[1]*sy])}));
+const TILES=Q1T.concat(mir(Q1T,1,-1),mir(Q1T,-1,1),mir(Q1T,-1,-1));
+const COLORS={yellow:"#f2cc1d",green:"#3a9e4f",blue:"#2e64c8",red:"#d6333a"};
+const tileName=t=>t.poly.map(pair).join(", "), shapeOf=t=>t.poly.length===4?"square":"triangle";
+SETS.forEach(X=>X.steps.forEach(st=>{ if(st.tile===undefined&&st.mirror===undefined) return;
+  if(st.tile!==undefined){ const t=TILES[st.tile]; st.mode="shape"; st.label=st.label||(st.part==="dots"?"mark the "+t.poly.length+" points":"tile "+tileName(t));
+    st.prompt=st.part==="color"?"Make the square.":"Spin the reels."; st.sub=st.part==="color"?"":"They give you the points of a tile, and its color.";
+    st.need=st.part==="dots"?{verts:t.poly.filter(p=>p[0]||p[1])}:{tiles:st.tile+1}; st.target=tileName(t)+" "+t.color;
+    st.say=st.say||(t.poly.length+" sides, "+t.poly.length+" vertices: a "+shapeOf(t)+"."); }
+  else { st.mode="mirror"; st.need={tiles:st.mirror}; st.target=st.mirror+" tiles"; } }));
 const plotted=()=>S.set.steps.filter((x,i)=>x.plot&&i<S.s).map(x=>x.plot);
 SETS.forEach(X=>X.steps.forEach(st=>{ st.std=STD[st.id]||X.std; st.whole=0; st.mode=st.mode||(st.ask?st.ask.kind:st.do?"do":"draw"); st.target=st.target||(st.ask?String(st.ask.target):st.need?(st.need.coin?"coin "+st.need.coin.join(","):["h","v","o"].filter(k=>st.need[k]).join("+")):"done"); }));
 
@@ -2103,18 +2223,31 @@ function renderHome(){ view("homeView"); $("wholes").innerHTML=""; $("brandSet")
 function resume(p){ S.set=SETS.find(x=>x.key===p.set); S.round=p.round; S.results=p.results||[]; S.photos=p.photos||[]; S.events=p.events||[]; S.started=p.started||S.started;
   S.seen=p.seen||null; S.img=null; S.source=p.source||null; S.s=p.s; if(p.done){ S.loggedDone=true; return showDone(); } if(p.stepOk){ if(S.s<S.set.steps.length-1) S.s++; else { S.loggedDone=false; return showDone(); } }
   view("stepView"); log("resume",{step:S.s}); showStep();
-  const st=ST(); if((st.game||st.plot)&&(p.spun||p.coinOk)){ S.spun=true; afterSpin(st); $("photoRow").hidden=!!p.coinOk; $("sampleBtn").hidden=!!p.coinOk;
+  const st=ST(); if((st.game||st.plot||st.tile!==undefined)&&(p.spun||p.coinOk)){ S.spun=true; afterSpin(st); $("photoRow").hidden=!!p.coinOk; $("sampleBtn").hidden=!!p.coinOk;
     if(p.coinOk){ S.photoOk=true; S.seen=p.seen||null; $("seen").textContent="Your coin photo was checked."; $("answerRow").hidden=false; renderEq(); } } }
 function startSet(X){ S.prev=null; S.set=X; S.loggedDone=false; const used=S.results.concat(S.photos).filter(r=>r.set===X.key).map(r=>r.round); S.round=Math.max(used.length?Math.max(...used)+1:1,nextRound(X.key)); bumpRound(X.key,S.round); setOwner(S.student); S.s=0; S.firstWhole=null; view("stepView"); log("set_start",{}); sendJoin(); note("step",{type:"start",set:X.key,no:X.no,round:S.round,of:asked().length}); showStep(); }
 $("home").onclick=()=>{ if(!$("stepView").hidden){ const b=$("brandSet"); if(b.dataset.armed){ delete b.dataset.armed; closeCam(); renderHome(); return } b.dataset.armed="1"; const t=b.textContent; b.textContent="tap again to leave this set"; setTimeout(()=>{ if(b.dataset.armed){ delete b.dataset.armed; b.textContent=t } },3500); } else renderHome(); };
 
 /* ======================= A STEP ======================= */
 /* the game: the rules so far in this set, and the three reels (spun by the student, stopping on the step's start, sign and count) */
-function renderGame(st){ const box=$("gameBox"), g=st.game, P=st.plot, rules=S.set.steps.filter((x,i)=>(x.rule||x.ruleText)&&i<=S.s);
-  box.hidden=!(g||P||st.rule||st.ruleText); if(box.hidden) return; S.spun=false;
+function renderGame(st){ const X=S.set, box=$("gameBox"), g=st.game, P=st.plot, rules=S.set.steps.filter((x,i)=>(x.rule||x.ruleText)&&i<=S.s);
+  box.hidden=!(g||P||st.rule||st.ruleText||st.tile!==undefined); if(box.hidden) return; S.spun=false;
   $("rules").innerHTML=rules.map(x=>(x.ruleText||[esc(x.rule)+' means move this way '+arrow(x.rule,axisOf())]).map(t=>'<div class="'+(x===st?"new":"")+'">'+(x.ruleText?esc(t):t)+'</div>').join("")).join("");
-  box.querySelector(".reels").hidden=!g; $("pairReels").hidden=!(P||st.ruleText); $("spin").hidden=!(g||P); ["reel0","reel1","reel2","reelX","reelY"].forEach(id=>$(id).textContent="?"); }
-$("spin").onclick=()=>{ const st=ST(), g=st.game; if(st.plot) return spinPair(st); if(!g||S.spun) return; $("spin").disabled=true; const reels=[...document.querySelectorAll(".reels:not(.pair) .reel")];
+  const T=st.tile!==undefined, setTile=X.key==="l6";
+  box.querySelector(".reels").hidden=!g; $("pairReels").hidden=!(P||(st.ruleText&&!setTile)); $("tileReels").hidden=!(T||(st.ruleText&&setTile)); $("spin").hidden=!(g||P||(T&&st.part!=="color")); ["reel0","reel1","reel2","reelX","reelY"].forEach(id=>$(id).textContent="?");
+  if(T||(st.ruleText&&setTile)) showTile(T?TILES[st.tile]:null, T&&st.part==="color"); }
+/* the tile reels: one ( x , y ) for each vertex, and the color */
+function showTile(t,shown){ const n=t?t.poly.length:4;
+  $("tilePairs").innerHTML=Array.from({length:n},(_,i)=>'<div class="tp"><span>(</span><b>'+(shown?minus(t.poly[i][0]):"?")+'</b><span>,</span><b>'+(shown?minus(t.poly[i][1]):"?")+'</b><span>)</span></div>').join("");
+  $("tileColor").querySelector("span").textContent=shown?t.color:"?"; $("tileColor").querySelector(".sw").style.background=shown?COLORS[t.color]:"transparent"; }
+function spinTile(st){ if(S.spun) return; $("spin").disabled=true; const t=TILES[st.tile], box=$("tileReels"), pool=["−4","−3","−2","−1","0","1","2","3","4"], cols=Object.keys(COLORS);
+  const rnd=a=>a[Math.floor(Math.random()*a.length)], slow=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches; let tick=0; box.setAttribute("aria-busy","true");
+  const cells=[...box.querySelectorAll(".tp")], n=cells.length, stopAt=k=>slow?1:8+k*4, last=slow?1:8+n*4+4; cells.forEach(c=>c.classList.add("spinning"));
+  const iv=setInterval(()=>{ tick++; cells.forEach((c,k)=>{ const b=c.querySelectorAll("b"); if(tick>=stopAt(k)){ b[0].textContent=minus(t.poly[k][0]); b[1].textContent=minus(t.poly[k][1]); c.classList.remove("spinning"); } else { b[0].textContent=rnd(pool); b[1].textContent=rnd(pool); } });
+    const cc=tick>=last?t.color:rnd(cols); $("tileColor").querySelector("span").textContent=cc; $("tileColor").querySelector(".sw").style.background=COLORS[cc];
+    if(tick>=last){ clearInterval(iv); box.removeAttribute("aria-busy"); $("spin").disabled=false; if(ST()!==st) return;
+      S.spun=true; log("spin",{step:st.id}); persist(); afterSpin(st); $("photoRow").hidden=false; $("sampleBtn").hidden=false; showResult(["photoRow"]); } },70); }
+$("spin").onclick=()=>{ const st=ST(), g=st.game; if(st.plot) return spinPair(st); if(st.tile!==undefined) return spinTile(st); if(!g||S.spun) return; $("spin").disabled=true; const reels=[...document.querySelectorAll(".reels:not(.pair) .reel")];
   const rnd=a=>a[Math.floor(Math.random()*a.length)], starts=["−4","−3","−2","−1","0","1","2","3","4"], signs=S.set.steps.some((x,i)=>x.rule==="−"&&i<S.s)?["+","−"]:["+"];
   const slow=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches, stops=slow?[1,1,1]:[9,13,17]; let tick=0; reels.forEach(r=>r.classList.add("spinning")); const rbox=document.querySelector(".reels:not(.pair)"); rbox.setAttribute("aria-busy","true");
   const t=setInterval(()=>{ tick++; [[starts,minus(g.start)],[signs,g.sign],[["1","2","3","4"],String(g.count)]].forEach(([pool,fin],k)=>{ const b=$("reel"+k);
@@ -2129,7 +2262,12 @@ function spinPair(st){ if(S.spun) return; $("spin").disabled=true; const reels=[
     if(tick>=stops[1]){ clearInterval(t); box.removeAttribute("aria-busy"); $("spin").disabled=false; if(ST()!==st) return;
       S.spun=true; log("spin",{step:st.id}); persist(); afterSpin(st); $("photoRow").hidden=false; $("sampleBtn").hidden=false; showResult(["photoRow"]); } },70); }
 /* after the spin: the reels show the turn, and the instruction says what to do with it */
-function afterSpin(st){ if(st.plot){ const P=st.plot; $("reelX").textContent=minus(P[0]); $("reelY").textContent=minus(P[1]); $("spin").hidden=true;
+function afterSpin(st){ if(st.tile!==undefined){ const t=TILES[st.tile]; showTile(t,true); $("spin").hidden=true; $("sub").hidden=false;
+    const acts=st.part==="dots"?["Mark each point with a dot, colored in.","Take a photo."]:st.part==="color"?["Connect the points in order, and back to the first one.","Color the square "+t.color+".","Take a photo."]
+      :["Mark each point with a dot.","Connect them in order, and back to the first one.","Color the "+shapeOf(t)+" "+t.color+".","Take a photo."];
+    $("prompt").textContent=st.part==="dots"?"Mark the "+t.poly.length+" points.":"Make the "+shapeOf(t)+".";
+    $("sub").innerHTML='<ol class="acts">'+acts.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ol>"; return }
+  if(st.plot){ const P=st.plot; $("reelX").textContent=minus(P[0]); $("reelY").textContent=minus(P[1]); $("spin").hidden=true;
     document.querySelectorAll(".reel").forEach(r=>r.classList.remove("spinning"));
     $("prompt").textContent="Go to "+pair(P)+"."; $("sub").hidden=false;
     $("sub").innerHTML='<ol class="acts">'+["Put the coin on the origin.",P[0]===0?"Go 0 along x: stay there.":"Move it "+along(P[0],"x")+".",P[1]===0?"Then go 0 along y: stay there.":"Then move it "+along(P[1],"y")+".","Lift the coin. Color in a dot where it was.","Take a photo."].map(t=>"<li>"+esc(t)+"</li>").join("")+"</ol>";
@@ -2152,8 +2290,9 @@ function showStep(){ const st=ST(); closeCam();
   $("photoRow").hidden=false; $("sampleBtn").hidden=false; $("anyway").hidden=true; $("answerRow").hidden=true; $("nextRow").hidden=true; $("didRow").hidden=true; setFeedback("","");
   renderGame(st);
   $("stageBox").hidden=!!st.do; $("seen").hidden=!!st.do; $("seen").textContent=""; drawStage(); persist();
-  if((st.game||st.plot)&&!S.spun){ $("photoRow").hidden=true; $("sampleBtn").hidden=true; }   // spin first
-  if(st.need&&!st.ask&&!st.plot&&S.prev&&S.prev.set===S.set.key&&S.prev.round===S.round&&!check(S.prev.R,st.need).length) return already(st);
+  if((st.game||st.plot||(st.tile!==undefined&&st.part!=="color"))&&!S.spun){ $("photoRow").hidden=true; $("sampleBtn").hidden=true; }   // spin first
+  if(st.tile!==undefined&&st.part==="color"){ S.spun=true; afterSpin(st); }   // the same tile as the step before: no new spin
+  if(st.need&&!st.ask&&!st.plot&&st.tile===undefined&&st.mirror===undefined&&S.prev&&S.prev.set===S.set.key&&S.prev.round===S.round&&!check(S.prev.R,st.need).length) return already(st);
   if(st.do){ S.photoOk=true; $("photoRow").hidden=true; $("sampleBtn").hidden=true;   // no photo: done when the student says so, or when they answer
     if(st.ask){ $("answerRow").hidden=false; renderEq(); } else $("didRow").hidden=false; }
   requestAnimationFrame(()=>{ try{ $("head").scrollIntoView({block:"start",behavior:"smooth"}) }catch(e){} }); }
@@ -2180,6 +2319,12 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(!R.ok||!R.grid) return;
   const q=R.grid.quad; g.save(); g.strokeStyle="rgba(31,79,138,.55)"; g.lineWidth=2; g.beginPath(); q.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]))); g.closePath(); g.stroke(); g.restore();
   const need=(ST()&&ST().need)||{};
+  if(need.verts){ (R.dots||[]).filter(d=>d.found).forEach(d=>{ const ok=need.verts.some(v=>samePt(v,d.at)); g.save(); g.strokeStyle=ok?"rgba(29,122,69,.95)":"rgba(90,99,94,.6)"; g.lineWidth=3; g.beginPath(); g.arc(X(d.pt[0]),Y(d.pt[1]),Math.max(9,(d.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }); return }
+  if(need.tiles&&R.tiles){ const c=tileCheck(R,need), poly=(i,col,dash,fill)=>{ const P=R.tiles[i].pts; g.save(); if(dash) g.setLineDash([7,6]); g.beginPath(); P.forEach((p,j)=>j?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]))); g.closePath();
+      if(fill){ g.fillStyle=fill; g.fill(); } g.strokeStyle=col; g.lineWidth=3; g.stroke(); g.restore(); };
+    const rg=tileRange(ST()); for(let i=rg[0];i<rg[1];i++) if(c.missing.indexOf(i)<0&&c.partly.indexOf(i)<0&&c.wrong.indexOf(i)<0) poly(i,"rgba(29,122,69,.9)");
+    c.missing.concat(c.partly).forEach(i=>poly(i,"rgba(154,91,0,.95)",true,COLORS[TILES[i].color]+"55")); c.wrong.concat(c.early).forEach(i=>poly(i,"rgba(154,91,0,.95)",false));
+    return }   // Set 6: green outline where a tile is right; amber dashes, lightly filled with its color, where one is still to do; amber where one is wrong
   if(need.cells&&R.cells){ const C=R.cells, ctr=c=>C.centers[c[0]+","+c[1]], half=C.cellPx*k/2, want=c=>need.cells.some(w=>samePt(w,c));
     const ring=(c,col)=>{ const p=ctr(c); if(!p) return; g.save(); g.strokeStyle=col; g.lineWidth=3; g.beginPath(); g.arc(X(p[0]),Y(p[1]),Math.max(8,half*0.88),0,Math.PI*2); g.stroke(); g.restore(); };
     C.covered.forEach(c=>ring(c,want(c)?"rgba(29,122,69,.95)":"rgba(154,91,0,.95)")); C.partly.forEach(c=>ring(c,"rgba(154,91,0,.95)"));
@@ -2193,6 +2338,8 @@ function drawStage(){ const cv=$("stage"), dpr=Math.min(3,window.devicePixelRati
   if(R.origin&&R.origin.found){ g.save(); g.strokeStyle="rgba(29,122,69,.95)"; g.lineWidth=3; g.beginPath(); g.arc(X(R.origin.pt[0]),Y(R.origin.pt[1]),Math.max(9,(R.origin.rpx||6)*k+5),0,Math.PI*2); g.stroke(); g.restore(); }
 }
 function seenText(R){ if(!R||!R.ok) return ""; const parts=["the grid"];
+  if(ST()&&ST().need&&ST().need.verts) return (R.dots||[]).some(d=>d.found)?"I see your dots.":"I see the grid.";
+  if(ST()&&ST().need&&ST().need.tiles){ const c=tileCheck(R,ST().need), rg=tileRange(ST()); return c.missing.length===rg[1]-rg[0]&&!c.early.length?"I see the grid.":"I see your colors."; }
   if(ST()&&ST().need&&ST().need.cells) return R.cells&&R.cells.covered.length?"I see your coins.":"I see the grid, but no coins in the squares.";   // not how many: that's the question
   if(ST()&&ST().need&&ST().need.dot){ const P=ST().need.dot; return (R.dots||[]).some(d=>d.found&&samePt(d.at,P))?"I see your dot on "+pair(P)+".":"I see the grid and your axes."; }
   if(ST()&&ST().need&&ST().need.coin){ return R.coin&&R.coin.found?"I see your coin.":"I see the grid, but no coin."; }   // not where it is: that's the question that comes next
@@ -2206,6 +2353,7 @@ const OFF=0.2;
 const where=k=>k===0?"on 0, the origin":k>0?"on "+k+(axisOf()==="y"?" on y":""):(negNamed()?"on "+minus(k)+(axisOf()==="y"?" on y":""):plural(-k,"square")+" to the left of 0");
 const negNamed=()=>!!S.set&&(S.set.key!=="l2"||S.set.steps.findIndex(x=>x.id==="l2.n")<S.s);   // Set 2 names negative numbers; Set 3 comes after it
 const samePt=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+const BIG16=[]; for(let i=-2;i<2;i++) for(let j=-2;j<2;j++) BIG16.push([i,j]);   // Set 5: the big square's unit squares
 /* Set 4: is there a dot on the point the reels gave? found: the grid points with a dot (the origin left out) */
 function dotProbs(R,need){ const P=need.dot, found=(R.dots||[]).filter(d=>d.found).map(d=>d.at), isOld=a=>need.have.some(h=>samePt(h,a));
   const fresh=found.filter(a=>!isOld(a)&&!samePt(a,P)), there=found.some(a=>samePt(a,P)), how="From the origin, go "+along(P[0],"x")+", then "+along(P[1],"y")+".";
@@ -2227,12 +2375,43 @@ function cellProbs(R,need){ const C=R.cells||{covered:[],partly:[]}, has=a=>need
     if(extra.length) return [(extra.length===1?"A coin on the sheet isn't":n(extra.length,"coin")+" on the sheet aren't")+" all the way inside the diamond: a line of the diamond crosses "+(extra.length===1?"it":"them")+", or "+(extra.length===1?"it is":"they are")+" outside. Take "+(extra.length===1?"it":"them")+" off."];
     if(across.length&&(C.coins||[]).length) return ["A coin is on a grid line. Slide it into the middle of its unit square, or take it off if it isn't inside the diamond."];
     if(missing.length) return [n(missing.length,"unit square")+" all the way inside the diamond "+(missing.length===1?"needs its coin":"need their coins")+" back. The empty square"+(missing.length===1?" is":"s are")+" in dashes on the photo."]; }
+  if(need.corners){   // challenge 2: the 4 coins go in the 4 corner squares
+    if(across.length&&(C.coins||[]).length) return ["A coin is on a grid line. Slide it into the middle of a corner unit square."];
+    if(extra.length) return [(extra.length===1?"A coin isn't":n(extra.length,"coin")+" aren't")+" in a corner of the big square. Move "+(extra.length===1?"it":"them")+" to an empty corner square."];
+    if(missing.length&&got.length) return [n(missing.length,"corner square")+" of the big square "+(missing.length===1?"needs a coin":"need coins")+": one coin in each corner. The empty corner"+(missing.length===1?" is":"s are")+" in dashes on the photo."]; }
   if(!got.length&&(!across.length||!(C.coins||[]).length)) return ["I can't see any coins in the unit squares. Put each coin flat, in the middle of a square, and keep your hand and its shadow off the sheet."];
   if(across.length) return ["A coin is on a grid line, or something else is on the sheet. Slide each coin into the middle of its unit square."];
   if(extra.length) return [("There "+(extra.length>1?"are "+extra.length+" coins":"is a coin")+" outside "+need.where+". Take "+(extra.length>1?"them":"it")+" off: the coins go only in "+need.where+".")];
   if(missing.length) return [("Put "+missing.length+" more coin"+(missing.length>1?"s":"")+" in "+need.where+": one in each unit square. The empty square"+(missing.length>1?"s are":" is")+" in dashes on the photo.")];
   return []; }
+/* Set 6: the vertices of the first tile; then the colors of the tiles so far (need.tiles: how many of TILES should be colored) */
+function vertProbs(R,need){ const found=(R.dots||[]).filter(d=>d.found).map(d=>d.at), miss=need.verts.filter(v=>!found.some(f=>samePt(f,v)));
+  if(!miss.length) return [];
+  const near=(R.dots||[]).filter(d=>!d.found&&d.n>=25&&miss.some(m=>samePt(m,d.at)));
+  return [(miss.length===1?"I can't see a dot on "+pair(miss[0]):"I can't see dots on "+miss.map(pair).join(" and "))+". "+(near.length?"Make each dot bigger and darker: about as big as a pencil eraser, colored in.":"Color in a dot right on each point the reels gave.")]; }
+/* Each tile step checks its own tile; each mirror checks its new tiles. Tiles already done stay as they are: crayon can't be erased,
+   and one mistake must not block the rest. A tile colored early in its right color is fine (drew ahead). */
+function tileRange(st){ return st.tile!==undefined?[st.tile,st.tile+1]:st.mirror===24?[12,24]:[6,12]; }
+function tileCheck(R,need){ const st=ST(), rg=tileRange(st), got=(R.tiles||[]).map(t=>t.color), out={wrong:[],missing:[],partly:[],early:[]};
+  for(let i=rg[0];i<rg[1];i++){ const w=TILES[i].color, g=got[i]||"none"; if(g===w) continue; if(g==="none") out.missing.push(i); else if(g==="some "+w) out.partly.push(i); else out.wrong.push(i); }
+  // a tile step whose tile isn't colored: is its color on a tile still to come? (the wrong tile)
+  if(st.tile!==undefined&&out.missing.length) for(let i=st.tile+1;i<TILES.length;i++){ const g=(got[i]||"none").replace(/^some /,""); if(g===TILES[st.tile].color){ out.early.push(i); break } }
+  return out; }
+const colorWord=g=>g==="other"?"like another color":g==="gray"?"gray or black":g;
+function tileProbs(R,need){ const c=tileCheck(R,need), st=ST(), one=i=>"the "+shapeOf(TILES[i])+" at "+tileName(TILES[i]);
+  if(st.tile!==undefined){ const cur=st.tile, t=TILES[cur];
+    if(c.missing.length&&c.early.length) return ["I see "+t.color+" in "+one(c.early[0])+". This tile is "+one(cur)+": color it "+t.color+" too."];
+    if(c.missing.length) return ["I can't see the color in "+one(cur)+". Color it "+t.color+", right up to its sides: the phone shows it in dashes."];
+    if(c.partly.length) return ["Color all of "+one(cur)+", right up to its sides."];
+    if(c.wrong.length){ const g=(R.tiles[cur].color||"").replace(/^some /,""); return ["That tile looks "+colorWord(g)+": the reels said "+t.color+". Color over it in "+t.color+", as well as you can. If that won't work, tap The phone got it wrong to go on."]; }
+    return []; }
+  const todo=c.missing.length+c.partly.length;
+  if(todo) return [(todo===1?"1 tile still needs its":todo+" tiles still need their")+" color, right up to the sides: the phone shows "+(todo===1?"it":"them")+" in dashes."];
+  if(c.wrong.length) return [(c.wrong.length===1?"A tile has":c.wrong.length+" tiles have")+" the wrong color: the phone shows "+(c.wrong.length===1?"it":"them")+" in amber. Each mirror tile matches its partner's color."];
+  return []; }
 function check(R,need){ const probs=[];
+  if(need.verts) return vertProbs(R,need);
+  if(need.tiles) return tileProbs(R,need);
   if(need.dot) return dotProbs(R,need);
   if(need.cells) return cellProbs(R,need);
   if(need.coin){ const c=R.coin, st=ST(), g=st&&st.game;
@@ -2260,7 +2439,7 @@ function check(R,need){ const probs=[];
   return probs; }
 
 function analyse(img,w,h,source){ const st=ST(); let R;
-  try{ R=window.readSheet(img,w,h,{coin:!!(st.need&&st.need.coin),dots:!!(st.need&&st.need.dot),cells:(st.need&&st.need.cells)||false,axis:axisOf()}); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
+  try{ R=window.readSheet(img,w,h,{coin:!!(st.need&&st.need.coin),dots:!!(st.need&&(st.need.dot||st.need.verts)),tiles:st.need&&st.need.tiles?TILES.map(t=>({poly:t.poly})):null,cells:(st.need&&st.need.cells)||false,look:st.need&&st.need.cells?BIG16:null,axis:axisOf()}); }catch(e){ R={ok:false,reason:"error",message:String(e&&e.message||e)} }
   S.seen=R; S.img=img; S.source=source; S.photoTries++;
   const brief=R.ok?{h:R.h.drawn,hOff:R.h.offset,v:R.v.drawn,vOff:R.v.offset,o:R.origin.found,coin:R.coin&&R.coin.found?{at:R.coin.at,x:R.coin.x,y:R.coin.y}:null,dots:R.dots?R.dots.filter(d=>d.found).map(d=>d.at):undefined,cells:R.cells?R.cells.covered:undefined}:null;
   log("photo",{step:st.id,source,w,h,ok:!!R.ok,reason:R.reason||null,seen:brief,ms:R.ms});
@@ -2269,6 +2448,7 @@ function analyse(img,w,h,source){ const st=ST(); let R;
   $("seen").textContent=seenText(R);
   const probs=check(R,st.need), ok=!probs.length;
   if(st.plot) plotAnswer(st,R,ok);
+  if(st.tile!==undefined||st.mirror!==undefined) tileAnswer(st,R,ok);
   S.photos.push({set:S.set.key,round:S.round,step:st.id,label:st.label,need:st.need,correct:ok,try:S.photoTries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source,seen:brief});
   if(!ok){ setFeedback("warn","<b>Not yet.</b>"+probs.map(esc).join(" ")+" Then take the photo again."); $("anyway").hidden=!(source==="photo"&&S.photoTries>=3); persist(); showResult(); return }
   photoGood(); }
@@ -2278,6 +2458,16 @@ function plotAnswer(st,R,ok){ const P=st.plot, found=(R.dots||[]).filter(d=>d.fo
   if(!ok&&(found.some(a=>samePt(a,P))||!fresh.length)) return;
   const wrote=ok?pair(P):fresh.map(pair).join(" and "), last=runs(st.id).slice(-1)[0];
   if(!ok&&last&&!last.correct&&last.wrote===wrote) return;   // the same wrong dot again: one miss, not two
+  answer(st,ok,wrote); }
+/* Set 6: each tile (and each mirror) is an answer: right when the photo checks out; wrong when the colors are there but not right.
+   A photo with nothing done yet is not counted, and the same mistake photographed again counts once. */
+function tileAnswer(st,R,ok){ let wrote;
+  if(st.need.verts){ const f=(R.dots||[]).filter(d=>d.found&&st.need.verts.some(v=>samePt(v,d.at))).length; if(!ok&&!f) return; wrote=f+" of "+st.need.verts.length+" points"; }
+  else { const c=tileCheck(R,st.need);
+    if(!ok&&!c.wrong.length&&!c.early.length) return;   // unfinished, or nothing done yet: not an answer
+    if(ok) wrote="right"; else if(st.tile!==undefined) wrote=c.early.length?"colored "+tileName(TILES[c.early[0]]):"colored "+colorWord((R.tiles[st.tile].color||"").replace(/^some /,""));
+    else wrote=c.wrong.length+" wrong color"; }
+  const last=runs(st.id).slice(-1)[0]; if(!ok&&last&&!last.correct&&last.wrote===wrote) return;
   answer(st,ok,wrote); }
 function answer(st,ok,wrote,extra){ S.tries++;
   S.results.push(Object.assign({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,wrote,symbol_ok:ok,correct:ok,try:S.tries,secs:+((performance.now()-S.stepAt)/1000).toFixed(1),source:S.source},extra||{}));
@@ -2295,7 +2485,7 @@ function photoGood(){ const st=ST(); S.photoOk=true; if(S.seen&&S.seen.ok&&S.img
   else { S.stepOk=true; setFeedback("good","<b>"+escEq(st.say)+"</b>"); renderWords(); showNext(); } persist(); showResult(); }
 $("anyway").onclick=()=>{ const st=ST(); log("phone_miscounted",{step:st.id,seen:slim(S.seen)});
   const r=S.photos.filter(x=>x.set===S.set.key&&x.round===S.round&&x.step===st.id).slice(-1)[0]; if(r) r.phone_miscounted=true;
-  if(st.plot&&!runs(st.id).some(x=>x.correct)){   // not counted right or wrong: the teacher sees the phone was overruled
+  if((st.plot||st.tile!==undefined||st.mirror!==undefined)&&!runs(st.id).some(x=>x.correct)){   // not counted right or wrong: the teacher sees the phone was overruled
     S.results.push({set:S.set.key,round:S.round,step:st.id,label:st.label,mode:st.mode,target:st.target,skipped:true,moved_on:true,phone_miscounted:true,correct:false,try:0});
     note("step",{type:"moved_on",set:S.set.key,no:S.set.no,round:S.round,step:st.id,label:st.label,phone:true,i:asked().indexOf(st)+1,of:asked().length}); }
   photoGood(); };
@@ -2375,6 +2565,11 @@ function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…"
   function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
 $("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
 $("sampleBtn").onclick=()=>{ const n=ST().need||{}, game=S.set.key!=="l1", labels=game||S.set.steps.findIndex(x=>x.id==="l1.z")<S.s;
+  if(n.verts||n.tiles){ const SQ=[[2,0],[0,2],[-2,0],[0,-2],[2,2],[-2,2],[-2,-2],[2,-2]], upto=n.tiles||0, st=ST(), pts={};
+    SQ.forEach(p=>pts[p]=p); TILES.slice(0,Math.max(upto,st.tile!==undefined?st.tile+1:0)).forEach(t=>t.poly.forEach(p=>{ if(p[0]||p[1]) pts[p]=p; }));
+    const c=window.drawSheetSample({h:true,v:true,dot:true,labels:true,negLabels:true,yLabels:true,cut:true,dots:Object.values(pts).map(p=>({x:p[0],y:p[1]})),segs:[[2,0,0,2],[0,2,-2,0],[-2,0,0,-2],[0,-2,2,0],[2,2,-2,2],[-2,2,-2,-2],[-2,-2,2,-2],[2,-2,2,2]],
+      fills:TILES.slice(0,upto).map(t=>({poly:t.poly,color:t.color})),seed:S.s+7*S.round,width:900,height:1100});
+    return analyse(c,c.width,c.height,"sample"); }
   if(n.cells){ const SQ=[[2,0],[0,2],[-2,0],[0,-2],[2,2],[-2,2],[-2,-2],[2,-2]];
     const c=window.drawSheetSample({h:true,v:true,dot:true,labels:true,negLabels:true,yLabels:true,cut:true,dots:SQ.map(p=>({x:p[0],y:p[1]})),segs:[[2,0,0,2],[0,2,-2,0],[-2,0,0,-2],[0,-2,2,0],[2,2,-2,2],[-2,2,-2,-2],[-2,-2,2,-2],[2,-2,2,2]],coins:n.cells.map(c=>({x:c[0]+0.5,y:c[1]+0.5})),seed:S.s+7*S.round,width:900,height:1100});
     return analyse(c,c.width,c.height,"sample"); }
@@ -2406,7 +2601,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden&&CAM.strea
 const runs=id=>S.results.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
 const shots=id=>S.photos.filter(r=>r.set===S.set.key&&r.round===S.round&&r.step===id);
 function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student&&("#"+S.student)].filter(Boolean).join(" ");
-  const asked=S.set.steps.filter(st=>st.ask||st.plot); let first=0; const misses=[];
+  const asked=S.set.steps.filter(st=>st.ask||st.plot||st.tile!==undefined||st.mirror!==undefined); let first=0; const misses=[];
   for(const st of asked){ const rs=runs(st.id); if(rs.length&&rs[0].correct) first++; const bad=rs.find(r=>!r.correct&&!r.skipped);
     if(bad){ const right=rs.find(r=>r.correct&&r.try>bad.try); misses.push(st.label+": wrote "+bad.wrote+(right?" → right on try "+right.try:" → moved on")); } }
   const photos=S.set.steps.filter(st=>st.need).map(st=>shots(st.id).filter(r=>!r.skipped)).filter(a=>a.length), firstPhoto=photos.filter(a=>a[0].correct).length;
@@ -2415,7 +2610,7 @@ function summaryLine(){ const who=[S.classCode&&("class "+S.classCode),S.student
   return [(who?who+" · ":"")+"FotoLine "+S.set.no+" · round "+S.round, src.has("sample")?(src.has("photo")?"some sample sheets":"sample sheet"):"own sheet",
     first+" of "+asked.length+" answers first try"+(misses.length?" ("+misses.join("; ")+")":""), firstPhoto+" of "+photos.length+" steps right first time"+(miscount.length?" · said the phone got it wrong on "+miscount.length+" ("+miscount.join("; ")+")":"")].join(" · "); }
 function showDone(){ if($("doneView").hidden) S.doneAt=performance.now(); view("doneView"); renderWords(true); $("brandSet").textContent="Set "+S.set.no+" · iteration "+ITERATION;
-  $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask||st.plot?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
+  $("answers").innerHTML=S.set.steps.map(st=>{ const rs=(st.ask||st.plot||st.tile!==undefined||st.mirror!==undefined?runs(st.id):shots(st.id)).filter(r=>!r.skipped); const m=rs.map(r=>r.correct?"✓":"✗").join("→")||"—"; const last=rs[rs.length-1];
     const mis=shots(st.id).some(r=>r.phone_miscounted);
     return '<span class="chip '+(last&&last.correct?"ok":rs.length?"no":"skip")+'">'+esc(st.label)+" "+m+(mis?" (phone?)":"")+'</span>'; }).join("");
   renderEnd();
@@ -2425,7 +2620,7 @@ function renderEnd(){ const e=S.set&&S.set.end, el=$("endCard"); if(!el) return;
   el.hidden=false; el.innerHTML=(e.lines||[]).map(t=>'<div class="peq">'+escEq(t)+'</div>').join("")+'<div class="endq">'+esc(e.q)+'</div>'; }
 function recordObj(){ const done=new Set(S.results.concat(S.photos).map(r=>r.set));
   return {schema:RECORD_SCHEMA,app:"FotoLine",version:VERSION,iteration:ITERATION,class_code:cls()||null,student:S.student||null,live_session:(LIVE&&LIVE.ok)?LIVE.code:null,
-    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoLine: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask||st.plot).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
+    sets:SETS.filter(x=>done.has(x.key)).map(x=>({set:x.key,no:x.no,name:"FotoLine: "+x.name,standards:x.std,steps:x.steps.filter(st=>st.ask||st.plot||st.tile!==undefined||st.mirror!==undefined).map(st=>({step:st.id,label:st.label,mode:st.mode,target:st.target,standard:st.std}))})),
     started:S.started,saved:new Date().toISOString(),summary:S.set?summaryLine():"",
     summaries:S.set?[{set:S.set.key,round:S.round,line:summaryLine()}]:[],folds:[],photos:S.photos,results:S.results,events:S.events}; }
 function recordText(){ const r=recordObj(), head=Object.assign({},r), j=x=>JSON.stringify(x); delete head.folds; delete head.photos; delete head.results; delete head.events;
@@ -2452,7 +2647,7 @@ const RELAY=(()=>{ let r="https://fotofold-relay.fotofold.workers.dev"; if(r.ind
 const LIVE_RE=/^[A-HJ-NP-Z2-9]{5}$/;
 let LIVE=null; try{ const l=JSON.parse(store.get("ff.live")||"null"); if(l&&Date.now()-l.at<7*24*3600e3) LIVE=l; }catch(e){}
 function cls(){ return (LIVE&&LIVE.ok&&LIVE.label)||S.classCode }
-const asked=()=>S.set?S.set.steps.filter(st=>st.ask||st.plot):[];
+const asked=()=>S.set?S.set.steps.filter(st=>st.ask||st.plot||st.tile!==undefined||st.mirror!==undefined):[];
 function tfetch(url,opt,ms){ const c=typeof AbortController!=="undefined"?new AbortController():null; const t=c?setTimeout(()=>c.abort(),ms||10000):null;
   return fetch(url,Object.assign({},opt||{},c?{signal:c.signal}:{})).finally(()=>{ if(t) clearTimeout(t) }); }
 const OUT={q:[],busy:false,timer:null,fails:0,delivered:{}};
