@@ -117,7 +117,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <section id="homeView" style="display:grid;gap:16px">
     <a class="btn link back" href="index.html" id="allLink">← All activities</a>
     <h1 class="prompt">Fold it, draw it, name it.</h1>
-    <p class="sub">You need a FotoLine sheet and a pencil. <a href="fotoline_sheet.pdf" id="sheetLink">Print the sheet</a> at 100% (Actual size); the grid should measure 7 inches across.</p>
+    <p class="sub">You need a FotoLine sheet, scissors and a pencil. <a href="fotoline_sheet.pdf" id="sheetLink">Print the sheet</a> at 100% (Actual size); the grid should measure 7 inches across.</p>
     <div class="card">
       <div class="sub">If your teacher gave you a class code and a number, type them here. No names.</div>
       <div class="ids">
@@ -181,7 +181,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="card" style="margin-top:8px;display:grid;gap:10px"><p class="sub">FotoLine never keeps the photo you take: it looks for your lines and your dot and forgets the picture. Your answers stay on this phone until you tap Start fresh.</p>
       <p class="sub">"Take a photo" opens the phone's own camera. Get the whole sheet in; only the paper is shown here.</p></div>
   </details>
-  <footer>FotoLine, iteration <span id="footIter"></span>. Fold a sheet to make two axes and an origin, then count along them. The photo is never kept.</footer>
+  <footer>FotoLine, iteration <span id="footIter"></span>. Cut out a square, fold it to make two axes and an origin, then count along them. The photo is never kept.</footer>
 </main>
 
 <script>
@@ -498,7 +498,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     var gv = Math.round(gray * 255); g.strokeStyle = 'rgb(' + gv + ',' + gv + ',' + gv + ')'; g.lineWidth = 0.26 / 25.4 * F;
     for (var i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(gx + i * cell, gy); g.lineTo(gx + i * cell, gy + 7 * F); g.stroke(); g.beginPath(); g.moveTo(gx, gy + i * cell); g.lineTo(gx + 7 * F, gy + i * cell); g.stroke(); }
     if (!cut) { g.setLineDash([8, 5]); g.strokeStyle = '#5a5a5a'; g.lineWidth = 1; var cs = 0.375 * F; g.strokeRect(gx - cs, gy - cs, 7 * F + 2 * cs, 7 * F + 2 * cs); g.setLineDash([]);
-      g.fillStyle = '#5a5a5a'; g.font = '12px sans-serif'; g.fillText('cut on the dashed line (or don\'t: the grid is in the center of the page)', gx - cs, gy - cs - 6);
+      g.fillStyle = '#5a5a5a'; g.font = '12px sans-serif'; g.fillText('Cut on the dashed line. Then the grid is in the middle of your sheet.', gx - cs, gy - cs - 6);
       g.fillText('FotoLine sheet.  8 x 8 squares, each 7/8 inch.', gx - cs, gy + 7 * F + cs + 22); g.fillText('Print at 100% (Actual size). The grid should measure 7 inches across.', gx - cs, gy + 7 * F + cs + 38); }
     var ox = FW / 2, oy = FH / 2;   // the folds: the middle of the sheet
     // folds: a soft shading step on each crease
@@ -562,7 +562,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 <script>
 "use strict";
 (function(){
-const VERSION="0.1.0", ITERATION=1, RECORD_SCHEMA="fotofold.record/1";
+const VERSION="0.2.0", ITERATION=2, RECORD_SCHEMA="fotofold.record/1";
 const $=id=>document.getElementById(id);
 document.title="FotoLine (iteration "+ITERATION+")"; { const f=document.getElementById("footIter"); if(f) f.textContent=ITERATION; }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -578,9 +578,11 @@ const fr=(a,b)=>'<span class="frac"><span>'+a+'</span><span class="bar"></span><
    student says so (writing a 0 needs no check). A name comes after the thing it names is made.
    need (photo steps): what the photo should show: h = a line on the fold across the middle, v = a line on the fold up the
    middle, o = a dot colored in where they cross. do: no photo. ask: {kind:"count", target}. words: the names this step gives. */
-const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Fold the sheet twice, draw on the folds, and name what you made.",std:"4.G.A.1, 5.G.A.1, 2.MD.B.6",
+const SETS=[{key:"l1",no:1,name:"Make the axes",what:"Cut out the square, fold it twice, draw on the folds, and name what you made.",std:"4.G.A.1, 5.G.A.1, 2.MD.B.6",
  end:{lines:[],q:"You made a coordinate system: two perpendicular number lines, called axes, that intersect at the origin."},
  steps:[
+  {id:"l1.c", label:"cut out the square", do:true, prompt:"Cut out the square on the dashed line.", sub:"Cut right on the dashes, all the way around.",
+   say:"Now the grid is in the middle of your sheet, so a fold finds the middle of the grid."},
   {id:"l1.f1", label:"fold across", do:true, prompt:"Fold your sheet in half, top edge to bottom edge.", sub:"Match the corners, press the fold flat, and open the sheet.",
    say:"A fold across the middle of the sheet."},
   {id:"l1.h", label:"line on the fold", prompt:"Draw a pencil line along the fold.", sub:"Go from one edge of the grid to the other. The edge of a card or a ruler helps.",
@@ -760,7 +762,7 @@ function loadFile(file){ if(!file) return; setFeedback("","Reading the photo…"
   function viaImg(){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>done(im,im.naturalWidth,im.naturalHeight); im.onerror=()=>setFeedback("warn","That file isn't a photo this phone can open."); im.src=u; } }
 $("cam").onchange=e=>{ loadFile(e.target.files[0]); e.target.value=""; };
 $("sampleBtn").onclick=()=>{ const n=ST().need||{}, labels=S.set.steps.findIndex(x=>x.id==="l1.z")<S.s;
-  const c=window.drawSheetSample({h:!!n.h,v:!!n.v,dot:!!n.o,labels,seed:S.s+7*S.round,width:900,height:1200}); analyse(c,c.width,c.height,"sample"); };
+  const c=window.drawSheetSample({h:!!n.h,v:!!n.v,dot:!!n.o,labels,cut:true,seed:S.s+7*S.round,width:900,height:1100}); analyse(c,c.width,c.height,"sample"); };
 /* the camera inside the page, as in FotoFold */
 const CAM={stream:null,failed:false};
 const liveCamOK=()=>false&&!CAM.failed&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)&&window.isSecureContext!==false;
